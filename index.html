@@ -3687,5 +3687,250 @@ function setRange(r){ const targets=App.sync.range?P.filter(Boolean):[P[activePa
  setDataMode(hubLive);
 })();
 </script>
+<script>
+/* ============ WebMCP 対応（チャート基本操作 + OHLC アクセス） ============
+   W3C WebML CG の WebMCP 仕様に沿って、ブラウザ内 AI エージェントから呼べるツールを登録する。
+   現行仕様の document.modelContext.registerTool({name,title,description,inputSchema,annotations,execute})
+   と、旧ドラフト / Chrome プレビューの navigator.modelContext.registerTool の両方に対応し、
+   どちらも無い環境では何もせず通常表示に影響しない（登録は全て try/catch で隔離）。
+   旧 provideContext({tools}) しか無い実装向けのフォールバックも用意する。
+   検証・デバッグ用に同じツール群を window.__chartWebMCP__（list() / call(name,args)）にも公開するが、
+   これは WebMCP 本体ではなく、ツール実行は常に下の実関数（switchSymbol / loadPane / gotoTime /
+   setMulti / saveLayoutAs 等、画面のボタンと同じ経路）を通る。 */
+(function(){
+"use strict";
+/* ---------- 引数の解決ヘルパー ---------- */
+function resolveSymbol(v){
+ if(v==null) throw new Error("symbol is required");
+ var q=String(v).trim(); if(!q) throw new Error("symbol is required");
+ var up=q.toUpperCase(), i, x;
+ for(i=0;i<SYMBOLS.length;i++){ if(SYMBOLS[i].s.toUpperCase()===up) return SYMBOLS[i].s; }
+ for(i=0;i<SYMBOLS.length;i++){ var tk=SYMBOLS[i].s.split(":")[1]||""; if(tk.toUpperCase()===up) return SYMBOLS[i].s; }
+ var matches=SYMBOLS.filter(function(s){ return s.s.toUpperCase().indexOf(up)>=0||s.n.toUpperCase().indexOf(up)>=0; });
+ if(matches.length===1) return matches[0].s;
+ if(/^[A-Za-z0-9]+:[A-Za-z0-9!._-]+$/.test(q)) return up; /* 一覧外でも EXCHANGE:TICKER 形式はそのまま受け付ける（銘柄情報は symInfo が補完する） */
+ throw new Error("Unknown symbol \""+q+"\". Valid symbols: "+SYMBOLS.map(function(s){return s.s;}).join(", "));
+}
+function resolveInterval(v){
+ if(v==null) throw new Error("interval is required");
+ var q=String(v).trim(); if(!q) throw new Error("interval is required");
+ for(var i=0;i<INTERVALS.length;i++){ if(INTERVALS[i][0]===q) return q; }
+ var up=q.toUpperCase().replace(/\s+/g,"");
+ var MAP={"1":"1m","1M":"1m","1MIN":"1m","1MINUTE":"1m","5":"5m","5M":"5m","5MIN":"5m","15":"15m","15M":"15m","15MIN":"15m","60":"1h","60M":"1h","1H":"1h","H1":"1h","240":"4h","240M":"4h","4H":"4h","H4":"4h","D":"1D","1D":"1D","1440":"1D","DAILY":"1D","DAY":"1D"};
+ if(MAP[up]) return MAP[up];
+ throw new Error("Unknown interval \""+q+"\". Valid intervals: "+INTERVALS.map(function(x){return x[0];}).join(", "));
+}
+function parseDateArg(v){
+ if(typeof v==="number"&&isFinite(v)) return v>1e12?Math.floor(v/1000):Math.floor(v);
+ var raw=String(v==null?"":v).trim(); if(!raw) throw new Error("date is required");
+ if(/^\d{10}$/.test(raw)) return +raw;
+ if(/^\d{13}$/.test(raw)) return Math.floor(+raw/1000);
+ if(/(Z|[+-]\d{2}:?\d{2})$/i.test(raw)){ var dp=Date.parse(raw); if(isFinite(dp)) return Math.floor(dp/1000); }
+ var s=raw.replace("T"," ");
+ if(/^\d{4}-\d{1,2}-\d{1,2}$/.test(s)) s+=" 00:00";
+ var ts=wallToUtc(s); /* タイムゾーン指定のない日時はチャート表示タイムゾーン（App.timezone）の壁時計として解釈する（Go to ダイアログと同じ） */
+ if(isFinite(ts)) return ts;
+ var d2=Date.parse(raw); if(isFinite(d2)) return Math.floor(d2/1000);
+ throw new Error("Could not parse date \""+raw+"\". Use \"YYYY-MM-DD\" or \"YYYY-MM-DD HH:MM\" (chart timezone: "+App.timezone+"), an ISO 8601 string, or unix seconds.");
+}
+/* pane 指定: "left"=0 / "right"=1 / "third"=2 / "active" / 0|1|2。expand=true の操作系ツールでは
+   足りないペインをレイアウト変更（setMulti）で作ってから対象にする */
+function paneIndexFrom(args,expand){
+ var p=(args&&args.pane!=null)?args.pane:null;
+ if(p==null) return activePane;
+ var idx;
+ if(typeof p==="number"&&isFinite(p)) idx=Math.floor(p);
+ else{ var s=String(p).trim().toLowerCase();
+  if(s==="active"||s==="current") return activePane;
+  if(s==="left"||s==="first"||s==="main") idx=0;
+  else if(s==="right"||s==="second") idx=1;
+  else if(s==="third") idx=2;
+  else if(/^\d+$/.test(s)) idx=+s;
+  else throw new Error("Invalid pane \""+p+"\". Use \"left\", \"right\", \"third\", \"active\", 0, 1 or 2."); }
+ if(idx<0||idx>2) throw new Error("Invalid pane "+idx+". This chart has panes 0 (left), 1 (right) and 2 (third).");
+ if(expand&&idx>=App.multi) setMulti(idx+1);
+ if(!P[idx]){ if(expand) setMulti(idx+1); if(!P[idx]) throw new Error("Pane "+idx+" is not available in the current layout ("+App.multi+" pane(s))."); }
+ return idx;
+}
+function panePos(idx){ return idx===0?"left":idx===1?"right":"third"; }
+function candleOut(c){ return {time:c.time,datetime:new Date(c.time*1000).toISOString(),datetimeChartTz:fmtDT(c.time),open:c.open,high:c.high,low:c.low,close:c.close,volume:(c.volume!=null?c.volume:null)}; }
+function paneState(ctx){
+ if(!ctx) return null;
+ var vr=null; try{ vr=ctx.chart.timeScale().getVisibleRange(); }catch(e){}
+ var last=(ctx.view&&ctx.view.length)?ctx.view[ctx.view.length-1]:((ctx.full&&ctx.full.length)?ctx.full[ctx.full.length-1]:null);
+ return {index:ctx.idx,position:panePos(ctx.idx),symbol:ctx.symbol,name:symInfo(ctx.symbol).n,interval:ctx.interval,
+  barsLoaded:ctx.full?ctx.full.length:0,barsShown:ctx.view?ctx.view.length:0,
+  visibleRange:vr?{from:vr.from,to:vr.to,fromDatetime:new Date(vr.from*1000).toISOString(),toDatetime:new Date(vr.to*1000).toISOString()}:null,
+  lastBar:last?candleOut(last):null};
+}
+function stateSnapshot(){
+ return {symbol:App.symbol,interval:P[0]?P[0].interval:App.interval,timezone:App.timezone,
+  layoutName:App.layoutName,paneCount:App.multi,activePane:activePane,
+  panes:P.filter(Boolean).filter(function(c){return c.idx<App.multi;}).map(paneState),
+  availableIntervals:INTERVALS.map(function(x){return x[0];}),
+  savedLayouts:App.layouts.map(function(l){return l.name;}),
+  replayActive:(typeof replay!=="undefined"&&!!replay.active),
+  dataSource:(typeof hubLive!=="undefined"&&hubLive)?"OHLC Hub (live)":"demo data (Hub not connected)"};
+}
+function loadSavedLayout(entry){
+ StorageAdapter.applyJSON(JSON.parse(JSON.stringify(entry.data)));
+ App.layoutName=entry.name; afterImport();
+}
+function findSavedLayout(name){
+ var nm=String(name==null?"":name).trim().toLowerCase(); if(!nm) return null;
+ for(var i=0;i<App.layouts.length;i++){ if(App.layouts[i].name.toLowerCase()===nm) return App.layouts[i]; }
+ return null;
+}
+/* ---------- ツール定義 ---------- */
+var PANE_PROP={type:"string",enum:["active","left","right","third","0","1","2"],description:"Target pane: \"left\" (pane 0), \"right\" (pane 1), \"third\" (pane 2) or \"active\" (default)."};
+var tools=[
+ {name:"chart_get_state",title:"Get chart state",
+  description:"Get the current chart state: active symbol and interval, timezone, pane layout (how many panes), each visible pane's position (left/right/third), symbol and interval, the visible time range, the latest bar, saved layout names, and whether bar replay is active.",
+  inputSchema:{type:"object",properties:{},additionalProperties:false},
+  annotations:{readOnlyHint:true},
+  execute:function(){ return stateSnapshot(); }},
+ {name:"chart_list_symbols",title:"List available symbols and intervals",
+  description:"List the symbols that can be shown on the chart (full EXCHANGE:TICKER form, ticker, name, exchange, type) and the available intervals/timeframes.",
+  inputSchema:{type:"object",properties:{},additionalProperties:false},
+  annotations:{readOnlyHint:true},
+  execute:function(){ return {symbols:SYMBOLS.map(function(x){ return {symbol:x.s,ticker:x.s.split(":")[1]||x.s,name:x.n,exchange:x.s.split(":")[0],type:x.t}; }),
+   intervals:INTERVALS.map(function(x){ return x[0]; })}; }},
+ {name:"chart_set_symbol",title:"Set chart symbol",
+  description:"Change the symbol shown on a chart pane. Accepts a full symbol (\"CME:GC1!\"), a ticker only (\"GC1!\"), or a unique part of the symbol/name. Defaults to the active pane; use pane \"left\" or \"right\" to target that pane (the layout grows to 2 panes if needed).",
+  inputSchema:{type:"object",properties:{symbol:{type:"string",description:"Symbol to show, e.g. \"CME:GC1!\", \"CME:NQ1!\", \"OANDA:XAUUSD\" (ticker-only forms like \"GC1!\" also work)."},pane:PANE_PROP},required:["symbol"],additionalProperties:false},
+  annotations:{readOnlyHint:false},
+  execute:function(args){ args=args||{}; var sym=resolveSymbol(args.symbol); var idx=paneIndexFrom(args,true); activePane=idx; switchSymbol(sym,idx);
+   var st=stateSnapshot(); st.changed={pane:idx,position:panePos(idx),symbol:sym}; return st; }},
+ {name:"chart_set_pane_symbols",title:"Set left and right pane symbols",
+  description:"Set the symbols of the left and right panes in one call (the left/right symbols of a 2-pane layout). Providing \"right\" switches the layout to 2 panes if it is not already. Either side may be omitted to leave it unchanged.",
+  inputSchema:{type:"object",properties:{left:{type:"string",description:"Symbol for the left pane, e.g. \"CME:GC1!\"."},right:{type:"string",description:"Symbol for the right pane, e.g. \"CME:NQ1!\"."}},additionalProperties:false},
+  annotations:{readOnlyHint:false},
+  execute:function(args){ args=args||{}; if(args.left==null&&args.right==null) throw new Error("Provide at least one of \"left\" or \"right\".");
+   if(args.right!=null&&App.multi<2) setMulti(2);
+   if(args.left!=null) switchSymbol(resolveSymbol(args.left),0);
+   if(args.right!=null&&P[1]) switchSymbol(resolveSymbol(args.right),1);
+   return stateSnapshot(); }},
+ {name:"chart_set_interval",title:"Set chart interval (timeframe)",
+  description:"Change the interval/timeframe of a chart pane. Valid intervals: 1m, 5m, 15m, 1h, 4h, 1D (aliases like \"15\", \"60\", \"240\", \"D\" are also accepted). Defaults to the active pane. Like the on-screen interval buttons, the change follows the layout's interval-sync setting.",
+  inputSchema:{type:"object",properties:{interval:{type:"string",description:"Interval: one of 1m, 5m, 15m, 1h, 4h, 1D."},pane:PANE_PROP},required:["interval"],additionalProperties:false},
+  annotations:{readOnlyHint:false},
+  execute:function(args){ args=args||{}; var iv=resolveInterval(args.interval); var idx=paneIndexFrom(args,true); var ctx=P[idx]; if(!ctx) throw new Error("Pane is not available");
+   activePane=idx; loadPane(ctx,ctx.symbol,iv,true);
+   if(App.sync&&App.sync.interval){ for(var i=0;i<P.length;i++){ var o=P[i]; if(o&&o!==ctx&&o.idx<App.multi) loadPane(o,o.symbol,iv,true); } }
+   if(idx===0) App.interval=iv; refreshHeads();
+   var st=stateSnapshot(); st.changed={pane:idx,position:panePos(idx),interval:iv}; return st; }},
+ {name:"chart_goto_date",title:"Go to date",
+  description:"Move the chart view to a specific date and time (the chart's \"Go to\" feature): the view shifts so the bar at that time is centred, keeping the current zoom. The date is interpreted in the chart's display timezone unless it carries its own timezone/offset. Accepts \"YYYY-MM-DD\", \"YYYY-MM-DD HH:MM\", ISO 8601, or unix seconds.",
+  inputSchema:{type:"object",properties:{date:{type:"string",description:"Target date/time, e.g. \"2026-11-18\" or \"2026-11-18 11:15\"."},pane:PANE_PROP},required:["date"],additionalProperties:false},
+  annotations:{readOnlyHint:false},
+  execute:function(args){ args=args||{}; var idx=paneIndexFrom(args,true); var ctx=P[idx]; if(!ctx) throw new Error("Pane is not available");
+   if(!ctx.full||!ctx.full.length) throw new Error("Chart data is still loading — try again in a moment.");
+   var ts=parseDateArg(args.date);
+   if(ts<ctx.full[0].time) throw new Error("That date is before the start of the loaded data ("+fmtDT(ctx.full[0].time)+" "+App.timezone+").");
+   var bi=ctx.full.findIndex(function(c){ return c.time>=ts; });
+   if(bi<0) throw new Error("No bar exists at or after that date in the loaded data (latest bar: "+fmtDT(ctx.full[ctx.full.length-1].time)+" "+App.timezone+").");
+   activePane=idx; gotoTime(ctx,ts);
+   var bar=ctx.full[bi];
+   return {pane:idx,position:panePos(idx),symbol:ctx.symbol,interval:ctx.interval,requested:args.date,bar:candleOut(bar),state:stateSnapshot()}; }},
+ {name:"chart_set_layout",title:"Set chart layout",
+  description:"Change the chart layout. Pass \"1\", \"2\" or \"3\" to set the number of chart panes, or pass the name of a saved layout to load that layout instead.",
+  inputSchema:{type:"object",properties:{layout:{type:"string",description:"\"1\", \"2\" or \"3\" (pane count), or the name of a saved layout."}},required:["layout"],additionalProperties:false},
+  annotations:{readOnlyHint:false},
+  execute:function(args){ args=args||{}; var v=(args.layout!=null?args.layout:(args.panes!=null?args.panes:args.name));
+   if(v==null) throw new Error("layout is required");
+   if(typeof v==="string"){ var found=findSavedLayout(v); if(found){ loadSavedLayout(found); var st0=stateSnapshot(); st0.loadedLayout=found.name; return st0; } }
+   var n=(typeof v==="number")?v:parseInt(String(v).replace(/[^0-9]/g,""),10);
+   if(n===1||n===2||n===3){ setMulti(n); return stateSnapshot(); }
+   throw new Error("Unknown layout \""+v+"\". Use \"1\", \"2\" or \"3\" for the pane count, or a saved layout name: "+(App.layouts.length?App.layouts.map(function(l){return l.name;}).join(", "):"(no saved layouts yet)")); }},
+ {name:"chart_list_layouts",title:"List layouts",
+  description:"List the current layout (name and pane count) and all saved layouts with their save time, symbol and interval.",
+  inputSchema:{type:"object",properties:{},additionalProperties:false},
+  annotations:{readOnlyHint:true},
+  execute:function(){ return {currentLayoutName:App.layoutName,paneCount:App.multi,
+   savedLayouts:App.layouts.map(function(l){ return {name:l.name,savedAt:l.savedAt||null,symbol:(l.data&&l.data.symbol)||null,interval:(l.data&&l.data.interval)||null,panes:(l.data&&l.data.multi)||null}; })}; }},
+ {name:"chart_load_layout",title:"Load a saved layout",
+  description:"Load a previously saved layout by name (restores its symbols, interval, panes, drawings, indicators, theme and timezone).",
+  inputSchema:{type:"object",properties:{name:{type:"string",description:"Name of the saved layout to load."}},required:["name"],additionalProperties:false},
+  annotations:{readOnlyHint:false},
+  execute:function(args){ args=args||{}; var found=findSavedLayout(args.name);
+   if(!found) throw new Error("No saved layout named \""+args.name+"\". Saved layouts: "+(App.layouts.length?App.layouts.map(function(l){return l.name;}).join(", "):"(none)"));
+   loadSavedLayout(found); var st=stateSnapshot(); st.loadedLayout=found.name; return st; }},
+ {name:"chart_save_layout",title:"Save current layout",
+  description:"Save the current chart (symbols, interval, panes, drawings, indicators, theme and timezone) as a named layout, replacing any saved layout with the same name.",
+  inputSchema:{type:"object",properties:{name:{type:"string",description:"Name to save the current layout under."}},required:["name"],additionalProperties:false},
+  annotations:{readOnlyHint:false},
+  execute:function(args){ args=args||{}; var nm=String(args.name==null?"":args.name).trim(); if(!nm) throw new Error("name is required");
+   saveLayoutAs(nm); return {saved:nm,savedLayouts:App.layouts.map(function(l){return l.name;}),state:stateSnapshot()}; }},
+ {name:"chart_get_ohlc",title:"Get OHLC candles",
+  description:"Get OHLC (open/high/low/close) candle data from the chart. Without from/to, returns the most recent \"limit\" bars (default 100, max 2000) for the pane's symbol and interval. With from and/or to (dates in the chart timezone, ISO 8601, or unix seconds), returns bars in that range. A different symbol/interval can be requested: it is fetched from the OHLC Hub without changing the chart. Each candle includes unix time, ISO datetime, OHLC and volume.",
+  inputSchema:{type:"object",properties:{
+    pane:PANE_PROP,
+    symbol:{type:"string",description:"Symbol to read (default: the target pane's symbol)."},
+    interval:{type:"string",description:"Interval to read: 1m, 5m, 15m, 1h, 4h or 1D (default: the target pane's interval)."},
+    limit:{type:"integer",minimum:1,maximum:2000,description:"Maximum number of bars to return (most recent ones in range). Default 100."},
+    from:{type:"string",description:"Start of the range (inclusive), e.g. \"2026-11-17 00:00\"."},
+    to:{type:"string",description:"End of the range (inclusive), e.g. \"2026-11-18 23:59\"."}},
+   additionalProperties:false},
+  annotations:{readOnlyHint:true},
+  execute:function(args){ args=args||{};
+   var idx=activePane; try{ idx=paneIndexFrom(args,false); }catch(e){ idx=activePane; }
+   var ctx=P[idx]||P[activePane]||P[0]; if(!ctx) throw new Error("Chart is not ready yet");
+   var sym=args.symbol?resolveSymbol(args.symbol):ctx.symbol;
+   var iv=args.interval?resolveInterval(args.interval):ctx.interval;
+   var limit=(args.limit!=null&&isFinite(+args.limit))?Math.max(1,Math.min(2000,Math.floor(+args.limit))):100;
+   var fromV=(args.from!=null?args.from:(args.start!=null?args.start:args.fromTime));
+   var toV=(args.to!=null?args.to:(args.end!=null?args.end:args.toTime));
+   var fromTs=(fromV!=null&&fromV!=="")?parseDateArg(fromV):null;
+   var toTs=(toV!=null&&toV!=="")?parseDateArg(toV):null;
+   var finish=function(data,source){
+    var rows=data.filter(function(c){ return (fromTs==null||c.time>=fromTs)&&(toTs==null||c.time<=toTs); });
+    rows=rows.slice(-limit);
+    return {symbol:sym,interval:iv,source:source,pane:ctx.idx,position:panePos(ctx.idx),timezone:App.timezone,
+     totalAvailable:data.length,returned:rows.length,candles:rows.map(candleOut)};
+   };
+   if(sym===ctx.symbol&&iv===ctx.interval){
+    if(!ctx.full||!ctx.full.length) throw new Error("Chart data is still loading — try again in a moment.");
+    return finish(ctx.full.slice(),(typeof hubLive!=="undefined"&&hubLive)?"chart data (OHLC Hub, live)":"chart data (demo data — Hub not connected)");
+   }
+   return new Promise(function(resolve,reject){
+    var done=false;
+    var to=setTimeout(function(){ if(done)return; done=true; reject(new Error("Timed out fetching "+sym+" "+iv+" from the OHLC Hub. Switch the chart to that symbol/interval first, then call chart_get_ohlc again.")); },15000);
+    try{ getCandlesHTTP(sym,iv,function(ok,data){ if(done)return; done=true; clearTimeout(to);
+      if(ok&&data&&data.length) resolve(finish(data,"OHLC Hub (MCP get_candles)"));
+      else reject(new Error("Could not fetch "+sym+" "+iv+" from the OHLC Hub. Switch the chart to that symbol/interval first, then call chart_get_ohlc again.")); });
+    }catch(e){ if(!done){ done=true; clearTimeout(to); reject(e); } }
+   });
+  }}
+];
+/* ---------- 登録（WebMCP 本体 + 検証用レジストリ） ---------- */
+var registry={}; tools.forEach(function(t){ registry[t.name]=t; });
+var api={version:1,supported:false,registeredOn:[],tools:tools.map(function(t){ return {name:t.name,title:t.title,description:t.description,inputSchema:t.inputSchema,annotations:t.annotations}; }),
+ list:function(){ return Object.keys(registry); },
+ call:function(name,args){ var t=registry[name]; if(!t) return Promise.reject(new Error("Unknown tool: "+name)); return Promise.resolve().then(function(){ return t.execute(args||{}); }); }};
+window.__chartWebMCP__=api;
+function toolDef(t){ return {name:t.name,title:t.title,description:t.description,inputSchema:t.inputSchema,annotations:t.annotations,
+ execute:function(input){ return t.execute(input||{}); }}; }
+var contexts=[];
+try{ if(typeof document!=="undefined"&&document.modelContext&&typeof document.modelContext.registerTool==="function") contexts.push({label:"document.modelContext",mc:document.modelContext,modern:true}); }catch(e){}
+try{ if(typeof navigator!=="undefined"&&navigator.modelContext&&typeof navigator.modelContext.registerTool==="function"&&(!contexts.length||contexts[0].mc!==navigator.modelContext)) contexts.push({label:"navigator.modelContext",mc:navigator.modelContext,modern:false}); }catch(e){}
+contexts.forEach(function(c){
+ tools.forEach(function(t){
+  try{
+   var p=null;
+   if(c.modern&&typeof AbortController!=="undefined"){ var ac=new AbortController(); if(!api._ctrls)api._ctrls=[]; api._ctrls.push(ac); p=c.mc.registerTool(toolDef(t),{signal:ac.signal}); }
+   else p=c.mc.registerTool(toolDef(t));
+   if(p&&typeof p.catch==="function") p.catch(function(err){ console.warn("WebMCP registerTool failed for "+t.name+" on "+c.label,err); });
+   if(api.registeredOn.indexOf(c.label)<0) api.registeredOn.push(c.label);
+  }catch(err){ console.warn("WebMCP registerTool failed for "+t.name+" on "+c.label,err); }
+ });
+});
+if(!contexts.length){
+ /* 旧ドラフト: provideContext({tools}) しか無い実装向け */
+ try{ if(typeof navigator!=="undefined"&&navigator.modelContext&&typeof navigator.modelContext.provideContext==="function"){
+  navigator.modelContext.provideContext({tools:tools.map(toolDef)}); api.registeredOn.push("navigator.modelContext.provideContext"); } }catch(e){ console.warn("WebMCP provideContext failed",e); }
+}
+api.supported=api.registeredOn.length>0;
+})();
+</script>
 </body>
 </html>
