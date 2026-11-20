@@ -16,7 +16,7 @@
 }
 *{box-sizing:border-box}
 html,body{height:100%}
-body{margin:0;background:var(--bg);color:var(--txt);font-family:"Trebuchet MS",-apple-system,BlinkMacSystemFont,Roboto,Ubuntu,"Hiragino Kaku Gothic ProN","Yu Gothic UI","Noto Sans JP",sans-serif;font-size:13px;display:flex;flex-direction:column;overflow:hidden}
+body{margin:0;background:var(--bg);color:var(--txt);font-family:"Trebuchet MS","Segoe UI",Verdana,"Hiragino Kaku Gothic ProN","Yu Gothic UI","Noto Sans JP",sans-serif;font-size:13px;display:flex;flex-direction:column;overflow:hidden}
 button{font:inherit;color:var(--txt);background:transparent;border:1px solid transparent;border-radius:4px;min-height:36px;padding:4px 10px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;justify-content:center}
 button:hover{background:var(--panel2)}
 button.on{background:var(--accent);color:#fff}
@@ -417,17 +417,17 @@ textarea{width:100%;min-height:110px;font-family:ui-monospace,Menlo,monospace;fo
   <button id="symBtn" title="Symbol Search">GC1!</button>
   <div class="sep"></div>
   <div class="ivl" id="ivlBar"></div>
-  <button id="chartTypeBtn" title="Chart type"><svg class="ic" viewBox="0 0 24 24"><path d="M7 4v3M7 17v3M5 7h4v10H5zM17 3v4M17 14v7M15 7h4v7h-4z" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></button>
+  <button id="chartTypeBtn" title="Chart type"><svg class="ic" viewBox="0 0 24 24"><path d="M12 3.2v3.3M12 17.5v3.3M8.1 6.5h7.8v11H8.1z" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></button>
   <div class="sep"></div>
-  <button id="indBtn" title="Indicators"><svg class="ic" viewBox="0 0 24 24"><path d="M5 3.5V19a1.5 1.5 0 0 0 1.5 1.5H20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M8 15.5 11.5 10l3 2.8L19 7.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="19" cy="7.5" r="1.4" fill="currentColor"/></svg></button>
+  <button id="indBtn" title="Indicators"><svg class="ic" viewBox="0 0 24 24"><path d="M5.3 13.2h2.5v6.3H5.3zM10.75 10h2.5v9.5h-2.5zM16.2 14.2h2.5v5.3h-2.5z" fill="currentColor"/><path d="M4.3 9.8 8.2 6.4l3.4 2.2 4-3.9 4.1 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   <button id="moreBtn" title="Menu (theme, data, layouts, grid, JSON)"><svg class="ic" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2"/></svg></button>
-  <button id="replayBtn" title="Bar Replay"><svg class="ic" viewBox="0 0 24 24"><path d="M3.5 5h2.2v14H3.5zM13 5.6L6.2 12 13 18.4zM20.5 5.6L13.7 12l6.8 6.4z" fill="currentColor"/></svg></button>
+  <button id="replayBtn" title="Bar Replay"><svg class="ic" viewBox="0 0 24 24"><path d="M10.8 6.2 4.6 12l6.2 5.8zM19.6 6.2 13.4 12l6.2 5.8z" fill="currentColor"/></svg></button>
   <div class="sep"></div>
-  <button id="undoBtnTop" title="Undo (Ctrl+Z)"><svg class="ic" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 9h9.5a6.5 6.5 0 0 1 0 13H10" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
-  <button id="redoBtnTop" title="Redo (Ctrl+Shift+Z)"><svg class="ic" viewBox="0 0 24 24"><path d="M15 14l5-5-5-5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M20 9h-9.5a6.5 6.5 0 0 0 0 13H14" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
+  <button id="undoBtnTop" title="Undo (Ctrl+Z)"><svg class="ic" viewBox="0 0 24 24"><path d="M8.6 5.4 4.9 9.1l3.7 3.7" fill="none" stroke="currentColor" stroke-width="2.1" style="stroke-width:2.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M4.9 9.1h8.6a5.6 5.6 0 0 1 0 11.2H9.8" fill="none" stroke="currentColor" stroke-width="2.1" style="stroke-width:2.1" stroke-linecap="round"/></svg></button>
+  <button id="redoBtnTop" title="Redo (Ctrl+Shift+Z)"><svg class="ic" viewBox="0 0 24 24"><path d="M15.4 5.4l3.7 3.7-3.7 3.7" fill="none" stroke="currentColor" stroke-width="2.1" style="stroke-width:2.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M19.1 9.1h-8.6a5.6 5.6 0 0 0 0 11.2H14.2" fill="none" stroke="currentColor" stroke-width="2.1" style="stroke-width:2.1" stroke-linecap="round"/></svg></button>
   <div class="sep"></div>
   <span class="tbSpacer"></span>
-  <button id="layoutBtn"><svg class="ic" viewBox="0 0 24 24"><path d="M6.5 19a4.5 4.5 0 0 1-.4-8.98 6 6 0 0 1 11.6-1.2A4.25 4.25 0 0 1 17.5 19h-11z" fill="none" stroke="currentColor" stroke-width="1.8"/></svg> Unnamed <svg class="ic" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
+  <button id="layoutBtn"><svg class="ic" viewBox="0 0 24 24"><rect x="5.5" y="5.5" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8"/></svg> Unnamed <svg class="ic" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
   <button id="themeBtn" class="icobtn" title="Theme & colors"><svg class="ic" viewBox="0 0 24 24"><path d="M12 3.5a8.5 8.5 0 1 0 0 17c1.3 0 2-.85 2-1.8 0-.75-.5-1.25-.5-2 0-.85.65-1.45 1.6-1.45h1.7a3.8 3.8 0 0 0 3.7-3.75C20.5 6.9 16.7 3.5 12 3.5z" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="7.6" cy="10.6" r="1.25" fill="currentColor"/><circle cx="12" cy="7.6" r="1.25" fill="currentColor"/><circle cx="16.4" cy="10.6" r="1.25" fill="currentColor"/></svg></button>
   <button id="dataBtn" class="icobtn" title="Data source settings"><svg class="ic" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="7.5" ry="2.8" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M4.5 5.5v13c0 1.6 3.4 2.8 7.5 2.8s7.5-1.2 7.5-2.8v-13M4.5 12c0 1.6 3.4 2.8 7.5 2.8s7.5-1.2 7.5-2.8" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></button>
   <button id="gridBtn" class="on icobtn" title="Toggle grid (color #878787 as specified)"><svg class="ic" viewBox="0 0 24 24"><path d="M4 4h16v16H4zM4 9.3h16M4 14.6h16M9.3 4v16M14.6 4v16" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button>
@@ -435,7 +435,7 @@ textarea{width:100%;min-height:110px;font-family:ui-monospace,Menlo,monospace;fo
   <label class="btn icobtn" title="Import JSON file"><svg class="ic" viewBox="0 0 24 24"><path d="M12 14V4m0 0L8 8m4-4l4 4M5 19h14" fill="none" stroke="currentColor" stroke-width="1.8"/></svg><input type="file" id="topImport" accept=".json,application/json" style="display:none"></label>
   <span id="clock"></span>
   <button id="settingsBtn" title="Settings"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 3v2.6M12 18.4V21M3 12h2.6M18.4 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M18.4 5.6l-1.8 1.8M7.4 16.6l-1.8 1.8" stroke="currentColor" stroke-width="1.8"/></svg></button>
-  <button id="panelBtn" title="Object tree"><svg class="ic" viewBox="0 0 24 24"><path d="M12 3.2 21 8l-9 4.8L3 8l9-4.8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M3.6 12.6 12 17l8.4-4.4M3.6 16.6 12 21l8.4-4.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></button>
+  <button id="panelBtn" title="Object tree"><svg class="ic" viewBox="0 0 24 24"><path d="M12 3.4 20.2 8.6 12 13.8 3.8 8.6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 10.2 20.2 15.4 12 20.6 3.8 15.4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></button>
 </div>
 <div id="demoBanner"><span><b>Showing demo data</b> — Not real data</span><button id="demoClose" title="Close"><svg class="ic" viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2"/></svg></button></div>
 <div id="ohlcBar" title=""><span id="ohlcLine"></span></div>
@@ -520,14 +520,14 @@ textarea{width:100%;min-height:110px;font-family:ui-monospace,Menlo,monospace;fo
     <div id="objTree" tabindex="0"></div>
   </div>
   <div id="rightRail">
-    <button id="railObjBtn" title="Object tree"><svg class="ic" viewBox="0 0 24 24"><path d="M12 3.2 21 8l-9 4.8L3 8l9-4.8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M3.6 12.6 12 17l8.4-4.4M3.6 16.6 12 21l8.4-4.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></button>
+    <button id="railObjBtn" title="Object tree"><svg class="ic" viewBox="0 0 24 24"><path d="M12 3.4 20.2 8.6 12 13.8 3.8 8.6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 10.2 20.2 15.4 12 20.6 3.8 15.4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></button>
     <button id="railThemeBtn" title="Theme & colors"><svg class="ic" viewBox="0 0 24 24"><path d="M12 3.5a8.5 8.5 0 1 0 0 17c1.3 0 2-.85 2-1.8 0-.75-.5-1.25-.5-2 0-.85.65-1.45 1.6-1.45h1.7a3.8 3.8 0 0 0 3.7-3.75C20.5 6.9 16.7 3.5 12 3.5z" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="7.6" cy="10.6" r="1.25" fill="currentColor"/><circle cx="12" cy="7.6" r="1.25" fill="currentColor"/><circle cx="16.4" cy="10.6" r="1.25" fill="currentColor"/></svg></button>
     <button id="railDataBtn" title="Data source settings"><svg class="ic" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="7.5" ry="2.8" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M4.5 5.5v13c0 1.6 3.4 2.8 7.5 2.8s7.5-1.2 7.5-2.8v-13M4.5 12c0 1.6 3.4 2.8 7.5 2.8s7.5-1.2 7.5-2.8" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></button>
     <button id="railTradesBtn" title="Trade history"><svg class="ic" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="4.8" cy="6" r="1.5" fill="currentColor"/><circle cx="4.8" cy="12" r="1.5" fill="currentColor"/><circle cx="4.8" cy="18" r="1.5" fill="currentColor"/></svg></button>
     <button id="railExpBtn" title="Export saved data as JSON"><svg class="ic" viewBox="0 0 24 24"><path d="M12 4v10m0 0l-4-4m4 4l4-4M5 19h14" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></button>
     <button id="railImpBtn" title="Import JSON file"><svg class="ic" viewBox="0 0 24 24"><path d="M12 14V4m0 0L8 8m4-4l4 4M5 19h14" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></button>
     <span style="flex:1"></span>
-    <button id="railHelpBtn" title="Keyboard shortcuts (help)"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9.5 9.5A2.5 2.5 0 1 1 12 12.5V14" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="17" r="1.2" fill="currentColor"/></svg></button>
+    <button id="railHelpBtn" title="Keyboard shortcuts (help)"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.8" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9.4 9.3a2.75 2.75 0 1 1 4.05 2.43c-.95.38-1.45 1.02-1.45 2v.55" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="16.9" r="1.25" fill="currentColor"/></svg></button>
     <button id="railSettingsBtn" title="Settings"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 3v2.6M12 18.4V21M3 12h2.6M18.4 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M18.4 5.6l-1.8 1.8M7.4 16.6l-1.8 1.8" stroke="currentColor" stroke-width="1.8"/></svg></button>
   </div>
 </div>
@@ -567,7 +567,8 @@ const UI_ICONS={
  unlock:'<rect x="6" y="11" width="12" height="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9 11V8a3 3 0 0 1 5.8-1" fill="none" stroke="currentColor" stroke-width="1.8"/>',
  trash:'<path d="M4 7h16M9.5 7V4h5v3M6.5 7l1 13.5h9L17.5 7M10 11v6M14 11v6" fill="none" stroke="currentColor" stroke-width="1.8"/>',
  cloud:'<path d="M6.5 19a4.5 4.5 0 0 1-.4-8.98 6 6 0 0 1 11.6-1.2A4.25 4.25 0 0 1 17.5 19h-11z" fill="none" stroke="currentColor" stroke-width="1.8"/>',
- replay:'<path d="M3.5 5h2.2v14H3.5zM13 5.6L6.2 12 13 18.4zM20.5 5.6L13.7 12l6.8 6.4z" fill="currentColor"/>',
+ replay:'<path d="M10.8 6.2 4.6 12l6.2 5.8zM19.6 6.2 13.4 12l6.2 5.8z" fill="currentColor"/>',
+ layout:'<rect x="5.5" y="5.5" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8"/>',
  palette:'<path d="M12 3.5a8.5 8.5 0 1 0 0 17c1.3 0 2-.85 2-1.8 0-.75-.5-1.25-.5-2 0-.85.65-1.45 1.6-1.45h1.7a3.8 3.8 0 0 0 3.7-3.75C20.5 6.9 16.7 3.5 12 3.5z" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="7.6" cy="10.6" r="1.25" fill="currentColor"/><circle cx="12" cy="7.6" r="1.25" fill="currentColor"/><circle cx="16.4" cy="10.6" r="1.25" fill="currentColor"/>',
  check:'<path d="M4.5 12.5l5 5L19.5 6.5" fill="none" stroke="currentColor" stroke-width="2.2"/>',
  chev:'<path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2"/>',
@@ -725,7 +726,7 @@ const StorageAdapter={
 let dirty=false;
 function markDirty(){dirty=true;updateSaveLbl(); if(App.autosave) StorageAdapter.save();}
 function markSaved(){dirty=false;updateSaveLbl();}
-function updateSaveLbl(){const b=$("#layoutBtn"); if(b)b.innerHTML=uiIc("cloud")+" "+esc(App.layoutName)+(dirty?'<span class="saveDot" title="You have unsaved changes"></span>':"")+" "+uiIc("chev");}
+function updateSaveLbl(){const b=$("#layoutBtn"); if(b)b.innerHTML=uiIc("layout")+" "+esc(App.layoutName)+(dirty?'<span class="saveDot" title="You have unsaved changes"></span>':"")+" "+uiIc("chev");}
 /* ============ Demo data生成（決定的） ============ */
 function hashStr(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
 function rng(seed){let a=seed;return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
@@ -812,7 +813,7 @@ let _syncBusy=false; // 範囲/時間同期の相互再入ガード
 let _syncRangeKey=null; // 同期で最後に伝播した時刻範囲（エコー抑制用: 同期適用で生じた他ペインの範囲変更イベントを再伝播しない）
 const P=[]; // pane contexts
 function chartOpts(){const t=App.theme;return{
- layout:{background:{type:"solid",color:t.background},textColor:t.text,fontSize:15,fontFamily:"'Trebuchet MS',Roboto,Ubuntu,-apple-system,BlinkMacSystemFont,'Hiragino Kaku Gothic ProN','Yu Gothic UI','Noto Sans JP',sans-serif",attributionLogo:false}, // 軸フォント: 本家実画面（2026-11-20_2.40.27）のPrice軸ラベル数字高を再実測すると 23px@DPR2 = 11.5 CSS px（9ラベル連続で一致）。従来の 13px Settingsではクローン側の数字高が 10px しかなく約13%小さいため 15px に上げる（数字高≒11.5px）。狭いペインでは makePane 側で 13px に戻す
+ layout:{background:{type:"solid",color:t.background},textColor:t.text,fontSize:15,fontFamily:"'Trebuchet MS','Segoe UI',Verdana,'Hiragino Kaku Gothic ProN','Yu Gothic UI','Noto Sans JP',sans-serif",attributionLogo:false}, // 軸フォント: 本家実画面（2026-11-20_2.40.27）のPrice軸ラベル数字高を再実測すると 23px@DPR2 = 11.5 CSS px（9ラベル連続で一致）。従来の 13px Settingsではクローン側の数字高が 10px しかなく約13%小さいため 15px に上げる（数字高≒11.5px）。狭いペインでは makePane 側で 13px に戻す
  grid:{vertLines:{color:t.grid,visible:App.grid!==false,style:0},horzLines:{color:t.grid,visible:App.grid!==false,style:0}},
  crosshair:{mode:0,vertLine:{color:t.crosshair,labelBackgroundColor:"#353434",style:2,visible:window.__cursorVariant==null||window.__cursorVariant==="cross"},horzLine:{color:t.crosshair,labelBackgroundColor:"#353434",style:2,visible:window.__cursorVariant==null||window.__cursorVariant==="cross"}}, // CrosshairMode は LWC 4.2.0 の定義で Normal=0 / Magnet=1 / Hidden=2（バンドル内 enum でConfirm）。mode:0 = Normal: 横線はマウスYのPriceを示す（Magnet はホBars中のBarsの終値へ吸着する。本家はマウスY）。以前 mode:1 と書いたため Magnet そのものになっていた。線は破線（style:2 = Dashed）。Dot/Arrow バリアントでは十字線を出さない
  handleScale:{axisDoubleClickReset:true,axisPressedMouseMove:{time:false,price:true}}, // 時間軸ドラッグはスケール変更（ズーム）が正しいが、ネイティブの倍率は急激すぎる（400pxで期間2〜4倍）ため無効化し、makePane 側の自前ハンドラで穏やかな倍率のズームに置き換える。Price軸ドラッグのスケールと軸ダブルクリックリセットは従来どおり
@@ -1342,7 +1343,7 @@ const TOOLS=[
  ["long","Long Position","M5 19V9m0 0l-3 3m3-3l3 3M9 5h11v14H9z"],
  ["short","Short Position","M5 5v10m0 0l-3-3m3 3l3-3M9 5h11v14H9z"],
 ];
-let tool="cursor", magnetMode="off", eraserOn=false, lastStyles={}, keepDrawing=true; // 既定は本家と同じく描画後もツール継続（Keep drawing On）。Off にすると描画後に Cursor へ戻る
+let tool="cursor", magnetMode="off", eraserOn=false, lastStyles={}, keepDrawing=false; // 既定は本家どおり描画を1回完了すると Cursor（Crosshair）へ戻る（Keep drawing Off）。On にすると描画後も同じツールが継続する
 function defaultStyle(type){
  const base={color:"#2962ff",opacity:100,width:2,lineStyle:"Line",endL:"Normal",endR:"Normal",extendL:false,extendR:false,
   text:"",textColor:"#2962ff",fontSize:14,bold:false,italic:false,align:"Top",bgOn:false,bg:"#2962ff",bgOpacity:20,
@@ -1687,7 +1688,7 @@ function bindDrawing(ctx){
     const p=pos(e), s=snap(ctx,p.x,p.y); if(s)updPending(e,p,s);
     const wasClick=!drag.moved&&Math.hypot(p.x-drag.x0,p.y-drag.y0)<4;
     if(wasClick){ ctx.clickPlace=true; drag=null; svg.style.pointerEvents="auto"; renderDrawings(ctx); return; } // Click-click の1点目: アンカーとプレビューを残して2点目を待つ（ツールは継続）
-    commitPending(); if(!keepDrawing)setTool("cursor"); } // Keep drawing Off のときだけ描画後に Cursor へ戻る（既定 On = 本家と同じくツール継続）
+    commitPending(); if(!keepDrawing)setTool("cursor"); } // 描画完了で Cursor へ戻る（既定 Off = 本家どおり）。Keep drawing On のときだけツール継続
    if(drag&&drag.d){ afterDrawChange(ctx); const d=drag.d; if(replay.active&&replay.open&&(d.type==="long"||d.type==="short")){ replay.open.tp=d.target; replay.open.sl=d.stop; toast("Bracket order updated: TP "+d.target+" / SL "+d.stop); renderTrades(); } }
    drag=null; svgPE(svg,(tool==="cursor"&&!eraserOn)?"none":"auto"); };
  svg.addEventListener("pointerup",up); svg.addEventListener("pointercancel",()=>{ if(drag&&drag.rangeSel){ctx.selRect=null; drag=null; renderDrawings(ctx);} if(drag&&drag.ctrlPending){drag=null;renderDrawings(ctx);} if(drag&&drag.pending){ctx.pending=null;ctx.clickPlace=false;drag=null;renderDrawings(ctx);} });
@@ -2985,28 +2986,28 @@ function downloadTab(tab){
  download(new Blob([lines.join("\n")],{type:"text/csv;charset=utf-8"}),fn);
  toast("CSV downloaded"); }
 /* ============ 左ツールBars ============ */
-const ICONS={cursor:'<path d="M6.5 3.5L19 12l-6.8 1.6L9.5 20z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>',
- cross:'<path d="M12 3v5.2M12 15.8V21M3 12h5.2M15.8 12H21" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="2.2" fill="none" stroke="currentColor" stroke-width="1.4"/>',
+const ICONS={cursor:'<path d="M6.2 3.8 19.3 11.9 13.1 13.3 16.1 19.9 13.4 21 10.4 14.4 7 17.9z" fill="#fff" stroke="#000" stroke-width="1.3" stroke-linejoin="round"/>',
+ cross:'<circle cx="12" cy="12" r="2.3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 3v5M12 16v5M3 12h5M16 12h5" stroke="currentColor" stroke-width="1.5"/>',
  dot:'<circle cx="12" cy="12" r="3.4" fill="currentColor"/>',
- line:'<path d="M5.5 18.5L18.5 5.5" stroke="currentColor" stroke-width="1.6"/><circle cx="5.5" cy="18.5" r="2.7" fill="#000" stroke="currentColor" stroke-width="1.5"/><circle cx="18.5" cy="5.5" r="2.7" fill="#000" stroke="currentColor" stroke-width="1.5"/>',
+ line:'<path d="M7.6 16.4 16.4 7.6" stroke="currentColor" stroke-width="1.6"/><circle cx="5.8" cy="18.2" r="2.6" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="18.2" cy="5.8" r="2.6" fill="none" stroke="currentColor" stroke-width="1.5"/>',
  rect:'<rect x="4" y="6" width="16" height="12" fill="none" stroke="currentColor" stroke-width="1.6"/>',
  arrow:'<path d="M4 20L19 5M11.5 5H19v7.5" fill="none" stroke="currentColor" stroke-width="1.6"/>',
- text:'<path d="M4.5 5h15M12 5v13.5M9.5 18.5h5M4.5 5v2.2M19.5 5v2.2" fill="none" stroke="currentColor" stroke-width="1.6"/>',
- ote:'<path d="M7 5h12.5M4.5 9.7h15M7 14.3h12.5M4.5 19h15" stroke="currentColor" stroke-width="1.6"/><circle cx="4.7" cy="5" r="2.1" fill="#000" stroke="currentColor" stroke-width="1.4"/><circle cx="19.3" cy="9.7" r="2.1" fill="#000" stroke="currentColor" stroke-width="1.4"/><circle cx="4.7" cy="14.3" r="2.1" fill="#000" stroke="currentColor" stroke-width="1.4"/><circle cx="19.3" cy="19" r="2.1" fill="#000" stroke="currentColor" stroke-width="1.4"/>',
+ text:'<path d="M4.2 4.6h15.6v2.9h-1.5V6.2h-4.9v11h1.9v2.2H8.7v-2.2h1.9v-11H5.7v1.3H4.2z" fill="currentColor"/>',
+ ote:'<path d="M4.5 6h15M4.5 12h12.2M7.3 18h12.2" stroke="currentColor" stroke-width="1.6"/><circle cx="19" cy="12" r="2.3" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="5" cy="18" r="2.3" fill="none" stroke="currentColor" stroke-width="1.5"/>',
  long:'<path d="M5 20V10m0 0L2.5 12.5M5 10l2.5 2.5M10 4h10v16H10z" fill="none" stroke="currentColor" stroke-width="1.6"/>',
  short:'<path d="M5 4v10m0 0L2.5 11.5M5 14l2.5-2.5M10 4h10v16H10z" fill="none" stroke="currentColor" stroke-width="1.6"/>'};
 const LEFT_ICONS={
- magnet:'<path d="M7 3v8a5 5 0 0 0 10 0V3" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 3h3.4v5H7zM13.6 3H17v5h-3.4z" fill="currentColor"/>',
+ magnet:'<path d="M6.6 3.8v6.7a5.4 5.4 0 0 0 10.8 0V3.8" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M6.6 3.8h3.4v3.8H6.6zM14 3.8h3.4v3.8H14z" fill="currentColor"/>',
  eraser:'<path d="M16.5 3.5l4 4L11 17H6.5l-3-3z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 21h13" stroke="currentColor" stroke-width="1.6"/>',
- lock:'<rect x="6" y="11" width="12" height="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M9 11V8a3 3 0 0 1 6 0v3" fill="none" stroke="currentColor" stroke-width="1.6"/>',
- unlock:'<rect x="6" y="11" width="12" height="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M9 11V8a3 3 0 0 1 5.8-1" fill="none" stroke="currentColor" stroke-width="1.6"/>',
- eye:'<path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12z" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/>',
- trash:'<path d="M4 7h16M9.5 7V4h5v3M6.5 7l1 13.5h9L17.5 7M10 11v6M14 11v6" fill="none" stroke="currentColor" stroke-width="1.6"/>',
+ lock:'<rect x="5.8" y="10.8" width="12.4" height="9.4" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8.8 10.8V7.6a3.2 3.2 0 0 1 6.4 0v3.2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="14.4" r="1.35" fill="currentColor"/><path d="M12 15.4v1.9" stroke="currentColor" stroke-width="1.5"/>',
+ unlock:'<rect x="5.8" y="10.8" width="12.4" height="9.4" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8.8 10.8V7.6a3.2 3.2 0 0 1 6.4 0v3.2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="14.6" r="1.25" fill="none" stroke="currentColor" stroke-width="1.3"/>',
+ eye:'<path d="M2.8 12S6.2 6 12 6s9.2 6 9.2 6-3.4 6-9.2 6-9.2-6-9.2-6z" fill="none" stroke="currentColor" stroke-width="1.6"/>',
+ trash:'<path d="M4.5 6.8h15M9.9 6.8V4.6h4.2v2.2M6.9 6.8l.85 12.4a1.6 1.6 0 0 0 1.6 1.5h5.3a1.6 1.6 0 0 0 1.6-1.5l.85-12.4" fill="none" stroke="currentColor" stroke-width="1.6"/>',
  undo:'<path d="M9 14L4 9l5-5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4 9h9.5a6.5 6.5 0 0 1 0 13H10" fill="none" stroke="currentColor" stroke-width="1.6"/>',
  help:'<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M9.5 9.5A2.5 2.5 0 1 1 12 12.5V14" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="17" r="1.2" fill="currentColor"/>',
- keep:'<path d="M5 19l1.2-4.2L16.7 4.3a2.12 2.12 0 0 1 3 3L9.2 17.8z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M14.5 6.5l3 3" stroke="currentColor" stroke-width="1.6"/>',
- measure:'<rect x="2.5" y="9" width="19" height="6.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6.5 9v3M10.5 9v3M14.5 9v3M18.5 9v3" stroke="currentColor" stroke-width="1.5"/>',
- zoom:'<circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M15.5 15.5L21 21M10.5 7.5v6M7.5 10.5h6" stroke="currentColor" stroke-width="1.6"/>',
+ keep:'<path d="M5 19l1.2-4.2L16.7 4.3a2.12 2.12 0 0 1 3 3L9.2 17.8z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M14.5 6.5l3 3" stroke="currentColor" stroke-width="1.6"/><circle cx="18.7" cy="18.7" r="1.5" fill="currentColor"/>',
+ measure:'<path d="M5.5 4v16M18.5 4v16" stroke="currentColor" stroke-width="1.6"/><path d="M12 7.4c.55 2.5 2.1 4.05 4.6 4.6-2.5.55-4.05 2.1-4.6 4.6-.55-2.5-2.1-4.05-4.6-4.6 2.5-.55 4.05-2.1 4.6-4.6z" fill="currentColor"/>',
+ zoom:'<circle cx="10.2" cy="10.2" r="5.8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10.2 7.8v4.8M7.8 10.2h4.8M14.4 14.4 19.8 19.8" stroke="currentColor" stroke-width="1.6"/>',
  sync:'<path d="M4 9a8 8 0 0 1 13.6-4.6M20 15a8 8 0 0 1-13.6 4.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M18 2.8v3h-3M6 21.2v-3h3" fill="none" stroke="currentColor" stroke-width="1.6"/>'};
 function svgIc(paths){return `<svg class="ic" viewBox="0 0 24 24">${paths}</svg>`;}
 /* 左ツールBarsは本家と同じGroup構成・順序（Groupボタン＋右下シェブロンでツール切替Menu） */
