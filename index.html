@@ -100,6 +100,7 @@ svg.ic{width:17px;height:17px;flex:none}
 .chartEl{position:absolute;inset:0}
 .drawSvg{position:absolute;inset:0;z-index:4}
 .drawSvg *{pointer-events:visiblePainted}
+.drawSvg.peOff *{pointer-events:none!important} /* Cursor時は描画レイヤー全体を完全に透過させる: SVG子要素は初期値 visiblePainted のため、ルートに pointer-events:none を付けてもフィボの外接Rectangle（透明塗り）やポジションのゾーン等がヒットテストに残り、チャート本体のドラッグ（パン）を奪っていた。peOff クラス（svgPE / renderDrawings で同期）が付いている間は子要素も含めて一切イベントを受けない */
 .subPane{height:110px;position:relative;border-top:1px solid var(--line);display:none}
 .subPane.show{display:block}
 .subPane .lbl{position:absolute;top:4px;left:8px;z-index:3;font-size:12px;color:var(--chart-text,#000);background:transparent;padding:0;pointer-events:none}
@@ -225,7 +226,7 @@ svg.ic{width:17px;height:17px;flex:none}
 .calGrid .cday:disabled{opacity:.28;cursor:default}
 .calGrid .cday:disabled:hover{border-color:#3a3f4d}
 /* Go to ダイアログ（本家準拠: 英語・縦長・月曜始まり・枠なし数字・黒い選択日・未来日は選択不可） */
-.gtDlg{width:292px;max-width:94vw;min-height:560px}
+.dlg.gtDlg{width:292px;max-width:94vw;min-height:560px} /* 特異度を .dlg（width:560px）より上げないと後勝ちで 560px になり、本家の約290px幅にならなかった（実測約545pxの主因） */
 .gtDlg .body{flex:1}
 .gtTabs{display:flex;gap:20px;border-bottom:1px solid var(--line);margin:-12px -16px 12px;padding:10px 16px 0}
 .gtTabs button{min-height:32px;padding:2px 2px 8px;color:var(--dim);border-radius:0;font-size:14px}
@@ -284,7 +285,7 @@ svg.ic{width:17px;height:17px;flex:none}
 /* 左ツールBars: Groupボタンの小シェブロンと青アクティブ状態（マグネット/Keep drawing） */
 #leftbar button{position:relative}
 #leftbar button.blue{color:#2962ff}
-#leftbar .gchev{position:absolute;right:1px;bottom:1px;width:0;height:0;border-left:3px solid transparent;border-top:3px solid #787b86;cursor:pointer;padding:2px} /* 本家のGroupシェブロンは約6pxの小三角形。従来は約10pxありアイコン右下の灰色の染みに見えた */
+#leftbar .gchev{position:absolute;right:0;bottom:0;width:16px;height:16px;background:#787b86;clip-path:polygon(100% 52%,100% 100%,52% 100%);cursor:pointer} /* 見た目は本家どおり約7pxの小三角形（右下の三角だけを塗る）だが、当たり判定は16px四方に広げる。従来は border 描画の約10×5pxしかクリックできず、フライアウトが「時々開かない」不安定さの主因だった */
 /* ペイン内凡例（マルチチャート時に各ペインのOHLCを表示） */
 .paneLegend{position:absolute;top:1px;left:8px;z-index:6; /* 凡例グリフのペイン上端からの距離は本家実測で約9px（グリフ上端87px・ペイン上端78px）vs 現行キャプチャ約10px（88px）→ top を 2px から 1px に詰めて一致させる */display:flex;gap:6px;align-items:center;background:transparent;color:var(--chart-text,#000);font-size:16px;line-height:1.5;padding:0;max-width:calc(100% - 74px);white-space:nowrap;overflow:hidden;pointer-events:none} /* 凡例: 本家実画面（2026-11-20_2.40.27）を同スケールで並べると文字の縦幅は約12.5 CSS px。16px＋通常字で一致させる（15pxでは約11pxで一回り小さい） */
 .paneLegend b{white-space:nowrap;font-weight:400} /* 本家実画面の凡例は通常字（同スケール比較でストロークが細い）。従来の600では本家より明らかに太く見えたため通常字に */
@@ -807,12 +808,13 @@ function vwapCalc(d){const o=[];let pv=0,vv=0,day=null;for(const c of d){const p
 const LWC=window.LightweightCharts;
 let activePane=0;
 let _syncBusy=false; // 範囲/時間同期の相互再入ガード
+let _syncRangeKey=null; // 同期で最後に伝播した時刻範囲（エコー抑制用: 同期適用で生じた他ペインの範囲変更イベントを再伝播しない）
 const P=[]; // pane contexts
 function chartOpts(){const t=App.theme;return{
  layout:{background:{type:"solid",color:t.background},textColor:t.text,fontSize:15,fontFamily:"'Trebuchet MS',Roboto,Ubuntu,-apple-system,BlinkMacSystemFont,'Hiragino Kaku Gothic ProN','Yu Gothic UI','Noto Sans JP',sans-serif",attributionLogo:false}, // 軸フォント: 本家実画面（2026-11-20_2.40.27）のPrice軸ラベル数字高を再実測すると 23px@DPR2 = 11.5 CSS px（9ラベル連続で一致）。従来の 13px Settingsではクローン側の数字高が 10px しかなく約13%小さいため 15px に上げる（数字高≒11.5px）。狭いペインでは makePane 側で 13px に戻す
  grid:{vertLines:{color:t.grid,visible:App.grid!==false,style:0},horzLines:{color:t.grid,visible:App.grid!==false,style:0}},
  crosshair:{mode:0,vertLine:{color:t.crosshair,labelBackgroundColor:"#353434",style:2,visible:window.__cursorVariant==null||window.__cursorVariant==="cross"},horzLine:{color:t.crosshair,labelBackgroundColor:"#353434",style:2,visible:window.__cursorVariant==null||window.__cursorVariant==="cross"}}, // CrosshairMode は LWC 4.2.0 の定義で Normal=0 / Magnet=1 / Hidden=2（バンドル内 enum でConfirm）。mode:0 = Normal: 横線はマウスYのPriceを示す（Magnet はホBars中のBarsの終値へ吸着する。本家はマウスY）。以前 mode:1 と書いたため Magnet そのものになっていた。線は破線（style:2 = Dashed）。Dot/Arrow バリアントでは十字線を出さない
- handleScale:{axisDoubleClickReset:true,axisPressedMouseMove:{time:true,price:true}}, // Price軸ダブルクリックでスケールリセット（本家と同じ）
+ handleScale:{axisDoubleClickReset:true,axisPressedMouseMove:{time:false,price:true}}, // 時間軸ドラッグは本家ではパン（表示範囲の平行移動）でありズームではないため、ネイティブの時間軸スケールは無効化し、makePane 側の自前ハンドラでパンに置き換える。Price軸ドラッグのスケールと軸ダブルクリックリセットは従来どおり
  rightPriceScale:{borderColor:t.grid,entireTextOnly:true}, timeScale:{borderColor:t.grid,timeVisible:App.interval!=="1D",secondsVisible:false,barSpacing:6,minBarSpacing:0.5, // 初期表示の足密度は本家の実測に合わせる（ユーザーの実画面: 約665px幅のペインに約107本 ≒ 6px/本。FFT＋時間軸ラベル間隔で実測）
   tickMarkFormatter:tickFmt}, localization:{locale:"en-US",timeFormatter:timeFmt} };}
 function seriesStyleFor(){ const t=App.theme; const type=App.chartType||"candles";
@@ -830,6 +832,21 @@ function applyChartType(ctx){ if(!ctx||!ctx.chart)return;
  ctx.cs=createMainSeries(ctx.chart);
  try{ctx.cs.priceScale().applyOptions({scaleMargins:{top:0.10,bottom:0.08}});}catch(e){}
  setPaneData(ctx); }
+/* 描画SVGレイヤーのイベント透過を一元管理する: ルートの inline style と peOff クラス（子要素まで pointer-events:none を強制する CSS）を常に同期させる。
+   Cursor時（値 "none"）はレイヤー全体がチャート本体のパン／ズームに一切干渉しないことがパンの前提条件 */
+function svgPE(svg,val){ if(!svg)return; svg.style.pointerEvents=val; svg.classList.toggle("peOff",val==="none"); }
+/* 右端の時間ラベル切れ防止: ズームイン時（バー間隔が広い時）に最終バーがペイン右端へ寄りすぎると、そのバーの時刻ラベル
+   （中心揃えで約30px幅）がキャンバス端で切れて「05:0」のようになる。本家は右端のラベルがペイン内に収まるため、
+   最終バーの中心が右端から 22px 未満になった場合だけ表示範囲を最小限（最大3本分）左へずらして余白を確保する。
+   通常表示（右Offセット10本）やズームアウト時（間隔<8px ではラベルは最終バーに付かない）には一切干渉しない */
+function clampRightEdge(ctx,r){ if(!ctx||ctx._edgeClamp||!r)return; const n=ctx.view?ctx.view.length:0; if(n<2)return;
+ const lastIdx=n-1; if(r.to<=lastIdx)return; // データ末尾が画面の右側にある（＝末尾バーが見えている）場合だけ対象
+ let bs=6; try{ bs=ctx.chart.timeScale().options().barSpacing||6; }catch(_){}
+ if(bs<8)return;
+ const deficitPx=22-(r.to-lastIdx)*bs; if(deficitPx<=0||deficitPx>60)return;
+ ctx._edgeClamp=true; const shift=Math.min(3,deficitPx/bs);
+ try{ ctx.chart.timeScale().setVisibleLogicalRange({from:r.from-shift,to:r.to-shift}); }catch(_){}
+ ctx._edgeClamp=false; }
 function makePane(idx){
  const el=$("#chart"+idx); const chart=LWC.createChart(el,chartOpts());
  /* 初期Bars間隔は本家の実測に合わせる: ユーザーの実画面（2ペイン）では約665px幅に約107本 ≒ 6px/本。
@@ -879,6 +896,27 @@ function makePane(idx){
    const zone=timeAxisHit(e)?"time":(axisHit(e)?"price":""); if(!zone)return;
    const now=Date.now(); if(_lastTapZone===zone&&now-_lastTap<350&&Math.hypot(e.clientX-_lastTapX,e.clientY-_lastTapY)<44){ _lastTap=0; _lastTapZone=""; if(zone==="time")resetTimeScale(ctx); else resetPriceScale(ctx); }
    else { _lastTap=now; _lastTapX=e.clientX; _lastTapY=e.clientY; _lastTapZone=zone; } });
+ /* 【修正: 時間軸ドラッグ＝パン】本家では時間軸のドラッグは表示範囲の平行移動（バー間隔・表示期間は不変）。
+    ネイティブの時間軸スケールは chartOpts で無効化済み（axisPressedMouseMove.time:false）。ここではキャプチャ段階で
+    時間軸帯域の pointerdown を受け、ドラッグ量÷バー間隔だけ論理範囲をずらす（チャート本体のパンと同じ向き:
+    右へ引けば内容が右へ動き古い足側へ進む）。範囲変更は既存の購読経由で描画再描画・現在値ピル・過去データ追加読み込み
+    （maybeLoadOlder）にそのまま流れるため、追加読み込み時に範囲がジャンプすることもない。
+    ダブルクリック（リセット）は pointerdown を止めても dblclick イベント自体は発火するため従来どおり動く */
+ el.parentElement.addEventListener("pointerdown",e=>{
+   if(e.button!==0||e.ctrlKey||e.metaKey||eraserOn||barPick||ctx.clickPlace)return;
+   if(e.target.closest&&e.target.closest("button,input,select,textarea,.indLegend,.paneLegend"))return;
+   if(!timeAxisHit(e))return;
+   let vr=null; try{ vr=chart.timeScale().getVisibleLogicalRange(); }catch(_){}
+   if(!vr)return;
+   e.preventDefault(); e.stopPropagation();
+   activePane=idx;
+   const sx=e.clientX, from0=vr.from, to0=vr.to;
+   const mv=ev=>{ let bs=6; try{ bs=chart.timeScale().options().barSpacing||6; }catch(_){}
+     const shift=(ev.clientX-sx)/bs;
+     try{ chart.timeScale().setVisibleLogicalRange({from:from0-shift,to:to0-shift}); }catch(_){} };
+   const up=()=>{ removeEventListener("pointermove",mv); removeEventListener("pointerup",up); removeEventListener("pointercancel",up); };
+   addEventListener("pointermove",mv); addEventListener("pointerup",up); addEventListener("pointercancel",up);
+ },true);
  chart.subscribeCrosshairMove(param=>{
    ctx.hoverBar=param&&param.seriesData?param.seriesData.get(ctx.cs):null; ctx.hoverTime=param?param.time:null;
    updatePaneHead(ctx);
@@ -897,8 +935,18 @@ function makePane(idx){
    if(idx===0)updateOhlcLine(ctx);
  });
  /* 同期は全ペインへループ。Range は logical range ハンドラ＋rangeフラグのみ、Time は time range ハンドラ＋timeフラグのみを見る（分離） */
- chart.timeScale().subscribeVisibleLogicalRangeChange(r=>{ if(!r)return; if(App.sync.range&&!_syncBusy){ _syncBusy=true; for(const o of P){ if(o&&o!==ctx){ try{o.chart.timeScale().setVisibleLogicalRange(r);}catch(e){} } } _syncBusy=false; } renderDrawings(ctx); updatePricePill(ctx); if(typeof renderOrders==="function")renderOrders(ctx); maybeLoadOlder(ctx,r); });
- chart.timeScale().subscribeVisibleTimeRangeChange(r=>{ if(!r||!App.sync.time||_syncBusy)return; _syncBusy=true; for(const o of P){ if(o&&o!==ctx){ try{o.chart.timeScale().setVisibleRange(r);}catch(e){} } } _syncBusy=false; updatePricePill(ctx); });
+ /* ペイン間同期は「時刻範囲」で一本化する（range/time どちらのフラグでも同じ伝播経路を使う）。
+    従来は論理範囲のコピー（range）と時刻範囲のコピー（time）が既定で両方 On になっており、データの開始位置・本数が
+    異なるペイン間では論理⇄時刻の往復変換のたびに範囲がずれ、Ctrl+ホイールズーム（LWC ネイティブはカーソル位置中心）
+    の中心が毎ティック壊れて表示日付が大きく飛んでいた。時刻範囲なら銘柄が違っても意味が一致する。
+    エコー抑制: 同期で他ペインへ適用した範囲（±10秒以内で一致）は再伝播しない（_syncRangeKey） */
+ const propagateSync=tr=>{ if(!tr||_syncBusy)return;
+   if(_syncRangeKey&&Math.abs(tr.from-_syncRangeKey.from)<=10&&Math.abs(tr.to-_syncRangeKey.to)<=10)return;
+   _syncRangeKey={from:tr.from,to:tr.to}; _syncBusy=true;
+   for(const o of P){ if(o&&o!==ctx){ try{ o.chart.timeScale().setVisibleRange(tr); }catch(e){} } }
+   _syncBusy=false; };
+ chart.timeScale().subscribeVisibleLogicalRangeChange(r=>{ if(!r)return; if(App.sync.range){ let tr=null; try{ tr=chart.timeScale().getVisibleRange(); }catch(e){} propagateSync(tr); } clampRightEdge(ctx,r); renderDrawings(ctx); updatePricePill(ctx); if(typeof renderOrders==="function")renderOrders(ctx); maybeLoadOlder(ctx,r); });
+ chart.timeScale().subscribeVisibleTimeRangeChange(r=>{ if(!r)return; if(App.sync.time)propagateSync(r); updatePricePill(ctx); });
  new ResizeObserver(()=>{const b=el.getBoundingClientRect(); if(b.width>0&&b.height>0){chart.applyOptions({width:b.width,height:b.height}); renderDrawings(ctx); updatePricePill(ctx); if(typeof renderOrders==="function")renderOrders(ctx);} }).observe(el);
  el.parentElement.addEventListener("pointerdown",()=>{activePane=idx; refreshHeads();});
  el.parentElement.addEventListener("wheel",e=>{ if(e.ctrlKey||e.metaKey||!e.deltaY)return; showZoomHint(); },{passive:true}); // Ctrl 併用時は本家でも案内は出ない
@@ -1258,7 +1306,8 @@ function drawVisibleHere(d,ctx){ if(d.visible===false)return false; if(d.interva
  // layout（既定）: 同じレイアウト内でのみ表示する。layoutId の無い旧データは現在のレイアウト所属として扱う（互換）
  return d.layoutId==null||d.layoutId===App.layoutName; }
 function renderDrawings(ctx){
- const svg=ctx.svg; if(!svg)return; const box=ctx.el.parentElement.getBoundingClientRect();
+ const svg=ctx.svg; if(!svg)return; svg.classList.toggle("peOff",svg.style.pointerEvents==="none"); // 透過状態の同期（svgPE を経由しない一時的な inline 変更もここで必ずクラスへ反映する）
+ const box=ctx.el.parentElement.getBoundingClientRect();
  svg.setAttribute("viewBox",`0 0 ${box.width} ${box.height}`); svg.setAttribute("width",box.width); svg.setAttribute("height",box.height);
  while(svg.firstChild)svg.removeChild(svg.firstChild);
  const list=[...allDrawingsFor(ctx.symbol)];
@@ -1439,7 +1488,7 @@ function startHandleDrag(ctx,d,kind,e){ const orig=JSON.parse(JSON.stringify({p1
      if(kind==="p2"&&d.p2)d.endTime=d.p2.time; } }); }
 /* 描画操作（ポインター） */
 function bindDrawing(ctx){
- const svg=ctx.svg; svg.style.pointerEvents=(tool==="cursor")?"none":"auto";
+ const svg=ctx.svg; svgPE(svg,(tool==="cursor")?"none":"auto");
  let drag=null;
  const pos=e=>{const r=svg.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top};};
  svg.addEventListener("contextmenu",e=>{ chartContext(ctx,e); });
@@ -1510,18 +1559,18 @@ function bindDrawing(ctx){
  });
  const up=e=>{ if(drag&&drag.mz){ const wasZoom=drag.mz==="zoom"; const r=ctx.selRect; ctx.selRect=null; drag=null;
      if(wasZoom&&r){ const ta=x2t(ctx,Math.min(r.x1,r.x2)), tb=x2t(ctx,Math.max(r.x1,r.x2)); if(ta!=null&&tb!=null&&tb>ta){ try{ctx.chart.timeScale().setVisibleRange({from:ta,to:tb});}catch(_){} } }
-     svg.style.pointerEvents="auto"; renderDrawings(ctx); return; }
+     svgPE(svg,(tool==="cursor"&&!eraserOn)?"none":"auto"); renderDrawings(ctx); return; } // Measure/Zoom 終了後はツールに応じた透過状態へ戻す（従来は "auto" のまま残り、Cursor時でもレイヤーがパンを奪っていた）
    if(drag&&drag.ctrlPending&&!drag.d){ toggleChartSelect(ctx,drag.ctrlPending); // Ctrl/Cmd+クリック（ドラッグなし）= 選択トグル
-     drag=null; svg.style.pointerEvents=(tool==="cursor"&&!eraserOn)?"none":"auto"; renderDrawings(ctx); renderObjTree(); return; }
+     drag=null; svgPE(svg,(tool==="cursor"&&!eraserOn)?"none":"auto"); renderDrawings(ctx); renderObjTree(); return; }
    if(drag&&drag.rangeSel){ const r=ctx.selRect; ctx.selRect=null; finishRangeSelect(ctx,r);
-     drag=null; renderDrawings(ctx); renderObjTree(); return; }
+     drag=null; svgPE(svg,(tool==="cursor"&&!eraserOn)?"none":"auto"); renderDrawings(ctx); renderObjTree(); return; } // 範囲選択終了後も透過状態を戻す（従来は復帰が漏れていた）
    if(drag&&drag.pending&&ctx.pending){ // 離した位置で第2点を最終確定してから判定する（移動イベントを取りこぼした小さいドラッグでも描画できる）
     const p=pos(e), s=snap(ctx,p.x,p.y); if(s)updPending(e,p,s);
     const wasClick=!drag.moved&&Math.hypot(p.x-drag.x0,p.y-drag.y0)<4;
     if(wasClick){ ctx.clickPlace=true; drag=null; svg.style.pointerEvents="auto"; renderDrawings(ctx); return; } // Click-click の1点目: アンカーとプレビューを残して2点目を待つ（ツールは継続）
     commitPending(); if(!keepDrawing)setTool("cursor"); } // Keep drawing Off のときだけ描画後に Cursor へ戻る（既定 On = 本家と同じくツール継続）
    if(drag&&drag.d){ afterDrawChange(ctx); const d=drag.d; if(replay.active&&replay.open&&(d.type==="long"||d.type==="short")){ replay.open.tp=d.target; replay.open.sl=d.stop; toast("Bracket order updated: TP "+d.target+" / SL "+d.stop); renderTrades(); } }
-   drag=null; svg.style.pointerEvents=(tool==="cursor"&&!eraserOn)?"none":"auto"; };
+   drag=null; svgPE(svg,(tool==="cursor"&&!eraserOn)?"none":"auto"); };
  svg.addEventListener("pointerup",up); svg.addEventListener("pointercancel",()=>{ if(drag&&drag.rangeSel){ctx.selRect=null; drag=null; renderDrawings(ctx);} if(drag&&drag.ctrlPending){drag=null;renderDrawings(ctx);} if(drag&&drag.pending){ctx.pending=null;ctx.clickPlace=false;drag=null;renderDrawings(ctx);} });
  svg.addEventListener("pointerleave",()=>{if(drag&&drag.pending){ctx.pending=null;ctx.clickPlace=false;drag=null;renderDrawings(ctx);}});
  // Cursor時はSVGが透過するため、コンテナ側でも本家準拠の Cmd/Ctrl+ドラッグ範囲選択と右クリックを受ける
@@ -1588,7 +1637,7 @@ function bindDrawing(ctx){
    try{ctx.chart.applyOptions({handleScroll:false,handleScale:false});}catch(_){}
    const r=svg.getBoundingClientRect(); const x1=e.clientX-r.left,y1=e.clientY-r.top; ctx.selRect={x1,y1,x2:x1,y2:y1}; renderDrawings(ctx);
    const mv=ev=>{ if(ctx.selRect)ctx.selRect={x1,y1,x2:ev.clientX-r.left,y2:ev.clientY-r.top}; renderDrawings(ctx); };
-   const up2=()=>{ removeEventListener("pointermove",mv); removeEventListener("pointerup",up2); removeEventListener("pointercancel",up2); try{ctx.chart.applyOptions({handleScroll:true,handleScale:true});}catch(_){}
+   const up2=()=>{ removeEventListener("pointermove",mv); removeEventListener("pointerup",up2); removeEventListener("pointercancel",up2); try{ctx.chart.applyOptions({handleScroll:true,handleScale:{axisDoubleClickReset:true,axisPressedMouseMove:{time:false,price:true}}});}catch(_){} // 復帰は chartOpts と同じ形で（boolean true に戻すと時間軸ドラッグの自前パン前提が崩れる）
      const rr=ctx.selRect; ctx.selRect=null; finishRangeSelect(ctx,rr);
      renderDrawings(ctx); renderObjTree(); };
    addEventListener("pointermove",mv); addEventListener("pointerup",up2); addEventListener("pointercancel",up2); });
@@ -2856,8 +2905,16 @@ function buildLeftBar(){ const w=$("#leftbar"); let h="";
  <button id="helpBtn" title="Keyboard shortcuts (help)">${svgIc(LEFT_ICONS.help)}</button>`;
  w.innerHTML=h;
  w.querySelectorAll("[data-grp]").forEach(b=>{ const g=TOOL_GROUPS.find(x=>x.id===b.dataset.grp);
-  b.onclick=()=>{ if(g.id==="cursors"){ openGroupMenu(g,b); } else setTool(groupTool[g.id]); }; // 本家は Cursors を押すとフライアウト（Cross/Dot/Arrow）が開くため、単純クリックでもMenuを開く（従来は右下シェブロンのクリックでしか開かなかった）
-  const cv=b.querySelector(".gchev"); if(cv)cv.onclick=e=>{ e.stopPropagation(); openGroupMenu(g,b); }; });
+  /* フライアウトは本家と同じく (1) 右下シェブロンのクリック (2) ボタンの長押し（約450ms）のどちらでも確実に開く。
+     本体クリックは従来どおり現在ツールの選択（Cursors だけは本家同様クリックでフライアウトを開く）。
+     長押しで開いた直後の click はツール選択として消費しない */
+  let lpTimer=null, lpOpened=false;
+  b.addEventListener("pointerdown",()=>{ lpOpened=false; if(lpTimer)clearTimeout(lpTimer); lpTimer=setTimeout(()=>{ lpOpened=true; openGroupMenu(g,b); },450); });
+  b.addEventListener("pointerup",()=>{ if(lpTimer)clearTimeout(lpTimer); });
+  b.addEventListener("pointerleave",()=>{ if(lpTimer)clearTimeout(lpTimer); });
+  b.onclick=()=>{ if(lpOpened){ lpOpened=false; return; } if(g.id==="cursors"){ openGroupMenu(g,b); } else setTool(groupTool[g.id]); };
+  const cv=b.querySelector(".gchev"); if(cv){ cv.addEventListener("pointerdown",e=>e.stopPropagation()); // シェブロン押下をボタンの長押し判定へ伝播させない
+   cv.onclick=e=>{ e.stopPropagation(); e.preventDefault(); openGroupMenu(g,b); }; } });
  w.querySelectorAll("[data-tool]").forEach(b=>b.onclick=()=>setTool(b.dataset.tool));
  $("#magBtn").onclick=e=>{ const r=e.currentTarget.getBoundingClientRect();
   showMenu(r.right+4,Math.max(4,r.top),[
@@ -2867,7 +2924,7 @@ function buildLeftBar(){ const w=$("#leftbar"); let h="";
    {sep:1},
    {label:"Snap to indicators",checkable:true,checked:!!App.snapInd,act:()=>{ App.snapInd=!App.snapInd; markDirty(); refreshLeftStates(); toast("Snap to indicators: "+(App.snapInd?"On (also snaps to overlay indicator values)":"Off")); }} ]); };
  $("#keepBtn").onclick=()=>{ keepDrawing=!keepDrawing; refreshLeftStates(); toast("Keep drawing: "+(keepDrawing?"On (keep drawing with the same tool)":"Off (return to cursor after drawing)")); };
- $("#eraBtn").onclick=()=>{eraserOn=!eraserOn; $("#eraBtn").classList.toggle("on",eraserOn); P.forEach(c=>{if(c)c.svg.style.pointerEvents=eraserOn?"auto":(tool==="cursor"?"none":"auto");}); toast(eraserOn?"Eraser mode: click a drawing to remove it":"Eraser mode off");};
+ $("#eraBtn").onclick=()=>{eraserOn=!eraserOn; $("#eraBtn").classList.toggle("on",eraserOn); P.forEach(c=>{if(c)svgPE(c.svg,eraserOn?"auto":(tool==="cursor"?"none":"auto"));}); toast(eraserOn?"Eraser mode: click a drawing to remove it":"Eraser mode off");};
  $("#lockAllBtn").onclick=()=>toggleLockAll();
  $("#hideBtn").onclick=e=>{ const r=e.currentTarget.getBoundingClientRect(); const list=curDrawings(); const allH=list.length&&list.every(d=>d.visible===false);
   const indsAllH=App.indicators.length&&App.indicators.every(i=>i.visible===false);
@@ -2899,11 +2956,14 @@ function openShortcuts(){ openModal("Keyboard shortcuts",`<div class="hint" styl
   Right-click menus depend on where you click (chart / drawing / indicators / price axis / time axis).<br>
   Typing any other letter key opens Symbol Search.</div>`,`<button class="btn primary" onclick="closeModal()">Close</button>`); }
 function setTool(t){ tool=t; if(t!=="cursor")eraserOn=false; const eb=$("#eraBtn"); if(eb&&t!=="cursor")eb.classList.remove("on");
+ /* グループのメインアイコンは選択中ツールに追従させる（本家と同じ）: キーボード（T/R/A/F）等、フライアウトを経由しない
+    ツール選択でも groupTool を同期し、左バーを再構築してアイコンへ反映する。Cursors グループのアイコンはカーソルバリアント側で管理するため対象外 */
+ if(t!=="cursor"){ for(const g of TOOL_GROUPS){ if(g.id==="cursors")continue; if(g.items.some(([k])=>k===t)&&groupTool[g.id]!==t){ groupTool[g.id]=t; buildLeftBar(); break; } } }
  P.forEach(c=>{ if(c&&(c.pending||c.clickPlace)){ c.pending=null; c.clickPlace=false; renderDrawings(c); } }); // ツール切替時は保留中の1点目（Click-click プレビュー）を破棄する
  const _cw2=$("#chartsWrap"); if(_cw2)_cw2.classList.toggle("toolCursor",t==="cursor"); // Dot バリアントの cursor:none とページ内ドットはCursorツール選択中だけ有効
  if(t!=="cursor")$$(".cursorDot").forEach(d=>d.style.display="none");
  refreshLeftStates();
- P.forEach(c=>{if(c)c.svg.style.pointerEvents=(t==="cursor"&&!eraserOn)?"none":"auto";}); }
+ P.forEach(c=>{if(c)svgPE(c.svg,(t==="cursor"&&!eraserOn)?"none":"auto");}); }
 function afterUndoRedo(){ P.forEach(c=>{if(c){c.selectedId=null; c.selectedIds=new Set(); renderDrawings(c);}}); hideFloatBar(); markDirty(); renderObjTree(); }
 function doUndo(){ const prev=undoStack.pop(); if(!prev)return toast("Nothing to undo");
  redoStack.push(JSON.stringify(drawingsBySymbol)); drawingsBySymbol=JSON.parse(prev); afterUndoRedo(); toast("Undone"); }
@@ -2935,7 +2995,13 @@ function wire(){
   if(replay.active&&e.shiftKey&&e.key==="ArrowDown"){e.preventDefault(); togglePlay(); return;}
   if(replay.active&&e.shiftKey&&e.key==="ArrowRight"){e.preventDefault(); stepReplay(1); return;}
   if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.key)&&!e.ctrlKey&&!e.metaKey&&!e.altKey){ const ctx=P[activePane]; // Arrowキーで選択中の描画を移動（本家と同じ）
-   if(ctx&&(ctx.selectedId||(ctx.selectedIds&&ctx.selectedIds.size))){ e.preventDefault(); nudgeSelected(ctx,e.key,e.shiftKey); } return; }
+   if(ctx&&(ctx.selectedId||(ctx.selectedIds&&ctx.selectedIds.size))){ e.preventDefault(); nudgeSelected(ctx,e.key,e.shiftKey); return; }
+   /* 描画未選択時は本家と同じく左右矢印でチャートをスクロール（パン）する: ←で古い足側、→で新しい足側へ1本分（Shiftで10本分）。
+      バー間隔は変えない。モーダル表示中は対象外。リプレイの Shift+→ は上の分岐で再生ステップとして処理済み */
+   if(ctx&&(e.key==="ArrowLeft"||e.key==="ArrowRight")&&!document.querySelector(".modal.show")){ e.preventDefault();
+     const step=(e.shiftKey?10:1)*(e.key==="ArrowRight"?1:-1);
+     try{ const vr=ctx.chart.timeScale().getVisibleLogicalRange(); if(vr)ctx.chart.timeScale().setVisibleLogicalRange({from:vr.from+step,to:vr.to+step}); }catch(_){} }
+   return; }
   if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="c"){ const ctx=P[activePane]; const d=ctx&&curDrawings().find(x=>x.id===ctx.selectedId); // 本家準拠: Ctrl+C = 選択中の描画をコピー（Menuの Copy と同じ）。描画未選択時は通常のコピーを妨げない
    if(d){ e.preventDefault(); drawClipboard=JSON.parse(JSON.stringify(d)); toast("Drawing copied"); return; } }
   if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="v"){ const ctx=P[activePane]; // 本家準拠: Ctrl+V = コピーした描画を貼り付け
