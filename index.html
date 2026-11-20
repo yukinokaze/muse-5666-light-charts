@@ -761,7 +761,7 @@ const P=[]; // pane contexts
 function chartOpts(){const t=App.theme;return{
  layout:{background:{type:"solid",color:t.background},textColor:t.text,fontSize:15,fontFamily:"'Trebuchet MS',Roboto,Ubuntu,-apple-system,BlinkMacSystemFont,'Hiragino Kaku Gothic ProN','Yu Gothic UI','Noto Sans JP',sans-serif",attributionLogo:false}, // 軸フォント: 本家実画面（2026-11-20_2.40.27）の価格軸ラベル数字高を再実測すると 23px@DPR2 = 11.5 CSS px（9ラベル連続で一致）。従来の 13px 設定ではクローン側の数字高が 10px しかなく約13%小さいため 15px に上げる（数字高≒11.5px）。狭いペインでは makePane 側で 13px に戻す
  grid:{vertLines:{color:t.grid,visible:App.grid!==false,style:0},horzLines:{color:t.grid,visible:App.grid!==false,style:0}},
- crosshair:{mode:1,vertLine:{color:t.crosshair,labelBackgroundColor:"#353434",style:2,visible:window.__cursorVariant==null||window.__cursorVariant==="cross"},horzLine:{color:t.crosshair,labelBackgroundColor:"#353434",style:2,visible:window.__cursorVariant==null||window.__cursorVariant==="cross"}}, // mode:1 = Normal: 横線はマウスYの価格を示す（LWC既定の Magnet はホバー中のバーの終値へ吸着する。本家はマウスY）。線は破線（style:2 = Dashed）。Dot/Arrow バリアントでは十字線を出さない
+ crosshair:{mode:0,vertLine:{color:t.crosshair,labelBackgroundColor:"#353434",style:2,visible:window.__cursorVariant==null||window.__cursorVariant==="cross"},horzLine:{color:t.crosshair,labelBackgroundColor:"#353434",style:2,visible:window.__cursorVariant==null||window.__cursorVariant==="cross"}}, // CrosshairMode は LWC 4.2.0 の定義で Normal=0 / Magnet=1 / Hidden=2（バンドル内 enum で確認）。mode:0 = Normal: 横線はマウスYの価格を示す（Magnet はホバー中のバーの終値へ吸着する。本家はマウスY）。以前 mode:1 と書いたため Magnet そのものになっていた。線は破線（style:2 = Dashed）。Dot/Arrow バリアントでは十字線を出さない
  handleScale:{axisDoubleClickReset:true,axisPressedMouseMove:{time:true,price:true}}, // 価格軸ダブルクリックでスケールリセット（本家と同じ）
  rightPriceScale:{borderColor:t.grid,entireTextOnly:true}, timeScale:{borderColor:t.grid,timeVisible:App.interval!=="1D",secondsVisible:false,barSpacing:6,minBarSpacing:0.5, // 初期表示の足密度は本家の実測に合わせる（ユーザーの実画面: 約665px幅のペインに約107本 ≒ 6px/本。FFT＋時間軸ラベル間隔で実測）
   tickMarkFormatter:tickFmt}, localization:{locale:"ja-JP",timeFormatter:timeFmt} };}
@@ -2688,7 +2688,7 @@ let cursorVariant="cross";
 function applyCursorVariant(){ window.__cursorVariant=cursorVariant; const w=$("#chartsWrap"); if(w){
  w.classList.toggle("curCross",cursorVariant==="cross"); w.classList.toggle("curDot",cursorVariant==="dot"); }
  /* Dot / Arrow では十字線を出さない（本家どおり）。Cross のみ破線の十字線＋軸ラベルを表示。既存ペイン・サブチャートへ即時反映し、新規ペインは chartOpts 側の window.__cursorVariant で同じ状態になる */
- const vis=cursorVariant==="cross", t=App.theme, ch={crosshair:{mode:1,vertLine:{visible:vis,color:t.crosshair,labelBackgroundColor:"#353434",style:2},horzLine:{visible:vis,color:t.crosshair,labelBackgroundColor:"#353434",style:2}}};
+ const vis=cursorVariant==="cross", t=App.theme, ch={crosshair:{mode:vis?0:2,vertLine:{visible:vis,color:t.crosshair,labelBackgroundColor:"#353434",style:2},horzLine:{visible:vis,color:t.crosshair,labelBackgroundColor:"#353434",style:2}}}; // Cross は Normal=0（マウスY追従）、Dot/Arrow は Hidden=2 で十字線自体を無効化（Magnet=1 は終値吸着になるため使わない）
  P.forEach(c=>{ if(c&&c.chart)try{c.chart.applyOptions(ch);}catch(e){} });
  try{ Object.values(subCharts).forEach(c=>{ if(c&&c.chart)try{c.chart.applyOptions(ch);}catch(e){} }); }catch(e){}
  $$(".cursorDot").forEach(d=>d.style.display="none"); } // バリアント切替直後はドットを消す（Dot のときは次の pointermove で再表示される）
