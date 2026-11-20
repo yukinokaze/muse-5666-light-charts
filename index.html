@@ -1350,7 +1350,11 @@ function defaultStyle(type){
   accountSize:1000,lotSize:1,risk:25,leverage:10000,qty:1,
   fibLevels:FIB_LEVELS.map((lv,i)=>({level:lv,on:FIB_ON.includes(lv),color:FIB_COLORS[i]})),fibBg:true,fibReverse:false};
  base.bgOn=true;
- if(type==="rect"){base.color="#ab47bc";base.bg="#ab47bc";base.bgOpacity=20;}
+ if(type==="rect"){base.color="#ab47bc";base.bg="#ab47bc";base.bgOpacity=20;
+  /* Middle line（CE）: 本家公式ヘルプ「Rectangle」の Style 項＝ "Middle line — Activates the central line and sets the color, thickness and line type"。
+     公式スクリーンショットで確認: 中心線は価格中点を通る水平線のみ（縦の中心線は無い）、破線・紫が例示され、枠とは独立した色/太さ/線種を持つ。
+     新規の既定はオフ（本家の新規長方形は中心線なしで描かれる。項目名・既定の最終確認は比較タスク 3f7e8e9a の報告で照合すること） */
+  base.midOn=false;base.midColor="#ab47bc";base.midOpacity=100;base.midWidth=1;base.midLineStyle="Dashed";}
  if(type==="ote"){base.fibFontSize=12; base.fibPrices=true; base.fibLevelsLbl=true; base.fibLabels=true; base.fibLineWidth=2; base.fibLineStyle="Line"; base.logScale=false;} // フィボの既定の線のWidthは本家と同じ 2px（従来 1px は細すぎた）
  if(type==="long"||type==="short"){base.showInfo=true; base.compactStats=false; base.alwaysShowStats=false; base.priceLabels=true; base.middlePoint=false;}
  if(type==="text"){base.bgOpacity=25;base.textColor="#2962ff";}
@@ -1442,6 +1446,11 @@ function drawOne(ctx,svg,d,sel){
    el("rect",{x:Math.min(x1,x2),y:Math.min(y1,y2),width:Math.abs(x2-x1),height:Math.abs(y2-y1),fill:"rgba(0,0,0,0)"},g);
    if(st.bgOn!==false)el("rect",{x:Math.min(x1,x2),y:Math.min(y1,y2),width:Math.abs(x2-x1),height:Math.abs(y2-y1),fill:rgba(st.bg||st.color,st.bgOpacity)},g);
    el("rect",{x:Math.min(x1,x2),y:Math.min(y1,y2),width:Math.abs(x2-x1),height:Math.abs(y2-y1),fill:"none",stroke:col,"stroke-width":st.width,"stroke-dasharray":dash},g);
+   /* Middle line（CE）: 価格中点 (p1+p2)/2 を通る水平線を長方形の幅いっぱいに引く（本家は水平のみ・縦線なし）。
+      p1/p2 から毎回導出するため移動・リサイズに自動で追従する。装飾専用でハンドルは付けない（掴み判定は従来どおり長方形領域全体）。
+      旧保存データ（midOn 未定義）は falsy で無効＝壊れない。描画 SVG はペイン寸法にクリップ済みなので価格軸へは出ない */
+   if(st.midOn){ const yM=p2y(ctx,(d.p1.price+d.p2.price)/2);
+     if(yM!=null)el("line",{x1:Math.min(x1,x2),y1:yM,x2:Math.max(x1,x2),y2:yM,stroke:rgba(st.midColor||st.color,st.midOpacity!=null?st.midOpacity:100),"stroke-width":st.midWidth||1,"stroke-dasharray":st.midLineStyle==="Dashed"?"7 5":st.midLineStyle==="Dotted"?"2 4":""},g); }
    label((x1+x2)/2,(y1+y2)/2+5,st.text); handles([[x1,y1],[x2,y2]]);
  } else if(d.type==="text"){
    const x=t2x(ctx,d.p1.time),y=p2y(ctx,d.p1.price); if(x==null||y==null)return;
@@ -2337,7 +2346,9 @@ function openDrawSettings(ctx,d){
    <label style="width:auto">Line style</label><span class="seg" id="dsLS">${["Line","Dashed","Dotted"].map(s=>`<button data-s="${s}" class="${st.lineStyle===s?"on":""}">${s}</button>`).join("")}</span></div>
    ${(d.type==="line"||d.type==="arrow")?`<div class="frow"><label>Endpoint style</label>Left <span class="seg" id="dsEL">${["Normal","Arrow"].map(s=>`<button data-s="${s}" class="${st.endL===s?"on":""}">${s}</button>`).join("")}</span> Right <span class="seg" id="dsER">${["Normal","Arrow"].map(s=>`<button data-s="${s}" class="${st.endR===s?"on":""}">${s}</button>`).join("")}</span></div>
    <div class="frow"><label>Extend</label><label class="chk"><input type="checkbox" id="dsExL" ${st.extendL?"checked":""}> Extend left line</label><label class="chk"><input type="checkbox" id="dsExR" ${st.extendR?"checked":""}> Extend right line</label></div>`:""}
-   ${d.type==="rect"?`<div class="frow"><label>Background</label><label class="chk"><input type="checkbox" id="dsBgOn" ${st.bgOn!==false?"checked":""}> Background</label><input type="color" id="dsBg" value="${st.bg}"><label style="width:auto">Opacity</label><input type="number" id="dsBgOp" min="0" max="100" value="${st.bgOpacity}" style="width:76px;flex:none">%</div>`:""}
+   ${d.type==="rect"?`<div class="frow"><label>Background</label><label class="chk"><input type="checkbox" id="dsBgOn" ${st.bgOn!==false?"checked":""}> Background</label><input type="color" id="dsBg" value="${st.bg}"><label style="width:auto">Opacity</label><input type="number" id="dsBgOp" min="0" max="100" value="${st.bgOpacity}" style="width:76px;flex:none">%</div>
+   <div class="frow"><label>Middle line</label><label class="chk"><input type="checkbox" id="dsMidOn" ${st.midOn?"checked":""}> Middle line</label><input type="color" id="dsMidColor" value="${st.midColor||st.color}"><label style="width:auto">Opacity</label><input type="number" id="dsMidOp" min="0" max="100" value="${st.midOpacity!=null?st.midOpacity:100}" style="width:76px;flex:none">%</div>
+   <div class="frow"><label></label><label style="width:auto">Width</label><span class="seg" id="dsMidW">${[1,2,3,4].map(w=>`<button data-w="${w}" class="${(st.midWidth||1)===w?"on":""}">${w}px</button>`).join("")}</span><label style="width:auto">Line style</label><span class="seg" id="dsMidLS">${["Line","Dashed","Dotted"].map(s=>`<button data-s="${s}" class="${(st.midLineStyle||"Dashed")===s?"on":""}">${s}</button>`).join("")}</span><span class="hint">CE — center (50%) line of the price range</span></div>`:""}
    ${isPos?`<div class="frow"><label>INFO / Stats</label><label class="chk"><input type="checkbox" id="dsShowInfo" ${st.showInfo!==false?"checked":""}> INFO</label><label class="chk"><input type="checkbox" id="dsCompact" ${st.compactStats?"checked":""}> Compact stats mode</label><label class="chk"><input type="checkbox" id="dsAlwaysStats" ${st.alwaysShowStats?"checked":""}> Always show stats</label></div>
    <div class="frow"><label>Show</label><label class="chk"><input type="checkbox" id="dsPriceLabels" ${st.priceLabels!==false?"checked":""}> Price labels</label><label class="chk"><input type="checkbox" id="dsMid" ${st.middlePoint?"checked":""}> Middle point</label></div>
    <div class="frow"><label>Target color</label><input type="color" id="dsTgC" value="${st.targetColor}"><label style="width:auto">Opacity</label><input type="number" id="dsTgOp" min="0" max="100" value="${st.targetOpacity}" style="width:70px;flex:none">%</div>
@@ -2373,6 +2384,7 @@ function openDrawSettings(ctx,d){
  activateTab(initTab);
  const segWire=(id,fn)=>{const s=$(id); if(s)s.querySelectorAll("button").forEach(b=>b.onclick=()=>{fn(b.dataset);s.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));});};
  segWire("#dsW",ds=>st.width=+ds.w); segWire("#dsLS",ds=>st.lineStyle=ds.s); segWire("#dsEL",ds=>st.endL=ds.s); segWire("#dsER",ds=>st.endR=ds.s); segWire("#dsAlign",ds=>st.align=ds.s);
+ segWire("#dsMidW",ds=>st.midWidth=+ds.w); segWire("#dsMidLS",ds=>st.midLineStyle=ds.s);
  segWire("#dsFibW",ds=>st.fibLineWidth=+ds.w); segWire("#dsFibLS",ds=>st.fibLineStyle=ds.s);
  /* Line color: カラーピッカーと16進数Textを相互Sync（従来は dsColorHex が読み書きされず、16進数で色を変えてもOKに反映されなかった） */
  const _dcI=$("#dsColor"), _dcH=$("#dsColorHex");
@@ -2383,6 +2395,7 @@ function openDrawSettings(ctx,d){
  $("#dsOk").onclick=()=>{ snapshotDrawings(); d.style=st; // スナップショット後に複製をApply
   const _dc=$("#dsColor"); if(_dc){st.color=_dc.value; st.opacity=+$("#dsOp").value;}
   const bgOn=$("#dsBgOn"); if(bgOn){st.bgOn=bgOn.checked; st.bg=$("#dsBg").value; st.bgOpacity=+$("#dsBgOp").value;}
+  const midOnEl=$("#dsMidOn"); if(midOnEl){st.midOn=midOnEl.checked; st.midColor=$("#dsMidColor").value; st.midOpacity=+$("#dsMidOp").value;}
   const exL=$("#dsExL"); if(exL){st.extendL=exL.checked; st.extendR=$("#dsExR").checked;}
   if(isPos){st.accountSize=+$("#dsAcc").value; st.lotSize=+$("#dsLot").value; st.risk=+$("#dsRisk").value; st.leverage=+$("#dsLev").value; st.qty=+$("#dsQty").value;
    const _qp=$("#dsQp"); if(_qp)st.qtyPrecision=_qp.value;
