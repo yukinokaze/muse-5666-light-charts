@@ -457,6 +457,7 @@ textarea{width:100%;min-height:110px;font-family:ui-monospace,Menlo,monospace;fo
 .toast .tItem{background:#171a21;border:1px solid #3a3f4d;border-left:3px solid var(--accent);padding:9px 14px;border-radius:6px;font-size:13px;box-shadow:0 6px 18px rgba(0,0,0,.5);text-align:left}
 .toast .tMore{align-self:flex-start;background:#20242f;border:1px solid #3a3f4d;color:#fff;padding:5px 12px;border-radius:6px;font-size:12px;cursor:pointer}
 .ordLayer{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:6}
+.drawAxisLayer{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:5} /* 描画のPrice軸ラベル（ポジションの Target/Entry/Stop ピル）専用レイヤー。描画 SVG はペイン内にクリップされるため軸ラベルは HTML 側で描く */
 .ordZone{position:absolute;left:0;pointer-events:none}
 .ordPill{position:absolute;padding:1px 7px;border-radius:4px;color:#fff;font-size:11px;font-weight:600;pointer-events:none;white-space:nowrap}
 .ordAxis{position:absolute;right:0;padding:1px 4px;color:#fff;font-size:11px;text-align:center;pointer-events:none;border-radius:2px;white-space:nowrap}
@@ -1122,6 +1123,7 @@ function makePane(idx){
  el.parentElement.addEventListener("pointerleave",()=>{ dotEl.style.display="none"; });
  const legendEl=document.createElement("div"); legendEl.className="paneLegend"; el.parentElement.appendChild(legendEl); ctx.legendEl=legendEl;
  const ordEl=document.createElement("div"); ordEl.className="ordLayer"; el.parentElement.appendChild(ordEl); ctx.ordEl=ordEl;
+ const dlEl=document.createElement("div"); dlEl.className="drawAxisLayer"; el.parentElement.appendChild(dlEl); ctx.drawLblEl=dlEl;
  /* Price軸のダブルクリック／ダブルタップでPriceスケールをリセットし、表示中のCandlesへ自動フィット（AutoOn）に戻す（本家と同じ）。
     自前ピルは pointer-events:none のため、その上でのダブルクリックもここに届く。チャート本体のダブルクリックとは区別し、軸の帯域内だけを対象にする */
  const axisHit=e=>{ const r=el.getBoundingClientRect(); let axW=64; try{axW=chart.priceScale("right").width()||64;}catch(_){}
@@ -1622,7 +1624,7 @@ function defaultStyle(type){
  if(type==="ote"){base.fibFontSize=11; base.fibPrices=true; base.fibLevelsLbl=true; base.fibLabels=true; base.fibLineWidth=2; base.fibLineStyle="Line"; base.logScale=false;
   base.fibTrend=true; base.trendColor="#787b86"; base.trendStyle="Dashed"; base.fibExtend="none"; base.fibBgOpacity=28; base.fibValuesFmt="Values"; base.fibLabelsPos="Left"; base.fibTextH="Center"; base.fibTextV="Middle";} // フィボの既定の線のWidthは本家と同じ 2px（従来 1px は細すぎた）
  if(type==="long"||type==="short"){base.showInfo=true; base.compactStats=false; base.alwaysShowStats=false; base.priceLabels=true; base.middlePoint=false;
-  base.lineColor="#787b86"; base.fontSize=11; base.textColor="#ffffff"; base.accUnit="Default"; base.riskUnit="%";}
+  base.lineColor="#787b86"; base.fontSize=12; base.textColor="#ffffff"; base.accUnit="Default"; base.riskUnit="%"; base.width=1;} /* 本家実測: テキスト 12px、Lines は 1px（仕様書 original 7-2 ロングポジション Style タブ／公式ヘルプ画像） */
  if(type==="line"||type==="arrow"){base.middlePoint=false; base.priceLabels=false; base.statsMode="Hidden"; base.statsPos="Right"; base.alwaysShowStats=false; base.alignH="Center";}
  if(type==="arrow"){base.endR="Arrow";} // 本家の Arrow は右端に矢印頭があるのが既定（設定表示と描画を一致させる。Trendline は左右とも Normal のまま）
  if(type==="rect"){base.textColor="#ab47bc"; base.alignH="Center";} // 本家の Rectangle は文字色の既定も枠と同じ紫
@@ -1637,6 +1639,24 @@ function newDrawing(type,p1,p2,ctx){
  if(type==="long"||type==="short"){ const e=p1.price; const dist=Math.abs(p2.price-p1.price)||e*0.01;
    d.entry=e; d.endTime=p2.time; if(type==="long"){d.target=e+dist;d.stop=e-dist;}else{d.target=e-dist;d.stop=e+dist;} }
  return d;
+}
+/* ポジションの配置（本家準拠）: Long/Short は2点ドラッグではなく「1クリック」で即配置される。
+   Entry はクリック点、Target/Stop は上下対称（R/R = 1）に開き、右端は配置時点の表示範囲の右端まで伸びる。
+   対称幅は表示中のPrice範囲の 10% を Tick 単位に丸めたもの（配置後はハンドル／Settingsで調整する） */
+function placePosition(ctx,s){
+ const sec=IVL_SEC[ctx.interval]||900, _dec=(symInfo(ctx.symbol).dec!=null?symInfo(ctx.symbol).dec:2), tick=Math.pow(10,-_dec);
+ const entry=Math.round(s.price/tick)*tick;
+ let hi=-Infinity,lo=Infinity; { let vr=null; try{vr=ctx.chart.timeScale().getVisibleRange();}catch(_){}
+  for(const c of ctx.full){ if(vr&&(c.time<vr.from||c.time>vr.to))continue; if(c.high>hi)hi=c.high; if(c.low<lo)lo=c.low; } }
+ let dist=(hi>lo)?(hi-lo)*0.10:Math.abs(entry)*0.01; dist=Math.max(tick*10,Math.round(dist/tick)*tick);
+ let endT=null; try{ endT=x2t(ctx,Math.max(0,(paneW(ctx)||ctx.el.clientWidth)-1)); }catch(_){}
+ if(endT==null||endT<=s.time)endT=s.time+sec*20; endT=Math.round(endT/sec)*sec; if(endT<=s.time)endT=s.time+sec;
+ snapshotDrawings();
+ const d=newDrawing(tool,{time:s.time,price:entry},{time:endT,price:entry},ctx);
+ d.entry=entry; d.endTime=endT; if(tool==="long"){d.target=entry+dist;d.stop=entry-dist;}else{d.target=entry-dist;d.stop=entry+dist;}
+ curDrawings().push(d); ctx.selectedId=d.id; ctx.selectedIds=new Set([d.id]); showFloatBar(ctx,d); afterDrawChange(ctx);
+ if(replay.active)registerTradeFromDrawing(d,ctx);
+ if(!keepDrawing)setTool("cursor");
 }
 function t2x(ctx,t){try{return ctx.chart.timeScale().timeToCoordinate(t);}catch(e){return null;}}
 function p2y(ctx,p){try{return ctx.cs.priceToCoordinate(p);}catch(e){return null;}}
@@ -1685,6 +1705,14 @@ function renderDrawings(ctx){
  const list=[...allDrawingsFor(ctx.symbol)];
  if(ctx.pending)list.push(ctx.pending);
  for(const d of list){ if(!drawVisibleHere(d,ctx)&&d!==ctx.pending)continue; drawOne(ctx,svg,d,d.id===ctx.selectedId||(ctx.selectedIds&&ctx.selectedIds.has(d.id))||d===ctx.pending); } // pending（描画中プレビュー）も端点アンカー円を出す（本家は1点目から円形アンカー＋プレビュー追従）
+ /* ポジションの Price labels（本家準拠）: Target=ターゲット色／Entry=ライン色（灰）／Stop=ストップ色のピルを右Price軸へ出す。
+    描画 SVG はペイン寸法にクリップされ軸へ描けないため、HTML レイヤー（ctx.drawLblEl）へ ordAxis 形式で描く */
+ if(ctx.drawLblEl){ let h=""; let axW=64; try{axW=ctx.chart.priceScale("right").width()||64;}catch(_){}
+  for(const d of list){ if((d.type!=="long"&&d.type!=="short")||d===ctx.pending)continue; if(!drawVisibleHere(d,ctx))continue; if(!d.style||d.style.priceLabels===false)continue;
+   const yT=p2y(ctx,d.target),yE=p2y(ctx,d.entry),yS=p2y(ctx,d.stop); if(yE==null)continue;
+   const ap=(y,price,color)=>y==null?"":`<div class="ordAxis" style="top:${Math.round(y)-9}px;width:${axW}px;background:${color}">${esc(fmtPx(price))}</div>`;
+   h+=ap(yT,d.target,d.style.targetColor||"#089981")+ap(yE,d.entry,d.style.lineColor||"#787b86")+ap(yS,d.stop,d.style.stopColor||"#f23645"); }
+  if(ctx._dlblH!==h){ ctx.drawLblEl.innerHTML=h; ctx._dlblH=h; } }
  if(ctx.selRect){const r=ctx.selRect; el("rect",{x:Math.min(r.x1,r.x2),y:Math.min(r.y1,r.y2),width:Math.abs(r.x2-r.x1),height:Math.abs(r.y2-r.y1),fill:"rgba(41,98,255,.15)",stroke:"#2962ff","stroke-dasharray":"4 3"},svg);}
  if(ctx.measure){ const m=ctx.measure; const mx1=t2x(ctx,m.p1.time),my1=p2y(ctx,m.p1.price),mx2=t2x(ctx,m.p2.time),my2=p2y(ctx,m.p2.price);
   if([mx1,my1,mx2,my2].every(v=>v!=null)){ el("line",{x1:mx1,y1:my1,x2:mx2,y2:my2,stroke:"#2962ff","stroke-width":1.5},svg);
@@ -1693,6 +1721,46 @@ function renderDrawings(ctx){
    mt.textContent=`${dp>=0?"+":""}${dp.toFixed(2)} (${pct>=0?"+":""}${pct.toFixed(2)}%) · ${bars} bars`; } }
  positionGotoTip(ctx); // Go to 吹き出しの位置を現在の表示範囲に追従させる
  if(ctx.idx===0)renderObjTree();
+}
+/* ============ ポジション（Long/Short）の統計計算（本家公式ヘルプの計算式に準拠） ============
+   Qty = min(QtyRisk, QtyLvg)。QtyRisk = RiskSize / ((Entry−Stop) × Point value) / Lot size、
+   QtyLvg = (Account size × Leverage / Entry) × Point value / Lot size。Point value は本クローンでは
+   銘柄の乗数（effMult、未設定時は 1 = Price差そのまま）を使う。Amount = Account size ± PnL（金額）。
+   Open/Closed P&L は「Price単位」の差分で、ポジションの時間範囲 [開始, 終了] 内のBarsだけで判定する
+   （公式: 範囲右端の終値 − Entry。範囲内で TP/SL に先に触れたら Closed P&L = そのオフセット）。
+   ctx.view はリプレイ位置で切られているため、リプレイ中も未来Barsは判定に混ざらない */
+const _tagCtx=document.createElement("canvas").getContext("2d");
+function tagTextW(t,fs){ try{ _tagCtx.font="500 "+fs+"px -apple-system,BlinkMacSystemFont,'Trebuchet MS',Roboto,Ubuntu,sans-serif"; return _tagCtx.measureText(t).width; }catch(_){ return t.length*fs*0.55; } }
+const fmtAmtV=v=>{ const r=Math.round(v*100)/100; return String(r===0?0:r); }; // Amount は整数なら小数なし（本家表示 "1250" / "750"）
+const fmtPLV=v=>{ const r=Math.round(v*100)/100; return (r===0?0:r).toFixed(2); }; // P&L（金額）は小数2桁固定（本家表示 "250.00" / "-250.00"）
+const fmtQtyV=q=>String(Math.round(q*1000)/1000); // Qty は整数なら整数表示（本家表示 "657" / "36"）
+const fmtRRV=r=>String(Math.round(r*100)/100); // Risk/Reward Ratio は末尾ゼロを出さない（本家表示 "1"）
+function posStats(ctx,d){
+ const st=d.style, lng=d.type==="long", dir=lng?1:-1;
+ const dec=(symInfo(ctx.symbol).dec!=null?symInfo(ctx.symbol).dec:2), tick=Math.pow(10,-dec);
+ const tpOff=Math.max(0,(d.target-d.entry)*dir), slOff=Math.max(0,(d.entry-d.stop)*dir);
+ const rr=slOff>0?tpOff/slOff:0;
+ const pv=effMult(ctx.symbol)||1, lot=(+st.lotSize>0?+st.lotSize:1), acc=+st.accountSize||0;
+ const riskSize=st.riskUnit==="$"?(+st.risk||0):acc*(+st.risk||0)/100;
+ let qty=0;
+ if(slOff>0&&d.entry){ const qR=riskSize/(slOff*pv)/lot, qL=(acc*(+st.leverage||0)/Math.abs(d.entry))*pv/lot; qty=Math.min(qR,qL); }
+ if(!(qty>0)||!isFinite(qty))qty=(+st.qty>0?+st.qty:lot);
+ /* 金額計算は端数ありの Qty で行い（公式例: Risk 250 / 6.88 = 36.34… → P&L は 250.00 ちょうど）、
+    タグに出す Qty だけを切り捨て表示する（公式例: Qty 36 / 657。657.89 → 657 なので四捨五入ではなく切り捨て） */
+ const tpPL=tpOff*qty*pv*lot, slPL=-slOff*qty*pv*lot;
+ let qtyDisp=Math.floor(qty*lot)/lot; if(!(qtyDisp>0))qtyDisp=qty;
+ const qp=st.qtyPrecision; if(qp!=null&&qp!=="Default"&&isFinite(+qp)){ const f=Math.pow(10,+qp); qtyDisp=Math.floor(qty*f)/f; }
+ const bars=ctx.view||[], t0=d.p1.time, t1=(d.endTime!=null?d.endTime:(d.p2?d.p2.time:t0));
+ let closed=null, ref=null, entered=false;
+ const inBars=bars.filter(b=>b.time>=t0&&b.time<=t1);
+ if(inBars.length){ for(const b of inBars){ if(!entered){ if((b.low<=d.entry&&d.entry<=b.high)||(lng?b.close>d.entry:b.close<d.entry))entered=true; else continue; }
+    if(lng){ if(b.low<=d.stop){closed=-slOff;break;} if(b.high>=d.target){closed=tpOff;break;} } /* 同一Bars内で両方に触れた場合は SL 優先（本クローンの手動Backtestと同じ保守ルール） */
+    else { if(b.high>=d.stop){closed=-slOff;break;} if(b.low<=d.target){closed=tpOff;break;} } }
+  ref=inBars[inBars.length-1].close; }
+ else { const lb=bars[bars.length-1]; ref=lb?lb.close:null; } /* 範囲内にBarsが無い（未来配置など）: 最終Priceで Open P&L（公式の "placed in the future" ケース） */
+ const pnlVal=closed!=null?closed:(ref!=null?(ref-d.entry)*dir:0);
+ return {tpOff,slOff,rr,qty:qtyDisp,tpPct:d.entry?tpOff/Math.abs(d.entry)*100:0,slPct:d.entry?slOff/Math.abs(d.entry)*100:0,
+  tpTicks:tick>0?Math.round(tpOff/tick):0,slTicks:tick>0?Math.round(slOff/tick):0,tpPL,slPL,tpAmt:acc+tpPL,slAmt:acc+slPL,pnlVal,closed:closed!=null};
 }
 function drawOne(ctx,svg,d,sel){
  const st=d.style, g=el("g",{},svg); g.dataset.did=d.id;
@@ -1758,23 +1826,33 @@ function drawOne(ctx,svg,d,sel){
  } else if(d.type==="long"||d.type==="short"){
    const x1=t2x(ctx,d.p1.time),x2=t2x(ctx,d.endTime||d.p2.time); if(x1==null||x2==null)return;
    const yE=p2y(ctx,d.entry),yT=p2y(ctx,d.target),yS=p2y(ctx,d.stop); if([yE,yT,yS].some(v=>v==null))return;
-   const xa=Math.min(x1,x2),w=Math.max(30,Math.abs(x2-x1));
+   const xa=Math.min(x1,x2),w=Math.max(30,Math.abs(x2-x1)),cx=xa+w/2;
    el("rect",{x:xa,y:Math.min(yE,yT),width:w,height:Math.abs(yT-yE),fill:rgba(st.targetColor,st.targetOpacity)},g);
    el("rect",{x:xa,y:Math.min(yE,yS),width:w,height:Math.abs(yS-yE),fill:rgba(st.stopColor,st.stopOpacity)},g);
-   el("line",{x1:xa,y1:yE,x2:xa+w,y2:yE,stroke:st.lineColor||"#d1d4dc","stroke-width":st.width||1.4,"stroke-dasharray":st.lineStyle==="Dashed"?"5 3":st.lineStyle==="Dotted"?"2 4":""},g);
-   const rr=Math.abs(d.target-d.entry)/Math.max(1e-9,Math.abs(d.entry-d.stop));
-   const mult=effMult(ctx.symbol); const distP=Math.abs(d.entry-d.stop);
-   const riskAmt=(st.accountSize||0)*(st.risk||0)/100;
-   const calcQty=mult&&distP>0?riskAmt/(distP*mult):(st.qty||st.lotSize||1);
-   const lastB=ctx.view[ctx.view.length-1]; const openPnl=(lastB&&mult)?(lastB.close-d.entry)*(d.type==="long"?1:-1)*calcQty*mult:null;
-   const openPct=(lastB)?(lastB.close-d.entry)*(d.type==="long"?1:-1)/Math.max(1e-9,d.entry)*100:0;
-   const tc=st.textColor||"#fff", tfs=st.fontSize||11;
-   const mk=(y,txt,c)=>{const t=el("text",{x:xa+w/2,y:y+4,"font-size":tfs,fill:c,"text-anchor":"middle","font-weight":600},g);t.textContent=txt;};
-   mk((yE+yT)/2,`Target ${d.target.toFixed(2)}`, tc); mk((yE+yS)/2,`Stop ${d.stop.toFixed(2)}`,tc);
-   mk(yE-8,st.compactStats?`${d.type==="long"?"Long":"Short"} · R/R ${rr.toFixed(2)} · Qty ${(+calcQty).toFixed(2)}`:`${d.type==="long"?"Long":"Short"} Entry ${d.entry.toFixed(2)} · R/R ${rr.toFixed(2)} · Qty ${(+calcQty).toFixed(2)} · Risk ${riskAmt.toFixed(2)}${openPnl!=null?` · Open PnL ${openPnl>=0?"+":""}${openPnl.toFixed(2)} (${openPct>=0?"+":""}${openPct.toFixed(2)}%)`:" · Multiplier not set, so PnL is the price difference only"}`,tc);
-   if(st.middlePoint){el("circle",{cx:xa+w/2,cy:yE,r:3.5,fill:"#fff",stroke:"#2962ff"},g);}
-   if(st.showInfo&&st.priceLabels){ mk(yT-6,`TP ${Math.abs(d.target-d.entry).toFixed(2)} ticks`,tc); mk(yS+14,`SL ${Math.abs(d.entry-d.stop).toFixed(2)} ticks`,tc); }
-   if(sel){[[xa,yT],[xa,yE],[xa,yS]].forEach(([x,y])=>el("circle",{cx:x,cy:y,r:4.5,fill:"#fff",stroke:"#2962ff","stroke-width":1.5},g));}
+   /* Lines（本家準拠）: Entry 線だけでなく Target／Stop の境界線も Lines 色で引く（公式ヘルプ Style: "the line separating
+      profit/loss areas as well as the profit and loss targets"） */
+   const lc=st.lineColor||"#787b86", lw=st.width||1, ldash=st.lineStyle==="Dashed"?"5 3":st.lineStyle==="Dotted"?"2 4":"";
+   [yT,yE,yS].forEach(y=>el("line",{x1:xa,y1:y,x2:xa+w,y2:y,stroke:lc,"stroke-width":lw,"stroke-dasharray":ldash},g));
+   /* 統計タグ（本家準拠のピル表示）: Target 線上・Stop 線上・Entry 線上の3つの塗りピル。表示は選択中のみ
+      （Always show stats がオンなら常時）。書式は公式ヘルプ画像の実表示どおり:
+      "Target: 6.88 (2.460%) 688, Amount: 1250, P&L: 250.00" / 中央は2行 "Open P&L: 6.88, Qty: 36" "Risk/Reward Ratio: 1"。
+      Compact 時はラベルを落として "6.88 (2.460%) 688 1250 250.00"、中央は "-9.04 ~ 27" / "1" になる */
+   const tc=st.textColor||"#fff", tfs=st.fontSize||12;
+   if(st.showInfo!==false&&(sel||st.alwaysShowStats)){ const ps=posStats(ctx,d);
+    const tag=(cy,lines,fill)=>{ const lh=tfs+4; const tw=Math.max.apply(null,lines.map(t=>tagTextW(t,tfs)))+18, th=lines.length*lh+6;
+     el("rect",{x:cx-tw/2,y:cy-th/2,width:tw,height:th,rx:4,fill},g);
+     lines.forEach((t,i)=>{ const te=el("text",{x:cx,y:cy+(i-(lines.length-1)/2)*lh+tfs*0.36,"font-size":tfs,fill:tc,"text-anchor":"middle","font-weight":500},g); te.textContent=t; }); };
+    const midFill=ps.pnlVal>=0?st.targetColor:st.stopColor;
+    if(st.compactStats){ tag(yT,[`${fmtPx(ps.tpOff)} (${ps.tpPct.toFixed(3)}%) ${ps.tpTicks} ${fmtAmtV(ps.tpAmt)} ${fmtPLV(ps.tpPL)}`],st.targetColor);
+     tag(yS,[`${fmtPx(ps.slOff)} (${ps.slPct.toFixed(3)}%) ${ps.slTicks} ${fmtAmtV(ps.slAmt)} ${fmtPLV(ps.slPL)}`],st.stopColor);
+     tag(yE,[`${fmtPx(ps.pnlVal)} ~ ${fmtQtyV(ps.qty)}`,fmtRRV(ps.rr)],midFill); }
+    else { tag(yT,[`Target: ${fmtPx(ps.tpOff)} (${ps.tpPct.toFixed(3)}%) ${ps.tpTicks}, Amount: ${fmtAmtV(ps.tpAmt)}, P&L: ${fmtPLV(ps.tpPL)}`],st.targetColor);
+     tag(yS,[`Stop: ${fmtPx(ps.slOff)} (${ps.slPct.toFixed(3)}%) ${ps.slTicks}, Amount: ${fmtAmtV(ps.slAmt)}, P&L: ${fmtPLV(ps.slPL)}`],st.stopColor);
+     tag(yE,[`${ps.closed?"Closed":"Open"} P&L: ${fmtPx(ps.pnlVal)}, Qty: ${fmtQtyV(ps.qty)}`,`Risk/Reward Ratio: ${fmtRRV(ps.rr)}`],midFill); } }
+   /* ハンドル（本家準拠）: Entry 左端だけ円、Target 左端・Stop 左端・Entry 右端は四角（白塗り＋青枠）。
+      円=Entry 点（上下左右）、四角（左）=各レベルのPrice、四角（右）=終了時刻（右端） */
+   if(sel){ const sq=(x,y)=>el("rect",{x:x-4.5,y:y-4.5,width:9,height:9,rx:2,fill:"#fff",stroke:"#2962ff","stroke-width":1.5},g);
+    sq(xa,yT); sq(xa,yS); sq(xa+w,yE); el("circle",{cx:xa,cy:yE,r:4.5,fill:"#fff",stroke:"#2962ff","stroke-width":1.5},g); }
  }
 }
 /* 範囲選択の交差判定: 端点だけでなく線分・Rectangle全体と選択Rectangleの交差で判定する（線を横切るだけでも選択される） */
@@ -1820,7 +1898,8 @@ function drawingPointHit(ctx,d,px,py){
 function drawingHandlePts(ctx,d){ const pts=[];
  if(d.type==="long"||d.type==="short"){ const x1=t2x(ctx,d.p1.time);
    if(x1!=null){ const yT=p2y(ctx,d.target),yE=p2y(ctx,d.entry),yS=p2y(ctx,d.stop);
-     if(yT!=null)pts.push({x:x1,y:yT,kind:"target"}); if(yE!=null)pts.push({x:x1,y:yE,kind:"entry"}); if(yS!=null)pts.push({x:x1,y:yS,kind:"stop"}); }
+     if(yT!=null)pts.push({x:x1,y:yT,kind:"target"}); if(yE!=null)pts.push({x:x1,y:yE,kind:"entry"}); if(yS!=null)pts.push({x:x1,y:yS,kind:"stop"});
+     const xe=t2x(ctx,d.endTime||(d.p2&&d.p2.time)); if(xe!=null&&yE!=null)pts.push({x:xe,y:yE,kind:"end"}); } /* 右端ハンドル（本家準拠）: Entry 線の右端で終了時刻を調整 */
    return pts; }
  const x1=t2x(ctx,d.p1.time),y1=p2y(ctx,d.p1.price);
  if(x1!=null&&y1!=null)pts.push({x:x1,y:y1,kind:"p1"});
@@ -1871,7 +1950,9 @@ function startHandleDrag(ctx,d,kind,e){ const orig=JSON.parse(JSON.stringify({p1
  startDrawDrag(ctx,d,e,(dt,dp,ev)=>{ /* ポジションの TP/SL/エントリー行はPrice方向だけを動かす */
    if(kind==="target"){ d.target=orig.target+dp; return; }
    if(kind==="stop"){ d.stop=orig.stop+dp; return; }
-   if(kind==="entry"){ d.entry=orig.entry+dp; return; } /* エントリーハンドルもその脚だけを動かす（本家準拠: 各ハンドルは個別の脚を動かし、全体が動くのは本体ドラッグだけ。従来はエントリードラッグで3脚とも動いていた） */
+   if(kind==="end"){ if(orig.endTime!=null){ d.endTime=orig.endTime+dt; if(d.p2)d.p2={...d.p2,time:d.endTime}; } return; } /* 右端の四角ハンドル（本家準拠）: 終了時刻だけを左右へ動かす（Priceは変えない） */
+   if(kind==="entry"){ d.entry=orig.entry+dp; /* 円ハンドル（本家準拠）: Entry 点を上下左右へ。縦=Entry Priceだけが動き Target/Stop は据え置き、横=ポジション全体が時間方向へ平行移動する */
+     if(orig.p1)d.p1={time:orig.p1.time+dt,price:orig.entry+dp}; if(orig.p2)d.p2={time:orig.p2.time+dt,price:orig.entry+dp}; if(orig.endTime!=null)d.endTime=orig.endTime+dt; return; }
    /* 端点は作成時と同じ snap（マグネットSettingsに従う）で置く。snap が取れない座標では原点＋素デルタ */
    const r=ctx.svg.getBoundingClientRect(); const s=snap(ctx,ev.clientX-r.left,ev.clientY-r.top);
    const base=kind==="p1"?orig.p1:orig.p2; if(!base)return;
@@ -1932,6 +2013,7 @@ function bindDrawing(ctx){
    }
    if(tool==="text"){ snapshotDrawings(); const d=newDrawing("text",s,null,ctx); d.style.text="Text"; curDrawings().push(d); ctx.selectedId=d.id; afterDrawChange(ctx); openDrawSettings(ctx,d); if(!keepDrawing)setTool("cursor"); return; }
    if(ctx.clickPlace&&ctx.pending&&ctx.pending.type===tool){ updPending(e,p,s); drag=null; commitPending(); if(!keepDrawing)setTool("cursor"); return; } // Click-click の2点目: その位置で確定する（本家と同じ）
+   if(tool==="long"||tool==="short"){ placePosition(ctx,s); return; } /* ポジションは本家準拠で1クリック即配置（2点指定はしない） */
    snapshotDrawings(); ctx.pending=newDrawing(tool,s,s,ctx); drag={pending:true,x0:p.x,y0:p.y,moved:false};
    try{svg.setPointerCapture(e.pointerId);}catch(_){} /* ドラッグ作成中にポインタが描画レイヤーの外（時間軸の帯など）へ出ても pointerleave で作成がキャンセルされないようにする（Long/Short がドラッグで作れない症状の対策。Click-click 作成は従来どおり） */
  });
@@ -2694,7 +2776,7 @@ function openDrawSettings(ctx,d){
    ${isPos?`<div class="frow"><label>Lines</label><input type="color" id="dsLineColor" value="${st.lineColor||"#787b86"}">${segLS("dsLS",st.lineStyle)}${segW("dsW",st.width)}</div>
    <div class="frow"><label>Stop color</label><input type="color" id="dsStC" value="${st.stopColor}"></div>
    <div class="frow"><label>Target color</label><input type="color" id="dsTgC" value="${st.targetColor}"></div>
-   <div class="frow"><label>Text</label><input type="color" id="dsPosTC" value="${st.textColor||"#ffffff"}"><label style="width:auto">Font size</label><input type="number" id="dsPosFS" value="${st.fontSize||11}" style="width:70px;flex:none"></div>
+   <div class="frow"><label>Text</label><input type="color" id="dsPosTC" value="${st.textColor||"#ffffff"}"><label style="width:auto">Font size</label><input type="number" id="dsPosFS" value="${st.fontSize||12}" style="width:70px;flex:none"></div>
    <div class="frow"><label></label>${chk("dsPriceLabels",st.priceLabels!==false,"Price labels")}</div>
    <div class="dsSec">INFO</div>
    <div class="frow"><label>Stats</label><select id="dsStatsMode"><option value="all" ${st.showInfo!==false&&!st.compactStats?"selected":""}>All stats</option><option value="compact" ${st.compactStats?"selected":""}>Compact</option><option value="hidden" ${st.showInfo===false?"selected":""}>Hidden</option></select></div>
@@ -2781,7 +2863,7 @@ function openDrawSettings(ctx,d){
    d.stop=readPrice("#dsStop",d.stop);
    d.p1.price=d.entry;
    st.targetColor=$("#dsTgC").value; st.stopColor=$("#dsStC").value;
-   st.textColor=$("#dsPosTC").value; st.fontSize=+$("#dsPosFS").value||11;
+   st.textColor=$("#dsPosTC").value; st.fontSize=+$("#dsPosFS").value||12;
    st.priceLabels=$("#dsPriceLabels").checked;
    const sm=$("#dsStatsMode"); st.showInfo=sm.value!=="hidden"; st.compactStats=$("#dsCompact").checked||sm.value==="compact"; }
   if(isFib){st.fibTrend=$("#dsFibTrend").checked; st.trendColor=$("#dsTrendColor").value; st.fibExtend=$("#dsFibExtend").value;
