@@ -27,23 +27,26 @@ input[type=color]{padding:2px;width:44px}
 input[type=checkbox],input[type=radio]{min-height:0;width:18px;height:18px;accent-color:var(--accent)}
 label.chk{display:inline-flex;align-items:center;gap:6px;min-height:36px;cursor:pointer;padding:2px 4px}
 svg.ic{width:17px;height:17px;flex:none}
+/* 本家のアイコンは細線（実測ストローク約1.5px）。現行SVGは各パスが stroke-width 1.8〜2.2 で描かれ、バー類のアイコンが一様に太く見えることが画面全体の印象の最大の残差異だった。表示属性はCSSに負けるため、クローム（トップバー/左レール/右レール/下部バー/フローティングバー/軸ギア）のアイコンに限り CSS で 1.5 に統一する。塗りのみのアイコン（リプレイ等）には影響しない */
+#topbar svg.ic *,#leftbar svg.ic *,#rightRail svg.ic *,#rangeBar svg.ic *,#floatBar svg.ic *, .axisGear svg.ic *{stroke-width:1.5}
 /* top bar */
 #topbar{display:flex;align-items:center;gap:1px;padding:2px 8px;height:38px;flex:none;background:var(--bg);border-bottom:1px solid var(--line);flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;z-index:30;font-size:14px}
 #topbar::-webkit-scrollbar{display:none}
 #topbar>*{flex:none}
-#topbar button{min-height:28px;padding:2px 7px;color:#b8b8b8}
+#topbar button{min-height:28px;padding:2px 7px;color:#c9ccd4}
 #topbar button:hover{color:#fff}
 @media (min-width:901px){ #panelBtn{display:none} }
 #topbar button.on{background:var(--panel2);color:#fff}
 #topbar button.icobtn.on{background:transparent;color:#fff}
 #topbar button.icobtn{width:30px;padding:2px 0;flex:none}
 #topbar label.icobtn{width:30px;padding:2px 0;justify-content:center;flex:none}
+#chartTypeBtn{background:#262626;border-radius:6px} /* 本家ではチャートタイプボタンに選択中タイプを示す薄い背景が常時付く（実画面で実測） */
 #topbar svg.ic{width:20px;height:20px}
 #topbar .tbSpacer{flex:1 1 0%;min-width:0} /* 本家はレイアウト名・保存系のクラスタがツールバー右端に寄る。左詰めで右半分が空く現行との最大の見た目差を解消（狭幅では0に縮む） */
 #expBtn{background:transparent;border-color:transparent}
 #expBtn:hover{background:var(--panel2)}
 .saveDot{width:7px;height:7px;border-radius:50%;background:var(--gold);display:inline-block;flex:none}
-#symBtn{font-weight:700;font-size:15px;color:#fff;background:#303030;border-radius:8px;padding:2px 12px;min-height:30px} /* 銘柄ピル: 本家実画面ではバーの高さの大半を占める大きめのピル（高さ約30px・文字約15px） */
+#symBtn{font-weight:700;font-size:15px;color:#fff;background:#303030;border-radius:16px;padding:2px 14px;min-height:30px} /* 銘柄ピル: 本家実画面ではバーの高さの大半を占める大きめのピル（高さ約30px・文字約15px） */
 #symBtn:hover{background:#3a3a3a}
 #symBtn small{color:var(--dim);font-weight:400;font-size:11px}
 .ivl{display:flex;gap:2px}
@@ -60,7 +63,7 @@ svg.ic{width:17px;height:17px;flex:none}
 #topbar label.btn:hover{background:var(--panel2)}
 #expBtn{border:1px solid transparent}
 #clock{margin-left:auto;color:var(--dim);font-variant-numeric:tabular-nums;white-space:nowrap}
-#bbClock{color:#b8b8b8;font-variant-numeric:tabular-nums;white-space:nowrap;font-size:13px;padding:0 2px;flex:none;cursor:pointer}
+#bbClock{color:#c9ccd4;font-variant-numeric:tabular-nums;white-space:nowrap;font-size:13px;padding:0 2px;flex:none;cursor:pointer}
 #bbClock:hover{color:#fff}
 /* デモ告知はレイアウト内の行にせずフローティングチップにする。本家実画面ではペイン上端は画面上端から76px（タブ34+ツールバー38+溝4）だが、従来はこのバナーの17px行がチャートを押し下げて上端93pxになり、プロット高も約17px不足していた（本家 約760px vs 現行 約744px）。チップ化で表示中も本家と同じレイアウト比率を保つ */
 #demoBanner{display:none;position:fixed;top:76px;left:50%;transform:translateX(-50%);z-index:15;background:rgba(22,22,22,.94);color:var(--dim);border:1px solid #3d3d3d;border-radius:6px;box-shadow:0 6px 18px rgba(0,0,0,.45);padding:4px 8px 4px 12px;font-size:11.5px;line-height:1.35;max-width:min(680px,94vw)}
@@ -68,6 +71,9 @@ svg.ic{width:17px;height:17px;flex:none}
 #demoBanner span{white-space:normal}
 #demoBanner b{color:var(--txt);font-weight:400}
 #demoClose{min-height:16px;height:16px;width:22px;padding:0;flex:none;color:var(--dim);font-size:13px;line-height:1}
+/* デモ告知の置き場所: 上部中央は凡例の横・ローソクの真上で本家に無い帯として最も目立ったため、本家でTVロゴが置かれるペイン左下（時間軸の上・左レールの内側）へ移す。1行に収め高さも約26pxに抑える */
+#demoBanner{top:auto;left:66px;bottom:76px;transform:none}
+#demoBanner span{white-space:nowrap}
 /* tabs */
 /* 銘柄タブ帯は本家どおり画面最上段に置く。帯の地色 #2e2e2e・選択中タブ #0f0f0f・帯の高さ34px は本家実画面（2026-11-20_2.40.27）のピクセル実測 */
 #tabs{display:flex;gap:2px;padding:0 6px;height:34px;flex:none;align-items:stretch;background:#2e2e2e;overflow-x:auto;scrollbar-width:none}
@@ -84,7 +90,7 @@ svg.ic{width:17px;height:17px;flex:none}
 /* main layout */
 #main{flex:1;display:flex;min-height:0}
 #leftbar{width:52px;background:var(--bg);border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;padding:2px 0;gap:0;overflow-y:auto;flex:none}
-#leftbar button{width:40px;height:40px;min-height:40px;padding:4px;color:#b8b8b8}
+#leftbar button{width:40px;height:40px;min-height:40px;padding:4px;color:#c9ccd4}
 #leftbar button:hover{color:#fff}
 #leftbar button svg.ic{width:28px;height:28px}
 #leftbar button.on{background:#262626;color:#fff}
@@ -108,10 +114,10 @@ svg.ic{width:17px;height:17px;flex:none}
 #rightbar h3{margin:0;padding:8px 10px 4px;font-size:12px;color:var(--dim);display:flex;justify-content:space-between;align-items:center}
 #rightbar h3 button{min-height:28px;padding:2px 7px;font-size:12px}
 #rightbar h3 .hbtns{display:flex;gap:4px;align-items:center}
-#rightRail{width:48px;background:var(--bg);border-left:1px solid var(--line);display:flex;flex-direction:column;align-items:center;padding:5px 0;gap:2px;flex:none}
-#rightRail button{width:40px;height:40px;padding:4px;color:#b8b8b8}
+#rightRail{width:48px;background:var(--bg);border-left:1px solid var(--line);display:flex;flex-direction:column;align-items:center;padding:8px 0;gap:12px;flex:none} /* 本家右レールはアイコンが約54pxピッチで並ぶ。従来は2個だけでレールの大半が空白の黒帯だったため、既存機能（テーマ/データ/売買記録/JSON入出力/ヘルプ/設定）を実ボタンとして並べる（全て既存ハンドラへ委譲する実機能のみ） */
+#rightRail button{width:40px;height:40px;padding:4px;color:#c9ccd4}
 #rightRail button svg.ic{width:26px;height:26px}
-#rightRail button.on{background:var(--panel2);color:#fff;box-shadow:inset 2px 0 0 var(--accent)}
+#rightRail button.on{background:var(--panel2);color:#fff;border-radius:8px}
 .wlSec{padding:2px 10px;color:var(--gold);font-size:11px;font-weight:700;display:flex;justify-content:space-between;align-items:center}
 .wlSec button{min-height:24px;padding:0 6px}
 #watchlist{overflow-y:auto;max-height:52%;flex:none}
@@ -138,6 +144,13 @@ svg.ic{width:17px;height:17px;flex:none}
 #colorPop.show{display:block}
 #svBox{height:110px;border-radius:6px;position:relative;cursor:crosshair;background:linear-gradient(to top,#000,transparent),linear-gradient(to right,#fff,transparent),#f00}
 #svDot{position:absolute;width:12px;height:12px;border:2px solid #fff;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 1px #000;pointer-events:none}
+/* ダイアログ内カラーピッカー: OS標準の色選択（input[type=color]）はブラウザ自動操作でRGB欄が not_visible になり色相/グラデーション操作も閉じるだけだったため、色欄はスウォッチ化しページ内ピッカーで選ぶ。ネイティブ入力は値保持専用に隠して残す */
+.cpSwatch{width:44px;height:30px;min-height:30px;padding:0;border:1px solid var(--line);border-radius:6px;flex:none;cursor:pointer}
+.cpNativeHidden{position:absolute!important;width:1px!important;height:1px!important;min-height:0!important;padding:0!important;border:none!important;opacity:0!important;pointer-events:none!important}
+#dlgPicker{position:fixed;z-index:600;width:330px;max-width:94vw;max-height:92vh;overflow-y:auto;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;box-shadow:0 10px 28px rgba(0,0,0,.55);display:none}
+#dlgPicker.show{display:block}
+.dlgSv{height:110px;border-radius:6px;position:relative;cursor:crosshair;background:#f00}
+.dlgSvDot{position:absolute;width:12px;height:12px;border:2px solid #fff;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 1px #000;pointer-events:none}
 #objTree{overflow-y:auto;flex:1;border-top:1px solid var(--line);outline:none}
 .objRow{display:flex;align-items:center;gap:4px;padding:3px 8px;min-height:34px;cursor:pointer}
 .objRow:hover{background:var(--panel2)}
@@ -169,7 +182,7 @@ svg.ic{width:17px;height:17px;flex:none}
 #rangeBar{display:flex;align-items:center;gap:2px;padding:1px 6px;height:38px;flex:none;background:var(--bg);border-top:1px solid var(--line);flex-wrap:wrap} /* 下部バーの高さは本家実画面の実測38pxに合わせる（従来34px） */
 #rangeBar label{flex-wrap:wrap}
 #gotoBtn,#gotoReplayBtn{white-space:nowrap;flex:none}
-#rangeBar button{min-height:26px;padding:1px 7px;font-size:13px;color:#b8b8b8}
+#rangeBar button{min-height:26px;padding:1px 7px;font-size:13px;color:#c9ccd4}
 #rangeBar button:hover{color:#fff}
 /* 下部バーは本家どおり枠線なしのフラットなテキストボタン。タイムゾーンもセレクトの箱ではなくテキスト表示に見せる */
 #rangeBar .btn{background:transparent;border-color:transparent}
@@ -241,7 +254,7 @@ svg.ic{width:17px;height:17px;flex:none}
 /* 左ツールバー: グループボタンの小シェブロンと青アクティブ状態（マグネット/Keep drawing） */
 #leftbar button{position:relative}
 #leftbar button.blue{color:#2962ff}
-#leftbar .gchev{position:absolute;right:1px;bottom:1px;width:0;height:0;border-left:4px solid transparent;border-top:4px solid #787b86;cursor:pointer;padding:3px}
+#leftbar .gchev{position:absolute;right:1px;bottom:1px;width:0;height:0;border-left:3px solid transparent;border-top:3px solid #787b86;cursor:pointer;padding:2px} /* 本家のグループシェブロンは約6pxの小三角形。従来は約10pxありアイコン右下の灰色の染みに見えた */
 /* ペイン内凡例（マルチチャート時に各ペインのOHLCを表示） */
 .paneLegend{position:absolute;top:4px;left:8px;z-index:6;display:flex;gap:6px;align-items:center;background:transparent;color:var(--chart-text,#000);font-size:16px;line-height:1.5;padding:0;max-width:calc(100% - 74px);white-space:nowrap;overflow:hidden;pointer-events:none} /* 凡例: 本家実画面（2026-11-20_2.40.27）を同スケールで並べると文字の縦幅は約12.5 CSS px。16px＋通常字で一致させる（15pxでは約11pxで一回り小さい） */
 .paneLegend b{white-space:nowrap;font-weight:400} /* 本家実画面の凡例は通常字（同スケール比較でストロークが細い）。従来の600では本家より明らかに太く見えたため通常字に */
@@ -328,7 +341,7 @@ textarea{width:100%;min-height:110px;font-family:ui-monospace,Menlo,monospace;fo
   #topbar{flex-wrap:nowrap;gap:2px;padding:2px 6px;height:38px;font-size:13px;overflow-x:auto;scrollbar-width:none}
   #topbar::-webkit-scrollbar{display:none}
   #topbar button{min-height:30px;flex:none}
-  #demoBanner{top:auto;bottom:76px} /* モバイルは上部中央だと2段折り返しの凡例に重なるため下部に置く。bottom:48px だとチップ下端が時間軸帯（ペイン下端から約28px）へ約21px重なり日付ラベルを隠したため、時間軸の上端より上に逃がす（実測: チップ高約36px → 76px で時間軸と非重複） */
+  #demoBanner{left:52px;bottom:76px} /* モバイルもデスクトップと同じペイン左下（左レール44pxの内側）。従来の中央配置は2行に折り返してローソク中央を覆った。bottom:76px で時間軸帯（ペイン下端から約28px）と非重複 */
   #demoBanner span{font-size:10.5px}
   #tabs{height:23px;align-items:stretch}
   .tab{min-height:20px;font-size:11.5px;border-radius:5px;padding:0 8px}
@@ -380,8 +393,10 @@ textarea{width:100%;min-height:110px;font-family:ui-monospace,Menlo,monospace;fo
   <button id="indBtn" title="インジケーター"><svg class="ic" viewBox="0 0 24 24"><path d="M5 3.5V19a1.5 1.5 0 0 0 1.5 1.5H20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M8 15.5 11.5 10l3 2.8L19 7.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="19" cy="7.5" r="1.4" fill="currentColor"/></svg></button>
   <button id="moreBtn" title="メニュー（テーマ・データ・レイアウト・グリッド・JSON）"><svg class="ic" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2"/></svg></button>
   <button id="replayBtn" title="バーリプレイ"><svg class="ic" viewBox="0 0 24 24"><path d="M3.5 5h2.2v14H3.5zM13 5.6L6.2 12 13 18.4zM20.5 5.6L13.7 12l6.8 6.4z" fill="currentColor"/></svg></button>
+  <div class="sep"></div>
   <button id="undoBtnTop" title="Undo（Ctrl+Z）"><svg class="ic" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 9h9.5a6.5 6.5 0 0 1 0 13H10" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
   <button id="redoBtnTop" title="Redo（Ctrl+Shift+Z）"><svg class="ic" viewBox="0 0 24 24"><path d="M15 14l5-5-5-5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M20 9h-9.5a6.5 6.5 0 0 0 0 13H14" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
+  <div class="sep"></div>
   <span class="tbSpacer"></span>
   <button id="layoutBtn"><svg class="ic" viewBox="0 0 24 24"><path d="M6.5 19a4.5 4.5 0 0 1-.4-8.98 6 6 0 0 1 11.6-1.2A4.25 4.25 0 0 1 17.5 19h-11z" fill="none" stroke="currentColor" stroke-width="1.8"/></svg> Unnamed <svg class="ic" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
   <button id="themeBtn" class="icobtn" title="テーマ・色設定"><svg class="ic" viewBox="0 0 24 24"><path d="M12 3.5a8.5 8.5 0 1 0 0 17c1.3 0 2-.85 2-1.8 0-.75-.5-1.25-.5-2 0-.85.65-1.45 1.6-1.45h1.7a3.8 3.8 0 0 0 3.7-3.75C20.5 6.9 16.7 3.5 12 3.5z" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="7.6" cy="10.6" r="1.25" fill="currentColor"/><circle cx="12" cy="7.6" r="1.25" fill="currentColor"/><circle cx="16.4" cy="10.6" r="1.25" fill="currentColor"/></svg></button>
@@ -476,7 +491,13 @@ textarea{width:100%;min-height:110px;font-family:ui-monospace,Menlo,monospace;fo
   </div>
   <div id="rightRail">
     <button id="railObjBtn" title="オブジェクトツリー"><svg class="ic" viewBox="0 0 24 24"><path d="M12 3.2 21 8l-9 4.8L3 8l9-4.8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M3.6 12.6 12 17l8.4-4.4M3.6 16.6 12 21l8.4-4.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></button>
+    <button id="railThemeBtn" title="テーマ・色設定"><svg class="ic" viewBox="0 0 24 24"><path d="M12 3.5a8.5 8.5 0 1 0 0 17c1.3 0 2-.85 2-1.8 0-.75-.5-1.25-.5-2 0-.85.65-1.45 1.6-1.45h1.7a3.8 3.8 0 0 0 3.7-3.75C20.5 6.9 16.7 3.5 12 3.5z" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="7.6" cy="10.6" r="1.25" fill="currentColor"/><circle cx="12" cy="7.6" r="1.25" fill="currentColor"/><circle cx="16.4" cy="10.6" r="1.25" fill="currentColor"/></svg></button>
+    <button id="railDataBtn" title="データソース設定"><svg class="ic" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="7.5" ry="2.8" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M4.5 5.5v13c0 1.6 3.4 2.8 7.5 2.8s7.5-1.2 7.5-2.8v-13M4.5 12c0 1.6 3.4 2.8 7.5 2.8s7.5-1.2 7.5-2.8" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></button>
+    <button id="railTradesBtn" title="売買記録"><svg class="ic" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="4.8" cy="6" r="1.5" fill="currentColor"/><circle cx="4.8" cy="12" r="1.5" fill="currentColor"/><circle cx="4.8" cy="18" r="1.5" fill="currentColor"/></svg></button>
+    <button id="railExpBtn" title="保存内容をJSONでエクスポート"><svg class="ic" viewBox="0 0 24 24"><path d="M12 4v10m0 0l-4-4m4 4l4-4M5 19h14" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></button>
+    <button id="railImpBtn" title="JSONファイルをインポート"><svg class="ic" viewBox="0 0 24 24"><path d="M12 14V4m0 0L8 8m4-4l4 4M5 19h14" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></button>
     <span style="flex:1"></span>
+    <button id="railHelpBtn" title="ショートカット一覧（ヘルプ）"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9.5 9.5A2.5 2.5 0 1 1 12 12.5V14" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="17" r="1.2" fill="currentColor"/></svg></button>
     <button id="railSettingsBtn" title="設定"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 3v2.6M12 18.4V21M3 12h2.6M18.4 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M18.4 5.6l-1.8 1.8M7.4 16.6l-1.8 1.8" stroke="currentColor" stroke-width="1.8"/></svg></button>
   </div>
 </div>
@@ -1708,11 +1729,12 @@ function openModal(title,bodyHTML,footHTML){
  const root=$("#modalRoot");
  root.innerHTML=`<div class="modal show"><div class="dlg"><header><b>${title}</b><span><button data-tmpl-open style="display:none"></button><button class="x btn">${uiIc("x")}</button></span></header><div class="body">${bodyHTML}</div>${footHTML?`<footer>${footHTML}</footer>`:""}</div></div>`;
  const m=root.firstElementChild;
+ enhanceColorInputs(m); // ダイアログ内の色欄をOS標準ピッカーからページ内ピッカー（スウォッチ）へ置き換える
  m.querySelector(".x").onclick=closeModal;
  m.addEventListener("pointerdown",e=>{if(e.target===m)closeModal();});
  return m;
 }
-function closeModal(){$("#modalRoot").innerHTML="";}
+function closeModal(){$("#modalRoot").innerHTML=""; closeDlgPicker();}
 let toastSeq=0, toastExpanded=false; const toastItems=[];
 function toast(msg){ const id=++toastSeq; toastItems.push({id,msg:String(msg)}); if(toastItems.length>8)toastItems.splice(0,toastItems.length-8); renderToasts();
  setTimeout(()=>{ const i=toastItems.findIndex(t=>t.id===id); if(i>=0){ toastItems.splice(i,1); if(!toastItems.length)toastExpanded=false; renderToasts(); } },6000); }
@@ -1730,6 +1752,50 @@ function openPrompt(title,def,cb){ const m=openModal(title,`<div class="frow"><l
  const inp=$("#prIn"); inp.focus(); inp.select(); $("#prNo").onclick=closeModal; $("#prOk").onclick=()=>{const v=inp.value.trim(); closeModal(); if(v)cb(v);}; }
 /* ============ カラーポップ（パレット80色＋カスタム） ============ */
 function paletteHTML(cur){return `<div class="palette">${PALETTE.map(c=>`<button data-c="${c}" class="${c.toLowerCase()===String(cur).toLowerCase()?"sel":""}" style="background:${c}" title="${c}"></button>`).join("")}</div>`;}
+/* ============ ダイアログ内カラーピッカー（OS標準ピッカーの置き換え） ============
+   【実欠陥の修正】設定ダイアログの色欄は <input type="color">（OS標準ピッカー）で、ブラウザ実操作では
+   RGB入力欄が not_visible と拒否され、色相スライダーやグラデーションへのクリックもピッカーが閉じるだけで
+   色が反映されなかった（標準ピッカーはページ外のUIで、埋め込みWebView等でも操作できない）。
+   本家と同じページ内ピッカー（80色パレット＋SVグラデーション＋色相スライダー＋16進テキスト入力）に
+   置き換える。ネイティブ入力は値の保持専用に隠して残すため、既存の .value 読み書き
+   （dsColor / data-fc / data-fuse / dsFibOne 等の全経路）はそのまま動く。ピッカー内部の
+   pointerdown/click は伝播を止め、外側クリック（モーダル背面・ドキュメント側）扱いにしない。
+   OKで確定するまで対象レベルには触れない（キャンセルで元どおり）。「この色を全レベルに」経路は
+   入力欄の現在値を読む従来どおりで、確定後はスウォッチ表示も refreshCpSwatches で同期する */
+let _dpOutsideReg=false;
+function closeDlgPicker(){ const p=$("#dlgPicker"); if(p)p.classList.remove("show"); }
+function refreshCpSwatches(root){ if(!root||!root.querySelectorAll)return; root.querySelectorAll("input.cpNativeHidden").forEach(inp=>{ const sw=inp.previousElementSibling; if(sw&&sw.classList.contains("cpSwatch"))sw.style.background=inp.value; }); }
+function enhanceColorInputs(root){ if(!root||!root.querySelectorAll)return;
+ root.querySelectorAll('input[type="color"]').forEach(inp=>{ if(inp.dataset.cpEnhanced)return; inp.dataset.cpEnhanced="1";
+  const sw=document.createElement("button"); sw.type="button"; sw.className="cpSwatch"; sw.title="色を選択（パレット／グラデーション／色相／16進数）"; sw.style.background=inp.value||"#2962ff";
+  inp.classList.add("cpNativeHidden"); inp.parentNode.insertBefore(sw,inp);
+  inp.addEventListener("input",()=>{ sw.style.background=inp.value; });
+  sw.onclick=e=>{ e.preventDefault(); e.stopPropagation(); openDlgPicker(inp,sw); }; }); }
+function openDlgPicker(input,anchor){
+ let p=$("#dlgPicker"); if(!p){ p=document.createElement("div"); p.id="dlgPicker"; document.body.appendChild(p); }
+ if(!_dpOutsideReg){ _dpOutsideReg=true; document.addEventListener("pointerdown",e=>{ const pp=$("#dlgPicker"); if(pp&&pp.classList.contains("show")&&!pp.contains(e.target)&&!(e.target.closest&&e.target.closest(".cpSwatch")))closeDlgPicker(); },true); }
+ let cur=/^#[0-9a-fA-F]{6}$/.test(input.value||"")?input.value:"#2962ff"; let hsv=hexToHsv(cur);
+ p.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><b style="color:#fff">色の設定</b><button id="dpX" class="btn">${uiIc("x")}</button></div>
+  ${paletteHTML(cur)}
+  <div class="dlgSv" id="dpSv"><div class="dlgSvDot" id="dpDot"></div></div>
+  <div class="frow"><label style="width:70px">色相</label><input type="range" id="dpHue" min="0" max="360" value="${hsv.h}" style="flex:1;background:linear-gradient(to right,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)"></div>
+  <div class="frow"><label style="width:70px">カスタム色</label><input type="text" id="dpHex" value="${cur}" style="flex:1"></div>
+  <div style="display:flex;justify-content:flex-end;gap:8px"><button class="btn" id="dpCancel">キャンセル</button><button class="btn primary" id="dpOk">OK</button></div>`;
+ p.classList.add("show");
+ const r=anchor.getBoundingClientRect(); const pw=Math.min(330,innerWidth*0.94), ph=p.offsetHeight||470;
+ p.style.left=Math.max(4,Math.min(r.left,innerWidth-pw-4))+"px";
+ p.style.top=(r.bottom+6+ph<=innerHeight?r.bottom+6:Math.max(4,r.top-ph-6))+"px";
+ p.onpointerdown=e=>e.stopPropagation(); p.onclick=e=>e.stopPropagation(); // 内部操作を外側クリック扱いにしない
+ const dot=p.querySelector("#dpDot"), box=p.querySelector("#dpSv");
+ const place=()=>{ dot.style.left=(hsv.s*100)+"%"; dot.style.top=((1-hsv.v)*100)+"%"; box.style.background=`linear-gradient(to top,#000,transparent),linear-gradient(to right,#fff,transparent),hsl(${hsv.h},100%,50%)`; };
+ const sync=()=>{ cur=hsvToHex(hsv); p.querySelector("#dpHex").value=cur; place(); }; place();
+ box.onpointerdown=e=>{ e.stopPropagation(); const move=ev=>{ const b=box.getBoundingClientRect(); hsv.s=Math.min(1,Math.max(0,(ev.clientX-b.left)/b.width)); hsv.v=1-Math.min(1,Math.max(0,(ev.clientY-b.top)/b.height)); sync(); };
+  move(e); const up2=()=>{ removeEventListener("pointermove",move); removeEventListener("pointerup",up2); }; addEventListener("pointermove",move); addEventListener("pointerup",up2); };
+ p.querySelector("#dpHue").oninput=e=>{ hsv.h=+e.target.value; sync(); };
+ p.querySelectorAll("[data-c]").forEach(b=>b.onclick=()=>{ cur=b.dataset.c; hsv=hexToHsv(cur); p.querySelector("#dpHex").value=cur; place(); p.querySelectorAll("[data-c]").forEach(x=>x.classList.toggle("sel",x===b)); });
+ p.querySelector("#dpHex").onchange=e=>{ const v=e.target.value.trim(); if(/^#?[0-9a-fA-F]{6}$/.test(v)){ cur="#"+v.replace("#","").toLowerCase(); hsv=hexToHsv(cur); p.querySelector("#dpHex").value=cur; place(); } };
+ const done=ok=>{ if(ok){ input.value=cur; input.dispatchEvent(new Event("input",{bubbles:true})); input.dispatchEvent(new Event("change",{bubbles:true})); } closeDlgPicker(); };
+ p.querySelector("#dpX").onclick=()=>done(false); p.querySelector("#dpCancel").onclick=()=>done(false); p.querySelector("#dpOk").onclick=()=>done(true); }
 function openColorPop(ctx,d,target,anchorBtn){
  const keyMap={color:"color",bg:"bg",target:"targetColor",stop:"stopColor",textcolor:"textColor"};
  const key=keyMap[target]; const opKey=target==="color"?"opacity":target==="bg"?"bgOpacity":target==="target"?"targetOpacity":target==="stop"?"stopOpacity":"opacity";
@@ -1748,6 +1814,7 @@ function openColorPop(ctx,d,target,anchorBtn){
   <div class="frow"><label style="width:70px">線種</label><span class="seg" id="cpLS">${["Line","Dashed","Dotted"].map(x=>`<button data-s="${x}" class="${effLS===x?"on":""}">${x}</button>`).join("")}</span></div>`:""}
   <div style="display:flex;justify-content:flex-end;gap:8px"><button class="btn" id="cpCancel">キャンセル</button><button class="btn primary" id="cpOk">OK</button></div>`;
  pop.classList.add("show");
+ pop.onpointerdown=e=>e.stopPropagation(); pop.onclick=e=>e.stopPropagation(); // フローティング側ピッカーも内部クリック/ドラッグを外側クリック扱いにしない（背後のチャート側ポインタ処理へ伝播させない）
  const dot=pop.querySelector("#svDot"), box=pop.querySelector("#svBox");
  const placeDot=()=>{dot.style.left=(hsv.s*100)+"%"; dot.style.top=((1-hsv.v)*100)+"%";}; placeDot();
  const syncFromHsv=()=>{cur=hsvToHex(hsv); box.style.background=`linear-gradient(to top,#000,transparent),linear-gradient(to right,#fff,transparent),hsl(${hsv.h},100%,50%)`; $("#cpHex").value=cur; $("#cpNative").value=cur; placeDot();};
@@ -1887,8 +1954,8 @@ function openDrawSettings(ctx,d){
   d.locked=$("#dsLocked").checked; d.syncScope=$("#dsSync").value;
   lastStyles[d.type]=JSON.parse(JSON.stringify(st));
   afterDrawChange(ctx); showFloatBar(ctx,d); closeModal(); };
- if(isFib)m.querySelectorAll("[data-fuse]").forEach(b=>b.onclick=()=>{const inp=m.querySelector(`[data-fc="${b.dataset.fuse}"]`); const c=inp?inp.value:st.fibLevels[+b.dataset.fuse].color; st.fibLevels.forEach(fl=>fl.color=c); m.querySelectorAll("[data-fc]").forEach(x=>x.value=c); toast("Use one color: 全レベルを "+c+" にしました");}); // 行の色入力はOKまで st に未反映のため、入力欄の現在値を読む（従来は変更前の古い色が全レベルへ伝播した）
- const _oneB=$("#dsFibOneBtn"); if(_oneB)_oneB.onclick=()=>{const c=$("#dsFibOne").value; st.fibLevels.forEach(fl=>fl.color=c); m.querySelectorAll("[data-fc]").forEach(x=>x.value=c); toast("Use one color: 全レベルを "+c+" にしました");};
+ if(isFib)m.querySelectorAll("[data-fuse]").forEach(b=>b.onclick=()=>{const inp=m.querySelector(`[data-fc="${b.dataset.fuse}"]`); const c=inp?inp.value:st.fibLevels[+b.dataset.fuse].color; st.fibLevels.forEach(fl=>fl.color=c); m.querySelectorAll("[data-fc]").forEach(x=>x.value=c); refreshCpSwatches(m); toast("Use one color: 全レベルを "+c+" にしました");}); // 行の色入力はOKまで st に未反映のため、入力欄の現在値を読む（従来は変更前の古い色が全レベルへ伝播した）
+ const _oneB=$("#dsFibOneBtn"); if(_oneB)_oneB.onclick=()=>{const c=$("#dsFibOne").value; st.fibLevels.forEach(fl=>fl.color=c); m.querySelectorAll("[data-fc]").forEach(x=>x.value=c); refreshCpSwatches(m); toast("Use one color: 全レベルを "+c+" にしました");};
 }
 </script>
 <script>
@@ -2650,6 +2717,9 @@ function wire(){
  $("#panelBtn").onclick=()=>setObjPanel(!objPanelOpen);
  const _railBtn=$("#railObjBtn"); if(_railBtn)_railBtn.onclick=()=>setObjPanel(!objPanelOpen);
  const _railSet=$("#railSettingsBtn"); if(_railSet)_railSet.onclick=()=>{ const sb=$("#settingsBtn"); if(sb)sb.click(); };
+ /* 右レールの追加ボタンは全て既存ボタンのクリックへ委譲する（本家右レールの密度に合わせるための実機能のみ。新規の保存・状態は作らない） */
+ const _railGo=(id,tid)=>{ const b=$(id); if(b)b.onclick=()=>{ const t=$(tid); if(t)t.click(); }; };
+ _railGo("#railThemeBtn","#themeBtn"); _railGo("#railDataBtn","#dataBtn"); _railGo("#railTradesBtn","#tradesBtn"); _railGo("#railExpBtn","#expBtn"); _railGo("#railImpBtn","#topImport"); _railGo("#railHelpBtn","#helpBtn");
  const _objClose=$("#objClose"); if(_objClose)_objClose.onclick=()=>setObjPanel(false);
  const _objHide=$("#objHideAll"); if(_objHide){ _objHide.innerHTML=uiIc("eye"); _objHide.onclick=()=>toggleHideAll(); }
  /* チャート領域ではブラウザ標準の右クリックメニューを出さない（場所ごとのメニューは各ハンドラが出す） */
