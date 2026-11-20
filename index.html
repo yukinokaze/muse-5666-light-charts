@@ -1696,9 +1696,17 @@ function removeAllDrawings(ctx){ if(curDrawings().some(d=>d.locked)&&!App.delete
 function removeAllIndicators(){ App.indicators=[]; markDirty(); P.forEach(c=>c&&renderIndicators(c)); renderObjTree(); }
 function gotoTime(ctx,ts){ if(ctx.full.length&&ts<ctx.full[0].time)return toast("the start of the data ("+fmtDT(ctx.full[0].time)+") — cannot go earlier than this");
  const idx=ctx.full.findIndex(c=>c.time>=ts); if(idx<0)return toast("No data at that date and time");
- const bar=ctx.full[idx]; const sec=IVL_SEC[ctx.interval]||900;
- const half=Math.max(2*86400,48*sec); /* 本家実測: ジャンプ後は対象を中心に約4日分を表示（15分足でConfirm）。日足など大きい時間足では最低96本分を確保する */
- ctx.chart.timeScale().setVisibleRange({from:bar.time-half,to:bar.time+half});
+ const bar=ctx.full[idx];
+ /* 本家準拠: Go to は現在のズーム（バーの間隔＝可視論理範囲の幅）を維持したまま、表示範囲だけを
+    目標バーが中心に来るようシフトする。以前は「対象を中心に約4日分」へ固定で範囲を書き換えていたため、
+    ユーザーのズーム状態（1日分でも2週間分でも）に関係なくスケールが勝手に変わっていた（ユーザー報告 2026-11-20）。
+    論理範囲の幅をそのまま保てばバーの間隔は変わらない。Price軸には触れず、Auto のまま移動後の可視足へ自動フィットさせる */
+ let shifted=false;
+ try{ const vr=ctx.chart.timeScale().getVisibleLogicalRange();
+  if(vr&&isFinite(vr.from)&&isFinite(vr.to)&&vr.to>vr.from){ const w=vr.to-vr.from;
+   ctx.chart.timeScale().setVisibleLogicalRange({from:idx-w/2,to:idx+w/2}); shifted=true; } }catch(e){}
+ if(!shifted){ const sec=IVL_SEC[ctx.interval]||900; const half=Math.max(2*86400,48*sec);
+  try{ ctx.chart.timeScale().setVisibleRange({from:bar.time-half,to:bar.time+half}); }catch(e){} } /* 論理範囲が取得できない場合のみ従来の約4日分をフォールバックに使う */
  try{ ctx.chart.setCrosshairPosition(bar.close,bar.time,ctx.cs); }catch(e){} /* 本家と同じ: 対象Barsに破線の縦線＋時刻ツールチップ（時間軸ラベル）を表示する */
  toast("Moved to "+fmtDT(bar.time)); }
 /* Go to ダイアログ（本家準拠: 英語 "Go to"、Date / Custom range タブ、上部に日付Textボックス＋
