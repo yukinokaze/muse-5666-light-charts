@@ -2946,17 +2946,18 @@ function openTheme(){
  $("#thOk").onclick=()=>{ m.querySelectorAll("[data-th]").forEach(i=>{if(/^#[0-9a-fA-F]{6}$/.test(i.value))App.theme[i.dataset.th]=i.value;});
   App.themeName=$("#thPreset").value; const tg=$("#thGridOn"); if(tg){App.grid=tg.checked; const gb=$("#gridBtn"); if(gb)gb.classList.toggle("on",App.grid);} applyTheme(); P.forEach(c=>c&&setPaneData(c)); markDirty(); closeModal(); toast("Theme applied"); }; }
 function openDataCfg(){
+ const dsCtx=P[activePane]||P[0]; const dsSym=dsCtx?dsCtx.symbol:App.symbol; // 乗数はアクティブペインの銘柄に効かせる（App.symbol はペイン0専用で、2ペイン目では別銘柄になってしまう）
  const _hp=hubParts(App.symbol,App.interval); const wsDisp=App.dataBase.replace(/^http/,"ws")+"/ws?exchange="+_hp.exchange+"&symbol="+_hp.symbol+"&timeframe="+_hp.timeframe; // 表示用: 現在の銘柄・時間足の実際の購読URL
  const m=openModal("Data source settings",`
   <div class="frow"><label>OHLC Hub base URL</label><input type="text" id="dcBase" value="${esc(App.dataBase)}"></div>
   <p class="hint">MCP: <span class="kbd">${esc(App.dataBase)}/api/mcp</span> / WebSocket: <span class="kbd">${esc(wsDisp)}</span>(the subscription is specified by the query)<br>If the domain changes, update it here (it is not hardcoded). If the Hub cannot be reached, the chart switches to demo data automatically and a "Showing demo data" chip appears at the bottom left of the chart. Current status: <b style="color:#fff">${hubLive?"Hub connected (live data)":"Demo data"}</b></p>
   <div class="frow"><label>Save destination (future server)</label><input type="text" id="dcSaveBase" value="${esc(StorageAdapter.serverBase)}" placeholder="e.g. https://save.example.com (if empty: memory + JSON)"></div>
   <p class="hint">Saving uses an adapter. The current destination is the browser localStorage. Server saving (fetch POST) is not implemented yet, so entering a URL here does not send anything (reserved for a future swap).</p>
-  <div class="frow"><label>Contract multiplier for the current symbol</label><input type="number" id="dcMult" step="any" value="${effMult(App.symbol)!=null?effMult(App.symbol):""}" placeholder="Not set"><span class="hint">GC1! = 100 is decided. Other symbols are undecided, so specify the multiplier here</span></div>`,
+  <div class="frow"><label>Contract multiplier — ${esc(dsSym)}</label><input type="number" id="dcMult" step="any" value="${effMult(dsSym)!=null?effMult(dsSym):""}" placeholder="Not set"><span class="hint">For the active pane's symbol. GC1! = 100 is decided. Other symbols are undecided, so specify the multiplier here (or in Backtest settings, which lists every traded symbol)</span></div>`,
   `<button class="btn" id="dcCancel">Cancel</button><button class="btn primary" id="dcOk">Save and reconnect</button>`);
  $("#dcCancel").onclick=closeModal;
  $("#dcOk").onclick=()=>{ const nb=$("#dcBase").value.trim().replace(/\/$/,""); if(!/^https?:\/\/[^\s"'<>]+$/.test(nb))return toast("Enter a URL that starts with http(s)://"); App.dataBase=nb; StorageAdapter.serverBase=$("#dcSaveBase").value.trim(); StorageAdapter.mode="local";
-  const dm=$("#dcMult"); if(dm&&dm.value!==""&&isFinite(+dm.value)&&+dm.value>0)App.multipliers[App.symbol]=+dm.value;
+  const dm=$("#dcMult"); if(dm&&dm.value!==""&&isFinite(+dm.value)&&+dm.value>0)App.multipliers[dsSym]=+dm.value;
   markDirty(); setDataMode(false); loadPane(P[activePane],P[activePane].symbol,P[activePane].interval,true); closeModal(); toast("Data source updated");}; }
 function openSync(){
  const rows=[["symbol","Symbol"],["interval","Interval"],["crosshair","Crosshair"],["time","Time"],["range","Date range"]];
@@ -3055,18 +3056,27 @@ function cancelBarPick(){ if(!barPick)return; const b=barPick; barPick=null;
  b.line.remove(); b.box.style.cursor=""; if(!replay.active)$("#replayBtn").classList.remove("on"); }
 /* Backtest settings（初期資金・手数料・契約倍率）: リプレイとは別の機能としてTrade historyパネルから開く */
 function refreshBtCapInfo(){ const ci=$("#rpCapInfo"); if(ci)ci.textContent=(replay.capital>0)?`Capital ${replay.capital} ${replay.currency} / Commission ${replay.commission!=null?replay.commission:"— (blank in CSV)"}`:"Initial capital (default 1,000,000 USD)"; }
+/* 乗数が必要な銘柄一覧: アクティブペイン・全ペイン・保有中/決済済みトレードの銘柄（銘柄ごとに乗数が要るため、片方のペイン分だけではCSVが止まる） */
+function btMultSymbols(){ const set=[]; const add=s=>{ if(s&&!set.includes(s))set.push(s); };
+ const ctx=P[activePane]||P[0]; if(ctx)add(ctx.symbol);
+ for(const c of P){ if(c)add(c.symbol); }
+ if(replay.open)add(replay.open.symbol);
+ for(const t of replay.closed)add(t.symbol);
+ return set; }
 function openBacktestSettings(){
- const ctx=P[activePane]||P[0]; const mult=effMult(ctx.symbol);
+ const syms=btMultSymbols();
+ const multRows=syms.map(s=>{ const mv=effMult(s); return `<div class="frow"><label>Multiplier — ${esc(s)}</label><input type="number" data-multsym="${esc(s)}" value="${mv!=null?mv:""}" placeholder="${DECIDED_MULT[s]!=null?"Decided: "+DECIDED_MULT[s]:"Not set (needed for the CSV amounts)"}" step="any"></div>`; }).join("");
  const m=openModal("Backtest settings",`
   <div class="frow"><label>Initial capital (required)</label><input type="number" id="rpCap" value="${replay.capital!=null?replay.capital:""}" placeholder="Empty (required)" min="1" step="any"><label style="width:auto">Base currency</label><select id="rpCur"><option ${replay.currency==="USD"?"selected":""}>USD</option><option ${replay.currency==="JPY"?"selected":""}>JPY</option><option ${replay.currency==="EUR"?"selected":""}>EUR</option></select></div>
-  <div class="frow"><label>Commission (one-way, required)</label><input type="number" id="rpComm" value="${replay.commission!=null?replay.commission:""}" placeholder="Empty (required; 0 allowed)" min="0" step="any"><label style="width:auto">Contract multiplier</label><input type="number" id="rpMult" value="${mult!=null?mult:""}" placeholder="${mult!=null?"":"Not set (specify it in the symbol settings)"}" step="any"></div>
-  <p class="hint">The contract multiplier has been decided only for GC1! = 100. Other symbols are undecided, so the values specified here are used (without them, the amounts in the CSV cannot be calculated). The default quantity is 1000 for Forex symbols and 1 for all others. TP/SL are bracket orders that can be adjusted by dragging the Long/Short Position drawing. If TP and SL are both reached in the same bar, SL takes priority (conservative rule).</p>`,
+  <div class="frow"><label>Commission (one-way, optional)</label><input type="number" id="rpComm" value="${replay.commission!=null?replay.commission:""}" placeholder="Blank = none (the CSV Commission column stays blank)" min="0" step="any"></div>
+  ${multRows}
+  <p class="hint">The contract multiplier has been decided only for GC1! = 100. For every other symbol you traded, enter its multiplier above — one row per symbol. Without it, the money amounts in the CSV cannot be calculated (the download will ask for it instead of failing). Commission may be left blank: it is then treated as none and the CSV Commission column stays blank. The default quantity is 1000 for Forex symbols and 1 for all others. TP/SL are bracket orders that can be adjusted by dragging the Long/Short Position drawing. If TP and SL are both reached in the same bar, SL takes priority (conservative rule).</p>`,
   `<button class="btn" id="btCfgCancel">Cancel</button><button class="btn primary" id="btCfgSave">Save</button>`);
  $("#btCfgCancel").onclick=closeModal;
  $("#btCfgSave").onclick=()=>{ const cap=+$("#rpCap").value; if(!(cap>0))return toast("Enter the initial capital (required; the base for Cumulative PnL %)");
-  const commRaw=$("#rpComm").value; if(commRaw===""||!(+commRaw>=0))return toast("Enter the commission (required; 0 allowed. No default has been decided, so it cannot be saved empty)");
-  replay.capital=cap; replay.currency=$("#rpCur").value; replay.commission=+commRaw;
-  const mv=$("#rpMult").value; if(mv!==""&&isFinite(+mv)&&+mv>0){App.multipliers[ctx.symbol]=+mv;}
+  const commRaw=$("#rpComm").value; if(commRaw!==""&&!(+commRaw>=0))return toast("Commission must be 0 or more (leave it blank for none)");
+  replay.capital=cap; replay.currency=$("#rpCur").value; replay.commission=(commRaw==="")?null:+commRaw;
+  m.querySelectorAll("[data-multsym]").forEach(inp=>{ const v=inp.value; if(v!==""&&isFinite(+v)&&+v>0)App.multipliers[inp.dataset.multsym]=+v; });
   markDirty(); refreshBtCapInfo(); closeModal(); toast("Backtest settings saved"); };
 }
 function wallToUtc(v){ const nv=String(v).trim().replace("T"," "); const [dp,tp]=nv.split(" "); if(!dp||!tp)return NaN;
@@ -3469,9 +3479,20 @@ function fmtCsvPct(v){ return isFinite(v)?(Math.round(v*100)/100).toFixed(2):"";
 function fmtCsvDate(ts){ const p=fmtParts(ts,App.timezone); const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
  return `"${MON[+p.month-1]} ${+p.day}, ${p.year}, ${p.hour}:${p.minute}"`; }
 /* Trade history CSV（本家 Replay Trading のエクスポートと完全一致: ASCII・BOMなし・LF・末尾改行なし・14列・Exit行→Entry行） */
+/* 乗数未設定の銘柄があるままCSVを止めない: その場で入力させ、保存してからダウンロードを続行する（行き止まりのトーストだけでは「ダウンロードされない」に見えた） */
+function openMissingMult(syms,done){
+ const m=openModal("Contract multiplier needed",`
+  <p class="hint" style="line-height:1.7">The CSV amounts (Size (value), Net PnL) need a contract multiplier for each traded symbol. Only GC1! is decided (= 100). Enter the multiplier for each symbol below, then the download continues.</p>
+  ${syms.map(s=>`<div class="frow"><label>${esc(s)}</label><input type="number" data-mmult="${esc(s)}" step="any" placeholder="Not set"></div>`).join("")}`,
+  `<button class="btn" id="mmCancel">Cancel</button><button class="btn primary" id="mmGo">Save &amp; download</button>`);
+ $("#mmCancel").onclick=closeModal;
+ $("#mmGo").onclick=()=>{ const ins=[...m.querySelectorAll("[data-mmult]")]; for(const inp of ins){ if(!(isFinite(+inp.value)&&+inp.value>0))return toast("Enter a multiplier (greater than 0) for "+inp.dataset.mmult); }
+  ins.forEach(inp=>{ App.multipliers[inp.dataset.mmult]=+inp.value; }); markDirty(); closeModal(); if(done)done(); };
+}
 function exportCSV(){ if(!replay.active)return toast("CSV download is only available during replay"); if(!replay.closed.length)return toast("No closed trades");
  const cap=replay.capital>0?replay.capital:1000000;
- for(const t of replay.closed){ const tsym=t.symbol||P[0].symbol; if((t.mult!=null?t.mult:effMult(tsym))==null)return toast("The contract multiplier is not set. Specify it in the data settings (only GC1! is decided as 100)"); } // 銘柄はトレードごとに保持（右ペインのトレードもその銘柄で出す）
+ const missing=[]; for(const t of replay.closed){ const tsym=t.symbol||P[0].symbol; if((t.mult!=null?t.mult:effMult(tsym))==null&&!missing.includes(tsym))missing.push(tsym); } // 銘柄はトレードごとに保持（右ペインのトレードもその銘柄で出す）
+ if(missing.length){ openMissingMult(missing,()=>exportCSV()); return; }
  const head="Symbol,Trade number,Type,Date and time,Order ID,Signal,Price,Size (qty),Size (value),Net PnL USD,Return %,Commission USD,Cumulative PnL USD,Cumulative PnL %";
  const lines=[head]; let cum=0;
  for(const t of replay.closed){ const tsym=t.symbol||P[0].symbol; const symDisp=exchDisp(tsym)+":"+(tsym.split(":")[1]||""); const m=t.mult!=null?t.mult:effMult(tsym); const val=t.entryPrice*m*t.qty;
