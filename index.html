@@ -707,17 +707,33 @@ function genData(symbol,interval){
 }
 /* ============ OHLC Hub 接続試行（失敗時はデモ） ============ */
 let hubLive=false;
+/* Hub の実プロトコル（2026-11-20 に実測で確認）:
+   - MCP get_candles の必須引数は {exchange, symbol, timeframe}。symbol は取引所プレフィックスなし（例: exchange="CME", symbol="GC1!"）。
+     {symbol:"CME:GC1!", interval} のような旧形式は HTTP 200 のまま isError「exchange / symbol が正しくありません。」が返り、足は取れない。
+   - WebSocket の購読は接続URLのクエリで決まる: wss://<base>/ws?exchange=&symbol=&timeframe= 。クエリなしは HTTP 400 で即切断（受信0バイト）。
+     接続するとサーバーが {type:"subscribed", heartbeat_seconds:15, reconnect_after_seconds:1500} を返し、続いて {type:"candle", candle:{...}} を送る。subscribe メッセージの送信は不要。
+   - 足の時刻フィールドは time ではなく timestamp（epoch秒）。 */
+function hubParts(symbol,interval){ const s=String(symbol||""); const i=s.indexOf(":"); return {exchange:i>=0?s.slice(0,i):"", symbol:i>=0?s.slice(i+1):s, timeframe:interval}; }
+function hubWsUrl(symbol,interval){ const base=(App.dataBase||"").replace(/\/$/,""); const p=hubParts(symbol,interval);
+ return base.replace(/^http/,"ws")+"/ws?exchange="+encodeURIComponent(p.exchange)+"&symbol="+encodeURIComponent(p.symbol)+"&timeframe="+encodeURIComponent(p.timeframe); }
+function hubCandle(c){ if(!c||typeof c!=="object")return null; const t=c.time??c.t??c.timestamp; if(t==null||c.close==null)return null;
+ return {time:t,open:c.open??c.o,high:c.high??c.h,low:c.low??c.l,close:c.close??c.c,volume:c.volume??c.v??0}; }
 function tryHub(symbol,interval,cb){
- let done=false; const base=(App.dataBase||"").replace(/\/$/,"");
- const wsUrl=base.replace(/^http/,"ws")+"/ws"; let ws;
+ let done=false; let ws; const collected=new Map(); let httpTried=false;
  const finish=(ok,data)=>{if(done)return;done=true;try{ws&&ws.close();}catch(e){} cb(ok,data);};
- try{ ws=new WebSocket(wsUrl);}catch(e){ return finish(false); }
- const to=setTimeout(()=>finish(false),4000);
- ws.onopen=()=>{try{ws.send(JSON.stringify({type:"subscribe",symbol,interval}));ws.send(JSON.stringify({method:"getOHLC",params:{symbol,interval,limit:500}}));}catch(e){}};
- ws.onmessage=ev=>{ try{const m=JSON.parse(ev.data); const arr=Array.isArray(m)?m:(m.candles||m.data||m.result);
-   if(Array.isArray(arr)&&arr.length>10){const norm=arr.map(c=>({time:c.time??c.t,open:c.open??c.o,high:c.high??c.h,low:c.low??c.l,close:c.close??c.c,volume:c.volume??c.v??0})).filter(c=>c.time&&c.close!=null).sort((a,b)=>a.time-b.time);
-    if(norm.length>10){clearTimeout(to);hubLive=true;finish(true,norm);}}}catch(e){} };
- ws.onerror=()=>{clearTimeout(to);finish(false);};
+ const finishFromCollected=()=>{ const arr=[...collected.values()].sort((a,b)=>a.time-b.time); if(arr.length>10){hubLive=true;finish(true,arr);} else finish(false); };
+ try{ ws=new WebSocket(hubWsUrl(symbol,interval)); }catch(e){ return finish(false); }
+ const to=setTimeout(()=>finishFromCollected(),6000);
+ const viaHttp=()=>{ if(httpTried)return; httpTried=true; getCandlesHTTP(symbol,interval,(ok,data)=>{ if(ok&&data){clearTimeout(to);hubLive=true;finish(true,data);} else finishFromCollected(); }); };
+ ws.onopen=()=>{ viaHttp(); }; /* 購読はクエリで確定済み。履歴は HTTP 取得が本筋で、WS は到達確認とライブ足の収集に使う */
+ ws.onmessage=ev=>{ if(typeof ev.data==="string"&&ev.data.trim()==="ping"){ try{ ws.send("pong"); }catch(e){} return; }
+   try{ const m=JSON.parse(ev.data);
+   if(m&&m.type==="subscribed"){ viaHttp(); return; }
+   if(m&&m.type==="candle"&&m.candle){ const n=hubCandle(m.candle); if(n)collected.set(n.time,n); return; }
+   const arr=Array.isArray(m)?m:(m.candles||m.data||m.result);
+   if(Array.isArray(arr)&&arr.length>10){ const norm=arr.map(hubCandle).filter(Boolean).sort((a,b)=>a.time-b.time); if(norm.length>10){clearTimeout(to);hubLive=true;finish(true,norm);} } }catch(e){} };
+ ws.onclose=()=>{ if(done)return; if(httpTried){ /* HTTP の応答待ち。タイムアウト側で確定する */ return; } clearTimeout(to); finishFromCollected(); };
+ ws.onerror=()=>{ /* 切断は onclose 側で扱う */ };
 }
 function setDataMode(live){ hubLive=live; $("#demoBanner").classList.toggle("show",!live&&!App.bannerDismissed); }
 /* ============ 時刻 / タイムゾーン ============ */
@@ -922,19 +938,20 @@ function setPaneData(ctx){
  renderIndicators(ctx); renderDrawings(ctx); updatePricePill(ctx); updatePaneHead(ctx); if(ctx.idx===0)updateOhlcLine(ctx);
 }
 let wsRetry={n:0,timer:null};
-function getCandlesHTTP(symbol,interval,cb){ const base=(App.dataBase||"").replace(/\/$/,"");
- try{ fetch(base+"/api/mcp",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({jsonrpc:"2.0",id:1,method:"tools/call",params:{name:"get_candles",arguments:{symbol,interval,limit:500}}})})
-  .then(r=>r.json()).then(j=>{ let arr=null; try{ const txt=j&&j.result&&j.result.content&&j.result.content[0]&&j.result.content[0].text; const parsed=txt?JSON.parse(txt):(j.result||j); arr=Array.isArray(parsed)?parsed:(parsed.candles||parsed.data); }catch(e){}
-   if(Array.isArray(arr)&&arr.length>10){ const norm=arr.map(c=>({time:c.time??c.t,open:c.open??c.o,high:c.high??c.h,low:c.low??c.l,close:c.close??c.c,volume:c.volume??c.v??0})).filter(c=>c.time&&c.close!=null).sort((a,b)=>a.time-b.time); if(norm.length>10)return cb(true,norm); }
+function getCandlesHTTP(symbol,interval,cb){ const base=(App.dataBase||"").replace(/\/$/,""); const hp=hubParts(symbol,interval);
+ try{ fetch(base+"/api/mcp",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({jsonrpc:"2.0",id:1,method:"tools/call",params:{name:"get_candles",arguments:{exchange:hp.exchange,symbol:hp.symbol,timeframe:hp.timeframe,limit:500}}})})
+  .then(r=>r.json()).then(j=>{ if(j&&j.result&&j.result.isError)return cb(false); /* 引数エラーは HTTP 200 のまま isError で返る（実測） */
+   let arr=null; try{ const txt=j&&j.result&&j.result.content&&j.result.content[0]&&j.result.content[0].text; const parsed=txt?JSON.parse(txt):(j.result||j); arr=Array.isArray(parsed)?parsed:(parsed.candles||parsed.data); if(!arr&&j.result&&j.result.structuredContent)arr=j.result.structuredContent.candles; }catch(e){}
+   if(Array.isArray(arr)&&arr.length>10){ const norm=normalizeCandles(arr); if(norm.length>10)return cb(true,norm); }
    cb(false); }).catch(()=>cb(false)); }catch(e){ cb(false); } }
 function loadPane(ctx,symbol,interval,keepRange){
  ctx.symbol=symbol; ctx.interval=interval; ctx.replayIdx=-1;
  try{ctx.chart.applyOptions({localization:{priceFormatter:priceFmtFor(symbol)}});}catch(e){} // 価格軸の表記を銘柄の桁・カンマ区切りに合わせる（本家と同じ）
  ctx.loadingHist=false; ctx.histDone=false; if(ctx.histEndEl)ctx.histEndEl.style.display="none"; // 銘柄/足が変わったら過去読み込み状態をリセット
- if(ctx.idx===0&&live.key&&live.key!==symbol+"|"+interval)stopLive();
+ { const _L=liveByPane[ctx.idx]; if(_L&&_L.key&&_L.key!==symbol+"|"+interval)stopLive(ctx.idx); } /* そのペインの銘柄/時間足が変わったら旧購読を止める（再接続は取得成功後に新しい値で） */
  const cached=genData(symbol,interval); ctx.full=cached; setPaneData(ctx); setDataMode(hubLive);
- getCandlesHTTP(symbol,interval,(ok,data)=>{ if(ok&&data&&ctx.symbol===symbol&&ctx.interval===interval){ wsRetry.n=0; dataCache[symbol+"|"+interval]=data; ctx.full=data; setPaneData(ctx); setDataMode(true); if(ctx.idx===0)startLive(ctx); toast("OHLC Hub（MCP）から実データを取得しました"); return; }
-  tryHub(symbol,interval,(ok2,data2)=>{ if(ok2&&data2&&ctx.symbol===symbol&&ctx.interval===interval){ wsRetry.n=0; dataCache[symbol+"|"+interval]=data2; ctx.full=data2; setPaneData(ctx); setDataMode(true); if(ctx.idx===0)startLive(ctx); toast("OHLC Hub から実データを取得しました"); }
+ getCandlesHTTP(symbol,interval,(ok,data)=>{ if(ok&&data&&ctx.symbol===symbol&&ctx.interval===interval){ wsRetry.n=0; dataCache[symbol+"|"+interval]=data; ctx.full=data; setPaneData(ctx); setDataMode(true); startLive(ctx); toast("OHLC Hub（MCP）から実データを取得しました"); return; }
+  tryHub(symbol,interval,(ok2,data2)=>{ if(ok2&&data2&&ctx.symbol===symbol&&ctx.interval===interval){ wsRetry.n=0; dataCache[symbol+"|"+interval]=data2; ctx.full=data2; setPaneData(ctx); setDataMode(true); startLive(ctx); toast("OHLC Hub から実データを取得しました"); }
    else { // WS再接続: 指数バックオフ（最大25分間隔で再試行）
      if(wsRetry.timer)clearTimeout(wsRetry.timer); const delay=Math.min(1500000,1000*Math.pow(2,Math.min(wsRetry.n++,11))); // 指数バックオフ: 最大25分（1500秒）まで
      wsRetry.timer=setTimeout(()=>{ if(P[0])loadPane(P[0],P[0].symbol,P[0].interval,true); },delay); } }); });
@@ -942,19 +959,15 @@ function loadPane(ctx,symbol,interval,keepRange){
  refreshHeads(); renderTabs();
 }
 /* ============ 過去データの追加読み込み（左端付近までスクロールしたら自動で継ぎ足す） ============ */
-function normalizeCandles(arr){ return arr.map(c=>({time:c.time??c.t,open:c.open??c.o,high:c.high??c.h,low:c.low??c.l,close:c.close??c.c,volume:c.volume??c.v??0})).filter(c=>c.time&&c.close!=null).sort((a,b)=>a.time-b.time); }
-let hubBeforeParam=null; // ページングに使えたパラメータ名（before/end）を一度だけ判別して記憶する
-function getCandlesPaged(symbol,interval,before,cb){ const base=(App.dataBase||"").replace(/\/$/,"");
- const attempt=(param,canAlt)=>{ const args={symbol,interval,limit:2000}; args[param]=before;
-  try{ fetch(base+"/api/mcp",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({jsonrpc:"2.0",id:1,method:"tools/call",params:{name:"get_candles",arguments:args}})})
-   .then(r=>r.json()).then(j=>{ let arr=null; try{ const txt=j&&j.result&&j.result.content&&j.result.content[0]&&j.result.content[0].text; const parsed=txt?JSON.parse(txt):(j.result||j); arr=Array.isArray(parsed)?parsed:(parsed.candles||parsed.data); }catch(e){}
-    if(!Array.isArray(arr))return cb(false);
-    const norm=normalizeCandles(arr); const older=norm.filter(c=>c.time<before);
-    if(older.length){ hubBeforeParam=param; return cb(true,older); }
-    // 古い足が返らない場合、パラメータが無視され最新ページが返った可能性があるため、別名で一度だけ試す（同じ期間の重複取得はしない）
-    if(canAlt&&norm.length>=1000)return attempt(param==="before"?"end":"before",false);
-    return cb(true,[]); }).catch(()=>cb(false)); }catch(e){ cb(false); } };
- attempt(hubBeforeParam||"before",!hubBeforeParam); }
+function normalizeCandles(arr){ return arr.map(hubCandle).filter(Boolean).sort((a,b)=>a.time-b.time); }
+function getCandlesPaged(symbol,interval,before,cb){ const base=(App.dataBase||"").replace(/\/$/,""); const hp=hubParts(symbol,interval);
+ const args={exchange:hp.exchange,symbol:hp.symbol,timeframe:hp.timeframe,limit:2000,to_time:before}; /* Hub のページングは to_time（その時刻の足を含む。実測）。境界の重複は呼び出し側で除かれる */
+ try{ fetch(base+"/api/mcp",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({jsonrpc:"2.0",id:1,method:"tools/call",params:{name:"get_candles",arguments:args}})})
+  .then(r=>r.json()).then(j=>{ if(j&&j.result&&j.result.isError)return cb(false);
+   let arr=null; try{ const txt=j&&j.result&&j.result.content&&j.result.content[0]&&j.result.content[0].text; const parsed=txt?JSON.parse(txt):(j.result||j); arr=Array.isArray(parsed)?parsed:(parsed.candles||parsed.data); if(!arr&&j.result&&j.result.structuredContent)arr=j.result.structuredContent.candles; }catch(e){}
+   if(!Array.isArray(arr))return cb(false);
+   const norm=normalizeCandles(arr); const older=norm.filter(c=>c.time<before);
+   return cb(true,older); }).catch(()=>cb(false)); }catch(e){ cb(false); } }
 function genOlderDemo(symbol,interval,beforeTime,countSoFar,anchorOpen){ // Hub未接続時（デモ表示中）の過去分: 決定的生成で継ぎ足す
  const MAXBARS=12000; if(countSoFar>=MAXBARS)return [];
  const sec=IVL_SEC[interval], info=symInfo(symbol), n=Math.min(1000,MAXBARS-countSoFar);
@@ -986,23 +999,32 @@ function loadOlder(ctx){ ctx.loadingHist=true; if(ctx.histSpin)ctx.histSpin.clas
  if(hubLive){ getCandlesPaged(sym,iv,before,(ok,older)=>{ if(ok)finish(older); else { done(); toast("過去データの取得に失敗しました"); } }); }
  else finish(genOlderDemo(sym,iv,before,count,anchorOpen)); }
 /* ============ リアルタイム更新（Hub WebSocket: 現在足の更新＋足の区切りで新足） ============ */
-const live={ws:null,key:null,retry:0,timer:null,indTimer:null};
-function stopLive(){ if(live.timer){clearTimeout(live.timer); live.timer=null;} if(live.ws){ try{ live.ws.onclose=null; live.ws.close(); }catch(e){} live.ws=null; } live.key=null; }
-function startLive(ctx){ if(!ctx||ctx.idx!==0)return; const key=ctx.symbol+"|"+ctx.interval;
- if(live.key===key&&live.ws&&(live.ws.readyState===0||live.ws.readyState===1))return;
- stopLive(); live.key=key; live.retry=0; connectLive(ctx); }
-function connectLive(ctx){ const key=live.key; if(!key)return; const base=(App.dataBase||"").replace(/\/$/,"");
- let ws; try{ ws=new WebSocket(base.replace(/^http/,"ws")+"/ws"); }catch(e){ scheduleLiveRetry(); return; }
- live.ws=ws;
- ws.onopen=()=>{ live.retry=0; try{ ws.send(JSON.stringify({type:"subscribe",symbol:ctx.symbol,interval:ctx.interval})); }catch(e){} };
- ws.onmessage=ev=>{ if(live.key!==key)return; let m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
-  const arr=Array.isArray(m)?m:(m.candles||m.data||m.result||(m.candle?[m.candle]:((m.time!=null||m.t!=null)?[m]:null)));
+/* ライブ接続はペイン単位。各ペインが自分の銘柄・時間足のクエリで接続する */
+const liveByPane={};
+function liveOf(idx){ return liveByPane[idx]||(liveByPane[idx]={ws:null,key:null,retry:0,timer:null,indTimer:null}); }
+function stopLive(idx){ const L=liveByPane[idx]; if(!L)return; if(L.timer){clearTimeout(L.timer); L.timer=null;} if(L.ws){ try{ L.ws.onclose=null; L.ws.close(); }catch(e){} L.ws=null; } L.key=null; }
+function startLive(ctx){ if(!ctx)return; const key=ctx.symbol+"|"+ctx.interval; const L=liveOf(ctx.idx);
+ if(L.key===key&&L.ws&&(L.ws.readyState===0||L.ws.readyState===1))return;
+ stopLive(ctx.idx); L.key=key; L.retry=0; connectLive(ctx); }
+function connectLive(ctx){ const L=liveOf(ctx.idx); const key=L.key; if(!key)return;
+ let ws; try{ ws=new WebSocket(hubWsUrl(ctx.symbol,ctx.interval)); }catch(e){ scheduleLiveRetry(ctx); return; } /* 購読はURLクエリ（exchange/symbol/timeframe）で確定。銘柄・時間足が変われば loadPane→startLive 経由で新しい値で張り直す */
+ L.ws=ws;
+ ws.onopen=()=>{ L.retry=0; }; /* サーバーが {type:"subscribed"} を返す。subscribe メッセージの送信は不要 */
+ ws.onmessage=ev=>{ if(L.key!==key)return;
+  if(typeof ev.data==="string"&&ev.data.trim()==="ping"){ try{ ws.send("pong"); }catch(e){} return; } /* Hub のハートビートは文字列 ping → pong 応答（仕様書8章） */
+  let m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
+  if(m&&m.type==="ping"){ try{ ws.send("pong"); }catch(e){} return; }
+  if(m&&m.type==="upstream_error"){ try{ ws.close(); }catch(e){} return; } /* 上流断・銘柄拒否の通知。閉じて再接続（バックオフ）へ */
+  if(m&&m.type==="subscribed"){ L.retry=0; return; }
+  if(m&&m.type==="candle"&&m.candle){ const n=hubCandle(m.candle); if(n)applyLiveBar(ctx,n); return; } /* 実測形式: {type:"candle", candle:{timestamp,open,high,low,close,volume}} */
+  if(m&&m.type&&m.type!=="candle")return; /* heartbeat 等の制御メッセージは無視 */
+  const arr=Array.isArray(m)?m:(m.candles||m.data||m.result||(m.candle?[m.candle]:((m.time!=null||m.t!=null||m.timestamp!=null)?[m]:null)));
   if(!Array.isArray(arr)||!arr.length)return; for(const bar of normalizeCandles(arr))applyLiveBar(ctx,bar); };
- ws.onclose=()=>{ if(live.ws===ws)live.ws=null; if(live.key===key)scheduleLiveRetry(); };
+ ws.onclose=()=>{ if(L.ws===ws)L.ws=null; if(L.key===key)scheduleLiveRetry(ctx); };
  ws.onerror=()=>{ try{ ws.close(); }catch(e){} }; }
-function scheduleLiveRetry(){ if(live.timer)return; const delay=Math.min(1500000,1000*Math.pow(2,Math.min(live.retry++,11))); // 指数バックオフ: 最大25分間隔で再接続
- live.timer=setTimeout(()=>{ live.timer=null; const ctx=P[0]; if(ctx&&live.key===ctx.symbol+"|"+ctx.interval)connectLive(ctx); },delay); }
-function applyLiveBar(ctx,bar){ if(ctx.symbol+"|"+ctx.interval!==live.key)return; const full=ctx.full; if(!full||!full.length)return;
+function scheduleLiveRetry(ctx){ const L=liveOf(ctx.idx); if(L.timer)return; const delay=Math.min(1500000,1000*Math.pow(2,Math.min(L.retry++,11))); // 指数バックオフ: 最大25分間隔で再接続（Hub の reconnect_after_seconds=1500 と一致）
+ L.timer=setTimeout(()=>{ L.timer=null; if(L.key===ctx.symbol+"|"+ctx.interval)connectLive(ctx); },delay); }
+function applyLiveBar(ctx,bar){ const L=liveOf(ctx.idx); if(ctx.symbol+"|"+ctx.interval!==L.key)return; const full=ctx.full; if(!full||!full.length)return;
  const last=full[full.length-1]; if(bar.time<last.time)return; // 古い更新は無視
  const isNew=bar.time>last.time;
  if(isNew)full.push(bar); else full[full.length-1]=bar; // view は非リプレイ時に full と同一参照。要素差し替えなのでリプレイ表示中のスライスには影響しない
@@ -1012,7 +1034,7 @@ function applyLiveBar(ctx,bar){ if(ctx.symbol+"|"+ctx.interval!==live.key)return
   else ctx.cs.update({time:bar.time,open:bar.open,high:bar.high,low:bar.low,close:bar.close});
   ctx.vs.update({time:bar.time,value:bar.volume||0,color:bar.close>=bar.open?hexRgba(App.theme.up,.28):hexRgba(App.theme.down,.28)}); }catch(e){}
  updatePricePill(ctx); updatePaneHead(ctx); if(ctx.idx===0)updateOhlcLine(ctx);
- if(!live.indTimer){ live.indTimer=setTimeout(()=>{ live.indTimer=null; if(!replay.active)renderIndicators(ctx); },1500); } }
+ if(!L.indTimer){ L.indTimer=setTimeout(()=>{ L.indTimer=null; if(!replay.active)renderIndicators(ctx); },1500); } }
 function updatePaneHead(ctx){ updatePaneLegend(ctx); if(ctx.idx===0)updateOhlcLine(ctx); }
 /* ペイン内凡例: そのペイン自身の銘柄の OHLC と変動率（クロスヘアのあるバーに追従する） */
 /* 本家の凡例表記: 分足は数字のみ（15）、時間足は 1h/4h、日足は D。取引所は金・銀先物が COMEX、その他は銘柄プレフィックス */
@@ -2230,7 +2252,7 @@ function openTheme(){
 function openDataCfg(){
  const m=openModal("データソース設定",`
   <div class="frow"><label>OHLC Hub ベースURL</label><input type="text" id="dcBase" value="${esc(App.dataBase)}"></div>
-  <p class="hint">MCP: <span class="kbd">${esc(App.dataBase)}/api/mcp</span> / WebSocket: <span class="kbd">${esc(App.dataBase.replace(/^http/,"ws"))}/ws</span><br>ドメインが変わったらここを変更してください（ハードコードしていません）。接続できない場合はデモデータに自動で切り替わり、チャート左下に「デモデータで表示中」のチップが表示されます。現在の状態: <b style="color:#fff">${hubLive?"Hub接続中（実データ）":"デモデータ"}</b></p>
+  <p class="hint">MCP: <span class="kbd">${esc(App.dataBase)}/api/mcp</span> / WebSocket: <span class="kbd">${esc(App.dataBase.replace(/^http/,"ws"))}/ws?exchange=取引所&amp;symbol=銘柄&amp;timeframe=時間足</span>（購読はクエリで指定します）<br>ドメインが変わったらここを変更してください（ハードコードしていません）。接続できない場合はデモデータに自動で切り替わり、チャート左下に「デモデータで表示中」のチップが表示されます。現在の状態: <b style="color:#fff">${hubLive?"Hub接続中（実データ）":"デモデータ"}</b></p>
   <div class="frow"><label>保存先（将来のサーバー）</label><input type="text" id="dcSaveBase" value="${esc(StorageAdapter.serverBase)}" placeholder="例: https://save.example.com（未設定ならメモリ＋JSON）"></div>
   <p class="hint">保存はアダプター方式です。現在の保存先はブラウザの localStorage です。サーバー保存（fetch POST）は未実装のため、この欄に入力しても送信は行われません（将来の差し替え用）。</p>
   <div class="frow"><label>現在の銘柄の契約倍率</label><input type="number" id="dcMult" step="any" value="${effMult(App.symbol)!=null?effMult(App.symbol):""}" placeholder="未設定"><span class="hint">GC1! = 100 は決定済み。他銘柄は未決定のためここで明示してください</span></div>`,
