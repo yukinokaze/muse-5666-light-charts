@@ -202,6 +202,7 @@ svg.ic{width:17px;height:17px;flex:none}
 .histSpin .sp{width:13px;height:13px;flex:none;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:histRot .7s linear infinite}
 @keyframes histRot{to{transform:rotate(360deg)}}
 .histEnd{position:absolute;top:34px;left:8px;z-index:8;display:none;background:rgba(0,0,0,.75);color:#fff;font-size:11px;padding:3px 8px;border-radius:5px;pointer-events:none}
+.gtTip{position:absolute;z-index:8;display:none;background:#131722;color:#fff;font-size:12px;line-height:1.35;padding:3px 8px;border-radius:4px;pointer-events:none;white-space:nowrap;transform:translateX(-50%);box-shadow:0 2px 8px rgba(0,0,0,.45)}
 .pricePill .ppIn{border-radius:3px;padding:1px 2px;font-size:13px;line-height:16px;text-align:center;min-width:100%;font-variant-numeric:tabular-nums;white-space:nowrap} /* ピル文字は軸ラベルと同等の大きさ（本家実画面で実測） */
 .barCountdown{position:absolute;right:0;z-index:5;pointer-events:none;display:none;text-align:center;font-size:11px;line-height:14px;height:14px;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;border-radius:3px}
 @media (min-width:901px) and (max-width:1600px){
@@ -938,6 +939,7 @@ function makePane(idx){
  const histSpin=document.createElement("div"); histSpin.className="histSpin"; histSpin.innerHTML='<span class="sp"></span>Loading older data…'; el.parentElement.appendChild(histSpin); ctx.histSpin=histSpin;
  const histEnd=document.createElement("div"); histEnd.className="histEnd"; histEnd.textContent="No more historical data"; el.parentElement.appendChild(histEnd); ctx.histEndEl=histEnd;
  const wm=document.createElement("div"); wm.className="rpWM"; wm.textContent="Replay"; el.parentElement.appendChild(wm); ctx.wm=wm;
+ const gtTip=document.createElement("div"); gtTip.className="gtTip"; el.parentElement.appendChild(gtTip); ctx.gtTip=gtTip; ctx.gtTime=null; // Go to 後の時刻吹き出し（本家準拠で持続表示。破線は残らない）
  /* Dot Cursor: ページ内ドットがマウスを追い、十字線は出さない（applyCursorVariant で線を消す）。Cursorツール選択中のみ表示 */
  const dotEl=document.createElement("div"); dotEl.className="cursorDot"; el.parentElement.appendChild(dotEl); ctx.dotEl=dotEl;
  el.parentElement.addEventListener("pointermove",e=>{ if(cursorVariant!=="dot"||tool!=="cursor"){ dotEl.style.display="none"; return; }
@@ -1018,6 +1020,9 @@ function makePane(idx){
  chart.timeScale().subscribeVisibleTimeRangeChange(r=>{ if(!r)return; if(App.sync.time)propagateSync(r); updatePricePill(ctx); });
  new ResizeObserver(()=>{const b=el.getBoundingClientRect(); if(b.width>0&&b.height>0){chart.applyOptions({width:b.width,height:b.height}); renderDrawings(ctx); updatePricePill(ctx); if(typeof renderOrders==="function")renderOrders(ctx);} }).observe(el);
  el.parentElement.addEventListener("pointerdown",()=>{activePane=idx; refreshHeads();});
+ /* Go to の吹き出しは次の操作（パン／ズーム開始のポインタ操作・ホイール）で消える（本家準拠） */
+ el.parentElement.addEventListener("pointerdown",()=>{ hideGotoTip(ctx); },true);
+ el.parentElement.addEventListener("wheel",()=>{ hideGotoTip(ctx); },{passive:true});
  el.parentElement.addEventListener("wheel",e=>{ if(e.ctrlKey||e.metaKey||!e.deltaY)return; showZoomHint(); },{passive:true}); // Ctrl 併用時は本家でも案内は出ない
  P[idx]=ctx; return ctx;
 }
@@ -1037,10 +1042,12 @@ function resetPriceScale(ctx){ if(!ctx||!ctx.chart)return;
  updatePricePill(ctx); }
 function fitAllPanes(ctx){ if(!ctx||!ctx.chart)return;
  if(typeof cancelDrawDrag==="function")cancelDrawDrag(); // 進行中/取り残しの描画ドラッグがリセット後に描画座標を書き換えないよう先に止める
+ P.forEach(o=>{if(o)hideGotoTip(o);});
  /* Reset Chart / Alt+R 用: 全Barsを画面に収め（fitContent）、全ペインのPrice軸Autoを戻す。時間軸ダブルクリックはこれではなく resetTimeScale（Bars間隔のリセット） */
  try{ ctx.chart.timeScale().fitContent(); }catch(e){}
  for(const o of P){ if(o)resetPriceScale(o); if(o)renderDrawings(o); } }
 function resetTimeScale(ctx){ if(!ctx||!ctx.chart)return;
+ P.forEach(o=>{if(o)hideGotoTip(o);});
  if(typeof cancelDrawDrag==="function")cancelDrawDrag(); /* 【(10) の修正】リセット自体は描画データ（time/price アンカー）を一切変更しない。
    ただしドラッグ状態機械の取り残しがあると、リセット後のマウス移動で古い原点から描画が書き換わり
    "リセットで描画が動いた"ように見えるため、開始時に必ず止める。リセット後は描画を再描画して
@@ -1096,6 +1103,7 @@ function getCandlesHTTP(symbol,interval,cb){ const base=(App.dataBase||"").repla
    if(Array.isArray(arr)&&arr.length>10){ const norm=normalizeCandles(arr); if(norm.length>10)return cb(true,norm); }
    cb(false); }).catch(()=>cb(false)); }catch(e){ cb(false); } }
 function loadPane(ctx,symbol,interval,keepRange){
+ hideGotoTip(ctx); // 銘柄/時間足の切替で Go to 吹き出しは消える
  ctx.symbol=symbol; ctx.interval=interval; ctx.replayIdx=-1;
  try{ctx.chart.applyOptions({localization:{priceFormatter:priceFmtFor(symbol)}});}catch(e){} // Price軸の表記を銘柄の桁・カンマ区切りに合わせる（本家と同じ）
  ctx.loadingHist=false; ctx.histDone=false; if(ctx.histEndEl)ctx.histEndEl.style.display="none"; // 銘柄/足が変わったら過去読み込み状態をリセット
@@ -1403,6 +1411,7 @@ function renderDrawings(ctx){
    const dp=m.p2.price-m.p1.price, pct=m.p1.price?dp/m.p1.price*100:0, bars=Math.round(Math.abs(m.p2.time-m.p1.time)/(IVL_SEC[ctx.interval]||900));
    const mt=el("text",{x:(mx1+mx2)/2,y:(my1+my2)/2-8,"font-size":12,fill:"#2962ff","text-anchor":"middle","font-weight":600},svg);
    mt.textContent=`${dp>=0?"+":""}${dp.toFixed(2)} (${pct>=0?"+":""}${pct.toFixed(2)}%) · ${bars} bars`; } }
+ positionGotoTip(ctx); // Go to 吹き出しの位置を現在の表示範囲に追従させる
  if(ctx.idx===0)renderObjTree();
 }
 function drawOne(ctx,svg,d,sel){
@@ -1562,7 +1571,7 @@ function startHandleDrag(ctx,d,kind,e){ const orig=JSON.parse(JSON.stringify({p1
  startDrawDrag(ctx,d,e,(dt,dp,ev)=>{ /* ポジションの TP/SL/エントリー行はPrice方向だけを動かす */
    if(kind==="target"){ d.target=orig.target+dp; return; }
    if(kind==="stop"){ d.stop=orig.stop+dp; return; }
-   if(kind==="entry"){ d.entry=orig.entry+dp; d.target=orig.target+dp; d.stop=orig.stop+dp; return; }
+   if(kind==="entry"){ d.entry=orig.entry+dp; return; } /* エントリーハンドルもその脚だけを動かす（本家準拠: 各ハンドルは個別の脚を動かし、全体が動くのは本体ドラッグだけ。従来はエントリードラッグで3脚とも動いていた） */
    /* 端点は作成時と同じ snap（マグネットSettingsに従う）で置く。snap が取れない座標では原点＋素デルタ */
    const r=ctx.svg.getBoundingClientRect(); const s=snap(ctx,ev.clientX-r.left,ev.clientY-r.top);
    const base=kind==="p1"?orig.p1:orig.p2; if(!base)return;
@@ -1597,6 +1606,17 @@ function bindDrawing(ctx){
    if(tool==="measure"||tool==="zoom"){ drag={mz:tool,x1:p.x,y1:p.y}; ctx.selRect={x1:p.x,y1:p.y,x2:p.x,y2:p.y}; if(tool==="measure")ctx.measure={p1:{...s},p2:{...s}};
      try{svg.setPointerCapture(e.pointerId); svg.style.pointerEvents="auto";}catch(_){} renderDrawings(ctx); return; }
    if(eraserOn){ if(hit&&hit.dataset.did){const d=curDrawings().find(x=>x.id===hit.dataset.did); if(d&&!(d.locked&&!App.deleteLocked)){snapshotDrawings(); drawingsBySymbol[ctx.symbol]=curDrawings().filter(x=>x.id!==d.id); ctx.selectedId=null; afterDrawChange(ctx);} else if(d) toast("Locked drawings cannot be erased (turn on \"Delete locked drawings\" in the right-click menu to erase them)"); } return; }
+   if(tool!=="cursor"){ /* 描画ツール有効中の既存描画への押下（本家準拠の2点）:
+      (a) 選択中ポジションのハンドルへのドラッグはハンドル操作を優先し、新しいポジションを作らない
+      (b) 既存の描画のダブルクリックは新規作成せず設定ダイアログを開く（1回目のクリックで作られた保留中の1点目は破棄する） */
+     const selPos=ctx.selectedId?curDrawings().find(x=>x.id===ctx.selectedId):null;
+     if(selPos&&(selPos.type==="long"||selPos.type==="short")&&drawVisibleHere(selPos,ctx)&&!selPos.locked){
+       const hp=drawingHandlePts(ctx,selPos).find(h=>Math.hypot(h.x-p.x,h.y-p.y)<=10);
+       if(hp){ if(noteDrawClick(selPos,p.x,p.y)){ if(ctx.pending){ctx.pending=null;ctx.clickPlace=false;} cancelDrawDrag(); selectDrawing(ctx,selPos.id); openDrawSettings(ctx,selPos); return; }
+         startHandleDrag(ctx,selPos,hp.kind,e); return; } }
+     let hitD2=null; const list2=allDrawingsFor(ctx.symbol);
+     for(let i=list2.length-1;i>=0;i--){ const dd=list2[i]; if(!drawVisibleHere(dd,ctx))continue; if(drawingPointHit(ctx,dd,p.x,p.y)){ hitD2=dd; break; } }
+     if(hitD2&&noteDrawClick(hitD2,p.x,p.y)){ if(ctx.pending){ctx.pending=null;ctx.clickPlace=false;} cancelDrawDrag(); selectDrawing(ctx,hitD2.id); openDrawSettings(ctx,hitD2); return; } }
    if(tool==="cursor"){ ctx.measure=null;
      if(hit&&hit.dataset.did){ const d=curDrawings().find(x=>x.id===hit.dataset.did);
        if(d){ ctx.selectedId=d.id; ctx.selectedIds=new Set([d.id]); showFloatBar(ctx,d); renderDrawings(ctx); renderObjTree();
@@ -1606,6 +1626,7 @@ function bindDrawing(ctx){
    if(tool==="text"){ snapshotDrawings(); const d=newDrawing("text",s,null,ctx); d.style.text="Text"; curDrawings().push(d); ctx.selectedId=d.id; afterDrawChange(ctx); openDrawSettings(ctx,d); if(!keepDrawing)setTool("cursor"); return; }
    if(ctx.clickPlace&&ctx.pending&&ctx.pending.type===tool){ updPending(e,p,s); drag=null; commitPending(); if(!keepDrawing)setTool("cursor"); return; } // Click-click の2点目: その位置で確定する（本家と同じ）
    snapshotDrawings(); ctx.pending=newDrawing(tool,s,s,ctx); drag={pending:true,x0:p.x,y0:p.y,moved:false};
+   try{svg.setPointerCapture(e.pointerId);}catch(_){} /* ドラッグ作成中にポインタが描画レイヤーの外（時間軸の帯など）へ出ても pointerleave で作成がキャンセルされないようにする（Long/Short がドラッグで作れない症状の対策。Click-click 作成は従来どおり） */
  });
  /* 描画中プレビューの第2点をポインタ位置へ更新する（Shift スナップ・Long/Short の TP/SL 追従はドラッグ時と共通） */
  const updPending=(e,p,s)=>{ if(!ctx.pending)return; let s2=s;
@@ -1683,7 +1704,7 @@ function bindDrawing(ctx){
       従来は端点専用ドラッグ自体が無く、端点を掴んでも本体ドラッグ扱いで、結果として選択が外れて見えた） */
    const selD=ctx.selectedId?allDrawingsFor(ctx.symbol).find(x=>x.id===ctx.selectedId):null;
    if(selD&&drawVisibleHere(selD,ctx)&&!selD.locked){
-     const hp=drawingHandlePts(ctx,selD).find(h=>Math.hypot(h.x-px,h.y-py)<=8);
+     const hp=drawingHandlePts(ctx,selD).find(h=>Math.hypot(h.x-px,h.y-py)<=10); // ハンドルの掴み範囲はターゲット／ストップ共通で 10px（ストップもターゲットと同じくらい取りやすくする）
      if(hp){ e.preventDefault(); e.stopPropagation(); activePane=ctx.idx; ctx.measure=null;
        if(noteDrawClick(selD,px,py)){ cancelDrawDrag(); selectDrawing(ctx,selD.id); openDrawSettings(ctx,selD); return; } // 端点ハンドルのダブルクリックでもSettingsを開く（本家と同じ）
        startHandleDrag(ctx,selD,hp.kind,e); return; } }
@@ -1696,6 +1717,8 @@ function bindDrawing(ctx){
    if(noteDrawClick(hitD,px,py)){ cancelDrawDrag(); selectDrawing(ctx,hitD.id); openDrawSettings(ctx,hitD); return; } // ダブルクリック: ドラッグを開始せずSettingsダイアログを開く（描画は移動しない）
    selectDrawing(ctx,hitD.id);
    if(hitD.locked)return;
+   if(hitD.type==="long"||hitD.type==="short"){ const hp2=drawingHandlePts(ctx,hitD).find(h=>Math.hypot(h.x-px,h.y-py)<=10);
+     if(hp2){ startHandleDrag(ctx,hitD,hp2.kind,e); return; } } /* 未選択のポジションでも、脚ハンドル（左端の○）を掴んだ場合は本体移動より脚ドラッグを優先する（本家と同じ。従来は選択済みのときしか脚ドラッグにならず、ハンドルを掴んだつもりが全体移動になっていた） */
    /* 本体ドラッグは startBodyDrag（startDrawDrag 状態機械）へ委譲する: 4px 閾値までは選択のみ、
       閾値を超えたら吸着なしの素変換でポインタ移動量だけ平行移動し、終了後も選択を維持する */
    startBodyDrag(ctx,hitD,e);
@@ -1772,6 +1795,24 @@ function createGroup(ctx,ids){ if(!ids||ids.length<2)return;
 function removeAllDrawings(ctx){ if(curDrawings().some(d=>d.locked)&&!App.deleteLocked)return toast("Some drawings are locked. Unlock them first, or turn on \"Delete locked drawings\" in the right-click menu");
  snapshotDrawings(); drawingsBySymbol[ctx.symbol]=[]; ctx.selectedId=null; ctx.selectedIds=new Set(); hideFloatBar(); afterDrawChange(ctx); }
 function removeAllIndicators(){ App.indicators=[]; markDirty(); P.forEach(c=>c&&renderIndicators(c)); renderObjTree(); }
+/* Go to 後の時刻吹き出し（本家準拠・2026-11-20 実操作でConfirm）: Go to で移動すると、対象バーの上に
+   黒い吹き出し「Fri 20 Nov '26 00:00」だけが残り、マウスを下部バーへ移しても消えない。破線の縦線は
+   残らない（クロスヘアの破線はホバー中のみ）。吹き出しは次の操作（パン／ズーム開始のポインタ操作・
+   ホイール・矢印キー・範囲ボタン・リセット・別の Go to・リプレイ開始・銘柄/時間足の切替）で消える */
+function fmtGotoTip(ts,interval){ const tz=effTz(App.timezone); const f=new Intl.DateTimeFormat("en-US",{timeZone:tz,weekday:"short",day:"numeric",month:"short",year:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false,hourCycle:"h23"});
+ const p={}; f.formatToParts(new Date(ts*1000)).forEach(x=>p[x.type]=x.value);
+ const base=`${p.weekday} ${p.day} ${p.month} '${p.year}`; return interval==="1D"?base:`${base}  ${p.hour}:${p.minute}`; }
+function showGotoTip(ctx,bar){ if(!ctx||!bar)return; ctx.gtTime=bar.time; if(ctx.gtTip)ctx.gtTip.textContent=fmtGotoTip(bar.time,ctx.interval); positionGotoTip(ctx); }
+function hideGotoTip(ctx){ if(!ctx)return; ctx.gtTime=null; if(ctx.gtTip)ctx.gtTip.style.display="none"; }
+function positionGotoTip(ctx){ const tip=ctx&&ctx.gtTip; if(!tip)return;
+ if(ctx.gtTime==null){ tip.style.display="none"; return; }
+ const x=t2x(ctx,ctx.gtTime); if(x==null){ tip.style.display="none"; return; }
+ tip.style.display="block";
+ let axW=64; try{ axW=ctx.chart.priceScale("right").width()||64; }catch(_){}
+ const pw=(ctx.el.parentElement?ctx.el.parentElement.clientWidth:0)||0;
+ const halfW=(tip.offsetWidth||120)/2;
+ const cx=Math.max(halfW+2,Math.min(x,Math.max(halfW+2,pw-axW-halfW-2)));
+ tip.style.left=cx+"px"; tip.style.top="30px"; }
 function gotoTime(ctx,ts){ if(ctx.full.length&&ts<ctx.full[0].time)return toast("the start of the data ("+fmtDT(ctx.full[0].time)+") — cannot go earlier than this");
  const idx=ctx.full.findIndex(c=>c.time>=ts); if(idx<0)return toast("No data at that date and time");
  const bar=ctx.full[idx];
@@ -1785,7 +1826,7 @@ function gotoTime(ctx,ts){ if(ctx.full.length&&ts<ctx.full[0].time)return toast(
    ctx.chart.timeScale().setVisibleLogicalRange({from:idx-w/2,to:idx+w/2}); shifted=true; } }catch(e){}
  if(!shifted){ const sec=IVL_SEC[ctx.interval]||900; const half=Math.max(2*86400,48*sec);
   try{ ctx.chart.timeScale().setVisibleRange({from:bar.time-half,to:bar.time+half}); }catch(e){} } /* 論理範囲が取得できない場合のみ従来の約4日分をフォールバックに使う */
- try{ ctx.chart.setCrosshairPosition(bar.close,bar.time,ctx.cs); }catch(e){} /* 本家と同じ: 対象Barsに破線の縦線＋時刻ツールチップ（時間軸ラベル）を表示する */
+ showGotoTip(ctx,bar); /* 本家準拠（2026-11-20 実操作でConfirm）: Go to 後に残るのは対象バー上の時刻の吹き出しだけで、破線の縦線は残らない。従来の setCrosshairPosition は破線十字（縦線）を持続表示してしまい本家と異なるため廃止した */
  toast("Moved to "+fmtDT(bar.time)); }
 /* Go to ダイアログ（本家準拠: 英語 "Go to"、Date / Custom range タブ、上部に日付Textボックス＋
    時刻コンボボックス（15分刻み）、月曜始まり・6行・枠なし数字のカレンダー、未来日は選択不可、
@@ -2635,7 +2676,7 @@ function wallToUtc(v){ const nv=String(v).trim().replace("T"," "); const [dp,tp]
  return guess; }
 /* 新しいリプレイ = 新しいバックテストセッション（前回のポジション・注文・残高・損益は引き継がない。初期資金は 1,000,000 USD） */
 function resetBacktestSession(){ replay.open=null; replay.pending=null; replay.closed=[]; replay.seq=0; replay.cum=0; replay.capital=1000000; App.trades=[]; }
-function startReplay(idx){ const ctx=P[0]; resetBacktestSession(); replay.active=true; replay.barRealStart=Date.now(); ctx.replayIdx=idx; setPaneData(ctx);
+function startReplay(idx){ const ctx=P[0]; resetBacktestSession(); P.forEach(c=>{if(c)hideGotoTip(c);}); replay.active=true; replay.barRealStart=Date.now(); ctx.replayIdx=idx; setPaneData(ctx);
  $("#replayBar").classList.add("show"); $("#replayBtn").classList.add("on"); $("#tradesPanel").classList.add("show"); refreshBtCapInfo(); updateReplayInfo(); renderTrades(); markDirty(); toast("Replay started (future bars are shown in gray). The backtest is a new session"); }
 function stopReplay(){ // End replayでバックテストも終了する（ユーザーの決定）。未決済ポジションは最後に表示されたBarsの終値で決済、未約定注文は取消。パネルは閉じ、CSVも出せなくなる
  const ctx=P[0]; const lastB=ctx.view[ctx.view.length-1];
@@ -3084,13 +3125,14 @@ function wire(){
   if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="a"&&objPanelOpen){e.preventDefault(); const ctx=P[activePane]; // Object tree内: Ctrl+A = 描画を全選択
    ctx.selectedIds=new Set(curDrawings().map(d=>d.id)); ctx.selectedId=ctx.selectedIds.size?[...ctx.selectedIds][0]:null;
    const prim=curDrawings().find(x=>x.id===ctx.selectedId); if(prim)showFloatBar(ctx,prim); else hideFloatBar(); renderDrawings(ctx); renderObjTree(); return;}
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="a"){e.preventDefault(); return;} // 本家準拠: チャート上で Ctrl+A を押しても何も起きない。ブラウザのページ文字全選択を止め、描画の全選択もしない（入力欄にフォーカスがある場合は上の typing 判定で通常の全選択が効く）
   if(replay.active&&e.shiftKey&&e.key==="ArrowDown"){e.preventDefault(); togglePlay(); return;}
   if(replay.active&&e.shiftKey&&e.key==="ArrowRight"){e.preventDefault(); stepReplay(1); return;}
   if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.key)&&!e.ctrlKey&&!e.metaKey&&!e.altKey){ const ctx=P[activePane]; // Arrowキーで選択中の描画を移動（本家と同じ）
    if(ctx&&(ctx.selectedId||(ctx.selectedIds&&ctx.selectedIds.size))){ e.preventDefault(); nudgeSelected(ctx,e.key,e.shiftKey); return; }
    /* 描画未選択時は本家と同じく左右矢印でチャートをスクロール（パン）する: ←で古い足側、→で新しい足側へ1本分（Shiftで10本分）。
       バー間隔は変えない。モーダル表示中は対象外。リプレイの Shift+→ は上の分岐で再生ステップとして処理済み */
-   if(ctx&&(e.key==="ArrowLeft"||e.key==="ArrowRight")&&!document.querySelector(".modal.show")){ e.preventDefault();
+   if(ctx&&(e.key==="ArrowLeft"||e.key==="ArrowRight")&&!document.querySelector(".modal.show")){ e.preventDefault(); hideGotoTip(ctx);
      const step=(e.shiftKey?10:1)*(e.key==="ArrowRight"?1:-1);
      try{ const vr=ctx.chart.timeScale().getVisibleLogicalRange(); if(vr)ctx.chart.timeScale().setVisibleLogicalRange({from:vr.from+step,to:vr.to+step}); }catch(_){} }
    return; }
@@ -3203,7 +3245,7 @@ function wire(){
   const _bc=$("#bbClock"); if(_bc){const pp=fmtParts(n); _bc.textContent=`${pp.hour}:${pp.minute}:${pp.second} ${tzOffsetLabel(App.timezone)}`;} },1000); // 下部Bars右側のライブ時計（本家形式 "02:40:26 UTC+9"）
  setInterval(()=>{ for(const c of P){ if(c)updatePricePill(c); } },500); // Countdown to bar close: 残り時間を毎秒更新し、ピル位置にも追従させる
 }
-function setRange(r){ const targets=App.sync.range?P.filter(Boolean):[P[activePane]]; // Range同期は range フラグだけを見る（Timeとは分離）
+function setRange(r){ const targets=App.sync.range?P.filter(Boolean):[P[activePane]]; targets.forEach(c=>hideGotoTip(c)); // Range同期は range フラグだけを見る（Timeとは分離）
  for(const ctx of targets){ const d=ctx.full; if(!d||!d.length)continue; const last=d[d.length-1].time;
   const days={"1D":1,"5D":5,"1M":30,"3M":91,"6M":182,"1Y":365,"5Y":1825}[r];
   try{ if(r==="ALL"){ctx.chart.timeScale().setVisibleRange({from:d[0].time,to:last});}
