@@ -74,6 +74,12 @@ svg.ic{width:17px;height:17px;flex:none}
 /* デモ告知の置き場所: 上部中央は凡例の横・ローソクの真上で本家に無い帯として最も目立ったため、本家でTVロゴが置かれるペイン左下（時間軸の上・左レールの内側）へ移す。1行に収め高さも約26pxに抑える */
 #demoBanner{top:auto;left:66px;bottom:76px;transform:none}
 #demoBanner span{white-space:nowrap}
+/* ホイールズーム後の案内（本家と同じ文言・青文字）。Ctrl を押していないホイール操作のときだけ数秒出す */
+#zoomHint{position:absolute;left:50%;bottom:44px;transform:translateX(-50%);z-index:18;background:rgba(18,20,28,.94);color:#5b9dff;border:1px solid rgba(91,157,255,.35);border-radius:6px;padding:5px 12px;font-size:12.5px;line-height:1.4;text-align:center;white-space:normal;max-width:min(560px,92vw);display:none;pointer-events:none}
+#zoomHint.show{display:block}
+/* Cursors バリアント（Cross=十字 / Dot=ドット / Arrow=通常）のカーソル形状 */
+#chartsWrap.curCross .chartBox{cursor:crosshair}
+#chartsWrap.curDot .chartBox{cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18'%3E%3Ccircle cx='9' cy='9' r='3.4' fill='%23ffffff' stroke='%23000000' stroke-width='1.4'/%3E%3C/svg%3E") 9 9,auto}
 /* tabs */
 /* 銘柄タブ帯は本家どおり画面最上段に置く。帯の地色 #2e2e2e・選択中タブ #0f0f0f・帯の高さ34px は本家実画面（2026-11-20_2.40.27）のピクセル実測 */
 #tabs{display:flex;gap:2px;padding:0 6px;height:34px;flex:none;align-items:stretch;background:#2e2e2e;overflow-x:auto;scrollbar-width:none}
@@ -436,6 +442,7 @@ textarea{width:100%;min-height:110px;font-family:ui-monospace,Menlo,monospace;fo
       </div>
       <div id="floatBar"></div>
       <div id="colorPop"></div>
+      <div id="zoomHint">Press and hold Ctrl while zooming to maintain the chart position</div>
     </div>
     <div id="replayBar">
       <button id="rpPick" class="btn" title="リプレイの開始点を選択">Select bar</button>
@@ -847,25 +854,37 @@ function makePane(idx){
  chart.timeScale().subscribeVisibleTimeRangeChange(r=>{ if(!r||!App.sync.time||_syncBusy)return; _syncBusy=true; for(const o of P){ if(o&&o!==ctx){ try{o.chart.timeScale().setVisibleRange(r);}catch(e){} } } _syncBusy=false; updatePricePill(ctx); });
  new ResizeObserver(()=>{const b=el.getBoundingClientRect(); if(b.width>0&&b.height>0){chart.applyOptions({width:b.width,height:b.height}); renderDrawings(ctx); updatePricePill(ctx); if(typeof renderOrders==="function")renderOrders(ctx);} }).observe(el);
  el.parentElement.addEventListener("pointerdown",()=>{activePane=idx; refreshHeads();});
+ el.parentElement.addEventListener("wheel",e=>{ if(e.ctrlKey||e.metaKey||!e.deltaY)return; showZoomHint(); },{passive:true}); // Ctrl 併用時は本家でも案内は出ない
  P[idx]=ctx; return ctx;
 }
 function candleStyle(){const t=App.theme;const hollow=t.hollowUp===true;return{upColor:hollow?"rgba(0,0,0,0)":t.up,downColor:t.down,wickUpColor:hollow?t.up:t.wick,wickDownColor:t.wick,borderUpColor:t.up,borderDownColor:t.wick,borderVisible:true,lastValueVisible:false,priceLineColor:hollow?t.down:t.text,priceLineStyle:1};} // lastValueVisible:false = 現在値は自前ピル（updatePricePill）で描画する。hollowUp（カスタムグレー既定）: 本家実測どおり陽線は中抜き（塗りなし、枠・ヒゲは up 色 #353434）、最終価格ラインも足と同色の点線
 /* 価格表記は本家と同じ: 銘柄の小数桁（GC=1桁）＋3桁カンマ区切り。価格軸・現在値ピル共通 */
 function priceFmtFor(sym){ const dec=(symInfo(sym).dec!=null?symInfo(sym).dec:2); return p=>{ if(p==null||!isFinite(p))return ""; return Number(p).toLocaleString("en-US",{minimumFractionDigits:dec,maximumFractionDigits:dec}); }; }
 function fmtPrice(sym,p){ return priceFmtFor(sym)(p); }
+/* 【(9) ホイールズーム後の案内】本家は Ctrl なしのホイールズーム後に青い案内
+   「Press and hold Ctrl while zooming to maintain the chart position」を出す。最後のホイール操作から約2.6秒で消す */
+let _zoomHintTimer=null;
+function showZoomHint(){ const h=document.querySelector("#zoomHint"); if(!h)return;
+ h.classList.add("show"); if(_zoomHintTimer)clearTimeout(_zoomHintTimer);
+ _zoomHintTimer=setTimeout(()=>h.classList.remove("show"),2600); }
 function resetPriceScale(ctx){ if(!ctx||!ctx.chart)return;
  try{ ctx.cs.priceScale().applyOptions({autoScale:true}); }catch(e){}
  try{ ctx.chart.priceScale("right").applyOptions({autoScale:true}); }catch(e){}
  updatePricePill(ctx); }
 function fitAllPanes(ctx){ if(!ctx||!ctx.chart)return;
+ if(typeof cancelDrawDrag==="function")cancelDrawDrag(); // 進行中/取り残しの描画ドラッグがリセット後に描画座標を書き換えないよう先に止める
  /* Reset Chart / Alt+R 用: 全バーを画面に収め（fitContent）、全ペインの価格軸Autoを戻す。時間軸ダブルクリックはこれではなく resetTimeScale（バー間隔のリセット） */
  try{ ctx.chart.timeScale().fitContent(); }catch(e){}
- for(const o of P){ if(o)resetPriceScale(o); } }
+ for(const o of P){ if(o)resetPriceScale(o); if(o)renderDrawings(o); } }
 function resetTimeScale(ctx){ if(!ctx||!ctx.chart)return;
+ if(typeof cancelDrawDrag==="function")cancelDrawDrag(); /* 【(10) の修正】リセット自体は描画データ（time/price アンカー）を一切変更しない。
+   ただしドラッグ状態機械の取り残しがあると、リセット後のマウス移動で古い原点から描画が書き換わり
+   「リセットで描画が動いた」ように見えるため、開始時に必ず止める。リセット後は描画を再描画して
+   アンカー位置のまま表示し直す（価格軸 Auto 復帰で画面上の y は変わるが、描画の価格位置は保たれる） */
  /* 本家の時間軸ダブルクリック＝バー間隔のリセット: 間隔を初期表示と同じ値（ペイン幅連動・上限6px = makePane の初期計算と同一式）に戻し、右オフセット10バーで最新バーへ寄せ直す。全データを収めはしない。同時に全ペインの価格軸Autoをオンに戻し、ローソク足の上部が見切れないようにする */
  const w=ctx.el.clientWidth||0; const bs=w>0?Math.max(3.5,Math.min(6,w/60)):6;
  try{ const ts=ctx.chart.timeScale(); ts.applyOptions({barSpacing:bs,rightOffset:10}); ts.scrollToRealTime(); }catch(e){}
- for(const o of P){ if(o)resetPriceScale(o); } }
+ for(const o of P){ if(o)resetPriceScale(o); if(o)renderDrawings(o); } }
 function lumText(hex){ const n=parseInt(String(hex).slice(1),16); if(isNaN(n))return "#000"; const r=n>>16&255,g=n>>8&255,b=n&255; return (0.299*r+0.587*g+0.114*b)>150?"#000":"#fff"; }
 function updatePricePill(ctx){ const pill=ctx&&ctx.pill; if(!pill)return; const data=ctx.view;
  if(!data||!data.length){pill.style.display="none"; if(ctx.cdEl)ctx.cdEl.style.display="none"; return;}
@@ -1149,7 +1168,7 @@ function defaultStyle(type){
   fibLevels:FIB_LEVELS.map((lv,i)=>({level:lv,on:FIB_ON.includes(lv),color:FIB_COLORS[i]})),fibBg:true,fibReverse:false};
  base.bgOn=true;
  if(type==="rect"){base.color="#ab47bc";base.bg="#ab47bc";base.bgOpacity=20;}
- if(type==="ote"){base.fibFontSize=12; base.fibPrices=true; base.fibLevelsLbl=true; base.fibLabels=true; base.fibLineWidth=1; base.fibLineStyle="Line"; base.logScale=false;}
+ if(type==="ote"){base.fibFontSize=12; base.fibPrices=true; base.fibLevelsLbl=true; base.fibLabels=true; base.fibLineWidth=2; base.fibLineStyle="Line"; base.logScale=false;} // フィボの既定の線の太さは本家と同じ 2px（従来 1px は細すぎた）
  if(type==="long"||type==="short"){base.showInfo=true; base.compactStats=false; base.alwaysShowStats=false; base.priceLabels=true; base.middlePoint=false;}
  if(type==="text"){base.bgOpacity=25;base.textColor="#2962ff";}
  if(lastStyles[type])return {...base,...JSON.parse(JSON.stringify(lastStyles[type]))};
@@ -1205,7 +1224,7 @@ function drawOne(ctx,svg,d,sel){
  const dash=st.lineStyle==="Dashed"?"7 5":st.lineStyle==="Dotted"?"2 4":"";
  const col=rgba(st.color,st.opacity);
  const marker=(x1,y1,x2,y2)=>{const a=Math.atan2(y2-y1,x2-x1);const s=11;el("path",{d:`M${x2} ${y2} L${x2-s*Math.cos(a-0.42)} ${y2-s*Math.sin(a-0.42)} M${x2} ${y2} L${x2-s*Math.cos(a+0.42)} ${y2-s*Math.sin(a+0.42)}`,stroke:col,"stroke-width":st.width,fill:"none"},g);};
- const handles=(pts)=>{if(sel)pts.forEach(([x,y])=>el("rect",{x:x-4.5,y:y-4.5,width:9,height:9,fill:"#fff",stroke:"#2962ff","stroke-width":1.5},g));};
+ const handles=(pts)=>{if(sel)pts.forEach(([x,y])=>el("circle",{cx:x,cy:y,r:4.5,fill:"#fff",stroke:"#2962ff","stroke-width":1.5},g));}; // ハンドルは本家と同じ小さな丸（従来は白い四角だった）
  const label=(x,y,txt,anchor)=>{if(!txt)return;const t=el("text",{x,y,"font-size":st.fontSize,fill:st.textColor,"text-anchor":anchor||"middle","font-weight":st.bold?"700":"400","font-style":st.italic?"italic":"normal"},g);t.textContent=txt;};
  if(d.type==="line"||d.type==="arrow"){
    let x1=t2x(ctx,d.p1.time),y1=p2y(ctx,d.p1.price),x2=t2x(ctx,d.p2.time),y2=p2y(ctx,d.p2.price); if([x1,y1,x2,y2].some(v=>v==null))return;
@@ -1260,7 +1279,7 @@ function drawOne(ctx,svg,d,sel){
    mk(yE-8,`${d.type==="long"?"Long":"Short"} Entry ${d.entry.toFixed(2)} · R/R ${rr.toFixed(2)} · Qty ${(+calcQty).toFixed(2)} · Risk ${riskAmt.toFixed(2)}${openPnl!=null?` · Open PnL ${openPnl>=0?"+":""}${openPnl.toFixed(2)} (${openPct>=0?"+":""}${openPct.toFixed(2)}%)`:" · 倍率未設定のためPnLは価格差のみ"}`,"#fff");
    if(st.middlePoint){el("circle",{cx:xa+w/2,cy:yE,r:3.5,fill:"#fff",stroke:"#2962ff"},g);}
    if(st.showInfo&&st.priceLabels){ mk(yT-6,`TP ${Math.abs(d.target-d.entry).toFixed(2)} ticks`,"#fff"); mk(yS+14,`SL ${Math.abs(d.entry-d.stop).toFixed(2)} ticks`,"#fff"); }
-   if(sel){[[xa,yT],[xa,yE],[xa,yS]].forEach(([x,y])=>el("rect",{x:x-4.5,y:y-4.5,width:9,height:9,fill:"#fff",stroke:"#2962ff","stroke-width":1.5},g));}
+   if(sel){[[xa,yT],[xa,yE],[xa,yS]].forEach(([x,y])=>el("circle",{cx:x,cy:y,r:4.5,fill:"#fff",stroke:"#2962ff","stroke-width":1.5},g));}
  }
 }
 /* 範囲選択の交差判定: 端点だけでなく線分・矩形全体と選択矩形の交差で判定する（線を横切るだけでも選択される） */
@@ -1280,6 +1299,91 @@ function finishRangeSelect(ctx,r){ ctx.selectedIds=new Set();
   if((x2-x1)<6&&(y2-y1)<6){ ctx.selectedId=null; hideFloatBar(); return; } // 最小ドラッグ量未満は空選択（クリック扱い・パンとも競合しない）
   for(const d of curDrawings()){ if(drawingHitsRect(ctx,d,x1,y1,x2,y2))ctx.selectedIds.add(d.id); } }
  ctx.selectedId=ctx.selectedIds.size?[...ctx.selectedIds][0]:null; const d0=curDrawings().find(x=>x.id===ctx.selectedId); if(d0)showFloatBar(ctx,d0); else hideFloatBar(); }
+/* 点と描画のヒット判定（クリック選択・右クリック用）: 線/矢印は線分との距離、Fib は表示中レベル線・端点・
+   対角線・OTE帯だけを対象にする。Fib の大きな外接矩形全体を掴み対象にすると、内側の空き領域のドラッグでも
+   フィボが動いてしまう（本家は線で掴む）。それ以外は従来どおり矩形領域で判定する */
+function ptSegDist(px,py,x1,y1,x2,y2){ const dx=x2-x1, dy=y2-y1; const L2=dx*dx+dy*dy;
+ let t=L2?((px-x1)*dx+(py-y1)*dy)/L2:0; t=Math.max(0,Math.min(1,t));
+ return Math.hypot(px-(x1+dx*t), py-(y1+dy*t)); }
+function drawingPointHit(ctx,d,px,py){
+ if(d.type==="line"||d.type==="arrow"){ if(!d.p2)return false;
+   const x1=t2x(ctx,d.p1.time),y1=p2y(ctx,d.p1.price),x2=t2x(ctx,d.p2.time),y2=p2y(ctx,d.p2.price);
+   if([x1,y1,x2,y2].some(v=>v==null))return false; return ptSegDist(px,py,x1,y1,x2,y2)<=8; }
+ if(d.type==="ote"){ if(!d.p2)return false;
+   const x1=t2x(ctx,d.p1.time),y1=p2y(ctx,d.p1.price),x2=t2x(ctx,d.p2.time),y2=p2y(ctx,d.p2.price);
+   if([x1,y1,x2,y2].some(v=>v==null))return false;
+   if(Math.hypot(px-x1,py-y1)<=8||Math.hypot(px-x2,py-y2)<=8)return true;
+   if(px<Math.min(x1,x2)-2||px>Math.max(x1,x2)+2)return false;
+   const st=d.style, fp1=st.fibReverse?d.p2:d.p1, fp2=st.fibReverse?d.p1:d.p2;
+   for(const fl of st.fibLevels){ if(!fl.on)continue; const y=p2y(ctx,fp1.price+(fp2.price-fp1.price)*fl.level); if(y!=null&&Math.abs(py-y)<=6)return true; }
+   const hi=Math.max(d.p1.price,d.p2.price),lo=Math.min(d.p1.price,d.p2.price),rng=hi-lo;
+   const yT=p2y(ctx,hi-rng*0.618),yB=p2y(ctx,hi-rng*0.786);
+   if(yT!=null&&yB!=null&&py>=Math.min(yT,yB)&&py<=Math.max(yT,yB))return true;
+   return ptSegDist(px,py,x1,y1,x2,y2)<=8; }
+ return drawingHitsRect(ctx,d,px-7,py-7,px+7,py+7); }
+/* 選択中描画のハンドル位置（ピクセル座標＋種類）。端点ドラッグの掴み判定と形変更に使う */
+function drawingHandlePts(ctx,d){ const pts=[];
+ if(d.type==="long"||d.type==="short"){ const x1=t2x(ctx,d.p1.time);
+   if(x1!=null){ const yT=p2y(ctx,d.target),yE=p2y(ctx,d.entry),yS=p2y(ctx,d.stop);
+     if(yT!=null)pts.push({x:x1,y:yT,kind:"target"}); if(yE!=null)pts.push({x:x1,y:yE,kind:"entry"}); if(yS!=null)pts.push({x:x1,y:yS,kind:"stop"}); }
+   return pts; }
+ const x1=t2x(ctx,d.p1.time),y1=p2y(ctx,d.p1.price);
+ if(x1!=null&&y1!=null)pts.push({x:x1,y:y1,kind:"p1"});
+ if(d.p2){ const x2=t2x(ctx,d.p2.time),y2=p2y(ctx,d.p2.price); if(x2!=null&&y2!=null)pts.push({x:x2,y:y2,kind:"p2"}); }
+ return pts; }
+/* 描画ドラッグの状態機械（本体移動・端点移動で共用）。
+   【(4)(5) の実欠陥修正】従来のコンテナ側ドラッグは、押下時の変換値が取れない座標で早期 return して
+   リスナーを登録しない経路があり、本体ドラッグが全く効かず選択だけが外れる症状になっていた。
+   ここでは移動量を「押下時の原点スナップショット＋現在のポインタ位置の素変換」で毎回絶対計算し、
+   変換が null を返す座標（右オフセット領域など）ではバー間隔／価格-per-px のフォールバックで補う。
+   pointermove と mousemove の両方で受けても絶対計算のため二重適用にならない（冪等）。
+   リスナーは単一スロット管理で、前回の取り残しが後の操作（時間軸リセット等）を汚染しない */
+let activeDrawDrag=null;
+function cancelDrawDrag(){ const a=activeDrawDrag; if(!a)return; activeDrawDrag=null;
+ removeEventListener("pointermove",a.mv); removeEventListener("mousemove",a.mv);
+ removeEventListener("pointerup",a.up); removeEventListener("mouseup",a.up); removeEventListener("pointercancel",a.up); }
+function startDrawDrag(ctx,d,e,applyDelta){
+ cancelDrawDrag();
+ const svg=ctx.svg, r0=svg.getBoundingClientRect();
+ const startT=x2t(ctx,e.clientX-r0.left), startP=y2p(ctx,e.clientY-r0.top);
+ let barSpacing=6; try{ barSpacing=ctx.chart.timeScale().options().barSpacing||6; }catch(_){}
+ let pricePerPx=0; { const pa=y2p(ctx,0), pb=y2p(ctx,Math.max(1,r0.height)); if(pa!=null&&pb!=null&&r0.height>0)pricePerPx=Math.abs(pa-pb)/r0.height;
+   if(!pricePerPx&&ctx.view&&ctx.view.length){ let hi=-Infinity,lo=Infinity; for(const c of ctx.view){ if(c.high>hi)hi=c.high; if(c.low<lo)lo=c.low; } if(hi>lo&&r0.height>0)pricePerPx=(hi-lo)/r0.height; } }
+ const a={ctx,d,x0:e.clientX,y0:e.clientY,moved:false,snapTaken:false};
+ a.mv=ev=>{ if(activeDrawDrag!==a)return;
+   const dx=ev.clientX-a.x0, dy=ev.clientY-a.y0;
+   if(!a.moved){ if(Math.hypot(dx,dy)<4)return; a.moved=true; } // 4px 未満はクリック（選択のみ）。本家のしきい値（2px 超〜8px 以下）内
+   if(!a.snapTaken){ a.snapTaken=true; snapshotDrawings(); } // 純粋なクリックで undo 履歴を汚さない
+   const r=svg.getBoundingClientRect();
+   const curT=x2t(ctx,ev.clientX-r.left), curP=y2p(ctx,ev.clientY-r.top);
+   const sec=IVL_SEC[ctx.interval]||900;
+   const dt=(curT!=null&&startT!=null)?(curT-startT):Math.round(dx/barSpacing)*sec; // 吸着なしの素変換（フォールバックはバー量子化）
+   const dp=(curP!=null&&startP!=null)?(curP-startP):-dy*pricePerPx;
+   applyDelta(dt,dp,ev);
+   renderDrawings(ctx); };
+ a.up=()=>{ if(activeDrawDrag!==a)return; const wasMoved=a.moved; cancelDrawDrag();
+   if(wasMoved){ afterDrawChange(ctx);
+     if(replay.active&&replay.open&&(d.type==="long"||d.type==="short")){ replay.open.tp=d.target; replay.open.sl=d.stop; renderTrades(); } }
+   if(ctx.selectedId===d.id)showFloatBar(ctx,d); }; // ドラッグ後も選択とフローティングツールバーを維持する（本家と同じ）
+ activeDrawDrag=a;
+ addEventListener("pointermove",a.mv); addEventListener("mousemove",a.mv);
+ addEventListener("pointerup",a.up); addEventListener("mouseup",a.up); addEventListener("pointercancel",a.up); }
+function startBodyDrag(ctx,d,e){ const orig=JSON.parse(JSON.stringify({p1:d.p1,p2:d.p2,entry:d.entry,target:d.target,stop:d.stop,endTime:d.endTime}));
+ startDrawDrag(ctx,d,e,(dt,dp)=>{ const sh=pt=>pt?{time:pt.time+dt,price:pt.price+dp}:null;
+   d.p1=sh(orig.p1); if(orig.p2)d.p2=sh(orig.p2);
+   if(d.type==="long"||d.type==="short"){ d.entry=orig.entry+dp; d.target=orig.target+dp; d.stop=orig.stop+dp; if(orig.endTime!=null)d.endTime=orig.endTime+dt; } }); }
+function startHandleDrag(ctx,d,kind,e){ const orig=JSON.parse(JSON.stringify({p1:d.p1,p2:d.p2,entry:d.entry,target:d.target,stop:d.stop,endTime:d.endTime}));
+ startDrawDrag(ctx,d,e,(dt,dp,ev)=>{ /* ポジションの TP/SL/エントリー行は価格方向だけを動かす */
+   if(kind==="target"){ d.target=orig.target+dp; return; }
+   if(kind==="stop"){ d.stop=orig.stop+dp; return; }
+   if(kind==="entry"){ d.entry=orig.entry+dp; d.target=orig.target+dp; d.stop=orig.stop+dp; return; }
+   /* 端点は作成時と同じ snap（マグネット設定に従う）で置く。snap が取れない座標では原点＋素デルタ */
+   const r=ctx.svg.getBoundingClientRect(); const s=snap(ctx,ev.clientX-r.left,ev.clientY-r.top);
+   const base=kind==="p1"?orig.p1:orig.p2; if(!base)return;
+   const np=s||{time:base.time+dt,price:base.price+dp};
+   if(kind==="p1")d.p1={...np}; else if(d.p2)d.p2={...np};
+   if(d.type==="long"||d.type==="short"){ if(kind==="p1"){ const dpp=d.p1.price-orig.p1.price; d.entry=orig.entry+dpp; d.target=orig.target+dpp; d.stop=orig.stop+dpp; }
+     if(kind==="p2"&&d.p2)d.endTime=d.p2.time; } }); }
 /* 描画操作（ポインター） */
 function bindDrawing(ctx){
  const svg=ctx.svg; svg.style.pointerEvents=(tool==="cursor")?"none":"auto";
@@ -1369,32 +1473,23 @@ function bindDrawing(ctx){
    if(e.target.closest&&e.target.closest(".indLegend,.ordLayer,.paneLegend,.pricePill,.barCountdown,.histSpin,.histEnd,.rpWM,button,input,select,textarea"))return;
    const r=svg.getBoundingClientRect(); const px=e.clientX-r.left, py=e.clientY-r.top;
    if(px<0||py<0||px>r.width||py>r.height)return;
+   /* 選択中描画の端点ハンドルを掴んだ場合は本体より優先して端点ドラッグにする（本家と同じ。
+      従来は端点専用ドラッグ自体が無く、端点を掴んでも本体ドラッグ扱いで、結果として選択が外れて見えた） */
+   const selD=ctx.selectedId?allDrawingsFor(ctx.symbol).find(x=>x.id===ctx.selectedId):null;
+   if(selD&&drawVisibleHere(selD,ctx)&&!selD.locked){
+     const hp=drawingHandlePts(ctx,selD).find(h=>Math.hypot(h.x-px,h.y-py)<=8);
+     if(hp){ e.preventDefault(); e.stopPropagation(); activePane=ctx.idx; ctx.measure=null; startHandleDrag(ctx,selD,hp.kind,e); return; } }
    const list=allDrawingsFor(ctx.symbol); let hitD=null;
    for(let i=list.length-1;i>=0;i--){ const d=list[i]; if(!drawVisibleHere(d,ctx))continue;
-     if(drawingHitsRect(ctx,d,px-6,py-6,px+6,py+6)){ hitD=d; break; } }
+     if(drawingPointHit(ctx,d,px,py)){ hitD=d; break; } }
    if(!hitD){ if(ctx.selectedId||(ctx.selectedIds&&ctx.selectedIds.size)){ ctx.selectedId=null; ctx.selectedIds=new Set(); hideFloatBar(); renderDrawings(ctx); renderObjTree(); } return; }
    e.preventDefault(); e.stopPropagation();
    activePane=ctx.idx; ctx.measure=null;
    selectDrawing(ctx,hitD.id);
    if(hitD.locked)return;
-   /* 【実欠陥の修正】クリックとドラッグを区別する: 押下直後は「選択」のみで、ポインタが押下位置から
-      4px 以上動いて初めて移動を開始する。従来は pointermove 1回目で snap 済みデルタを即適用していたため、
-      クリック時の微小な揺れ（＋マグネット吸着とバー量子化によるジャンプ）で描画がずれ、「クリック＝移動」に
-      なって編集に入れなかった。移動量は吸着なしの素の座標変換で計算し、吸着先の切替によるジャンプも防ぐ。
-      snapshotDrawings は移動開始時にだけ取る（純粋なクリックで undo 履歴を汚さない） */
-   const startT=x2t(ctx,px), startP=y2p(ctx,py); if(startT==null||startP==null)return;
-   const d=hitD, orig=JSON.parse(JSON.stringify({p1:d.p1,p2:d.p2,entry:d.entry,target:d.target,stop:d.stop,endTime:d.endTime}));
-   const x0=e.clientX, y0=e.clientY; let dragging=false;
-   const mv=ev=>{ if(!dragging){ if(Math.hypot(ev.clientX-x0,ev.clientY-y0)<4)return; dragging=true; snapshotDrawings(); }
-     const t2=x2t(ctx,ev.clientX-r.left), p2=y2p(ctx,ev.clientY-r.top); if(t2==null||p2==null)return;
-     const dt=t2-startT, dp=p2-startP;
-     const shift=pt=>pt?{time:pt.time+dt,price:pt.price+dp}:null;
-     d.p1=shift(orig.p1); if(orig.p2)d.p2=shift(orig.p2);
-     if(d.type==="long"||d.type==="short"){ d.entry=orig.entry+dp; d.target=orig.target+dp; d.stop=orig.stop+dp; if(orig.endTime!=null)d.endTime=orig.endTime+dt; }
-     renderDrawings(ctx); };
-   const up2=()=>{ removeEventListener("pointermove",mv); removeEventListener("pointerup",up2); removeEventListener("pointercancel",up2);
-     if(dragging){ afterDrawChange(ctx); if(replay.active&&replay.open&&(d.type==="long"||d.type==="short")){ replay.open.tp=d.target; replay.open.sl=d.stop; renderTrades(); } } };
-   addEventListener("pointermove",mv); addEventListener("pointerup",up2); addEventListener("pointercancel",up2);
+   /* 本体ドラッグは startBodyDrag（startDrawDrag 状態機械）へ委譲する: 4px 閾値までは選択のみ、
+      閾値を超えたら吸着なしの素変換でポインタ移動量だけ平行移動し、終了後も選択を維持する */
+   startBodyDrag(ctx,hitD,e);
  },true);
  /* 【実欠陥の修正】描画ダブルクリックで設定を開く経路も svg では発火しないためコンテナ側で受ける。
     価格軸／時間軸の帯域は軸リセット（makePane 側 dblclick）に委ね、対象外とする。トレンドラインは本家どおり対象外 */
@@ -1406,7 +1501,7 @@ function bindDrawing(ctx){
    if(px>r.width-axW||py>r.height-tsH)return;
    const list=allDrawingsFor(ctx.symbol);
    for(let i=list.length-1;i>=0;i--){ const d=list[i]; if(!drawVisibleHere(d,ctx))continue;
-     if(drawingHitsRect(ctx,d,px-6,py-6,px+6,py+6)){ if(d.type==="line")return; selectDrawing(ctx,d.id); openDrawSettings(ctx,d); return; } }
+     if(drawingPointHit(ctx,d,px,py)){ if(d.type==="line")return; selectDrawing(ctx,d.id); openDrawSettings(ctx,d); return; } }
  });
  boxEl.addEventListener("pointerdown",e=>{ if(!(e.ctrlKey||e.metaKey)||e.button!==0||tool!=="cursor")return;
    if(e.target.closest&&e.target.closest("g[data-did]"))return; // 描画上は svg 側でトグル選択／複製ドラッグを処理する
@@ -1445,6 +1540,15 @@ function toggleChartSelect(ctx,d){ ctx.selectedIds=ctx.selectedIds||new Set();
  else { ctx.selectedIds.add(d.id); ctx.selectedId=d.id; }
  const prim=curDrawings().find(x=>x.id===ctx.selectedId); if(prim)showFloatBar(ctx,prim); else hideFloatBar(); }
 function cloneDrawingData(src){ const c=JSON.parse(JSON.stringify(src)); c.id="d"+(++drawSeq)+Date.now().toString(36); return c; }
+/* Paste: コピーした描画を指定地点（右クリック位置）に貼る。地点が無い場合（キーボード Ctrl+V 等）は
+   cloneDrawing と同じバーオフセットで貼る */
+function pasteDrawingAt(ctx,src,time,price){ if(!src)return;
+ if(time==null||price==null||!src.p1)return cloneDrawing(ctx,src,(IVL_SEC[ctx.interval]||900)*2);
+ snapshotDrawings(); const c=cloneDrawingData(src);
+ const dt=time-src.p1.time, dp=price-src.p1.price;
+ const sh=pt=>pt?{time:pt.time+dt,price:pt.price+dp}:null; c.p1=sh(c.p1); if(c.p2)c.p2=sh(c.p2);
+ if(c.type==="long"||c.type==="short"){ c.entry+=dp; c.target+=dp; c.stop+=dp; if(c.endTime)c.endTime+=dt; }
+ curDrawings().push(c); ctx.selectedId=c.id; ctx.selectedIds=new Set([c.id]); afterDrawChange(ctx); showFloatBar(ctx,c); return c; }
 function cloneDrawing(ctx,src,offsetSec){ snapshotDrawings(); const c=cloneDrawingData(src);
  if(offsetSec){ const sh=pt=>pt?{time:pt.time+offsetSec,price:pt.price}:null; c.p1=sh(c.p1); if(c.p2)c.p2=sh(c.p2); if(c.endTime)c.endTime+=offsetSec; }
  curDrawings().push(c); ctx.selectedId=c.id; ctx.selectedIds=new Set([c.id]); afterDrawChange(ctx); showFloatBar(ctx,c); return c; }
@@ -1492,34 +1596,61 @@ function flashObjRow(id){ setTimeout(()=>{ const w=$("#objTree"); if(!w)return; 
  if(row){ row.scrollIntoView({block:"center"}); row.classList.add("flash"); setTimeout(()=>row.classList.remove("flash"),1300); } },40); }
 function chartMenu(ctx,x,y,price,time){ const list=curDrawings(); const hasD=list.length>0, hasI=App.indicators.length>0;
  if(replay.active&&ctx.idx===0)return replayChartMenu(ctx,x,y,price,time);
- const allHidden=hasD&&list.every(d=>d.visible===false), allLocked=hasD&&list.every(d=>d.locked);
- const items=[];
- items.push({label:"Reset Chart",act:()=>fitAllPanes(ctx)},{sep:1},
-  {label:"インジケーターを追加…",act:()=>openIndMenu()});
- if(hasD||hasI)items.push({sep:1});
- if(hasD){ items.push({label:allHidden?"Show all drawings":"Hide all drawings",shortcut:"Ctrl+Alt+H",act:()=>toggleHideAll()});
-  items.push({label:allLocked?"Unlock all drawings":"Lock all drawings",act:()=>toggleLockAll()}); }
- if(hasD)items.push({label:"Remove all drawings",act:()=>removeAllDrawings(ctx)});
- if(hasI)items.push({label:"Remove all indicators",act:()=>removeAllIndicators()});
- if(hasD&&hasI)items.push({label:"Remove drawings & indicators",act:()=>{ if(curDrawings().some(d=>d.locked)&&!App.deleteLocked)return toast("ロック中の描画があります"); removeAllDrawings(ctx); removeAllIndicators(); }});
- items.push({sep:1},{label:"オブジェクトツリー",act:()=>setObjPanel(true)},
-  {label:"Delete locked drawings",checkable:true,checked:!!App.deleteLocked,act:()=>{App.deleteLocked=!App.deleteLocked; markDirty(); toast("Delete locked drawings: "+(App.deleteLocked?"オン":"オフ"));}});
+ /* 【(7) 文脈別メニュー】空き領域は本家と同じ構成にする: Reset chart view / Copy price / Paste /
+    Lock vertical cursor line by time / Table view / Object tree / 件数付き Remove / Settings…
+    注文項目（Sell/Buy limit 等）はリプレイ時のみ（replayChartMenu 側）。アラート項目は作らない
+    （ユーザーの決定でアラート機能なし）。全項目が実機能に接続されていること */
+ const allHidden=hasD&&list.every(d=>d.visible===false);
+ const items=[{label:"Reset chart view",act:()=>fitAllPanes(ctx)}];
+ if(price!=null&&isFinite(price)){ items.push({sep:1},
+  {label:`Copy price ${fmtPx(price)}`,act:()=>{ priceClipboard=price; try{ if(navigator.clipboard)navigator.clipboard.writeText(String(price)); }catch(e){} toast(`Copied price ${fmtPx(price)}`); }}); }
+ if(drawClipboard)items.push({label:"Paste",act:()=>pasteDrawingAt(ctx,drawClipboard,time,price)});
+ items.push({sep:1},
+  {label:"Lock vertical cursor line by time",checkable:true,checked:lockLineTime!=null,act:()=>{ lockLineTime=lockLineTime!=null?null:(time!=null?time:null); renderOrders(ctx); }},
+  {label:"Table view",checkable:true,checked:tableViewOn,act:()=>toggleTableView(ctx)},
+  {sep:1},
+  {label:"Object tree",act:()=>setObjPanel(true)});
+ if(hasD)items.push({label:allHidden?"Show all drawings":"Hide all drawings",shortcut:"Ctrl+Alt+H",act:()=>toggleHideAll()});
+ if(hasD)items.push({label:`Remove ${list.length} drawings`,act:()=>removeAllDrawings(ctx)});
+ if(hasI)items.push({label:`Remove ${App.indicators.length} indicators`,act:()=>removeAllIndicators()});
+ items.push({sep:1},
+  {label:"Delete locked drawings",checkable:true,checked:!!App.deleteLocked,act:()=>{App.deleteLocked=!App.deleteLocked; markDirty(); toast("Delete locked drawings: "+(App.deleteLocked?"オン":"オフ"));}},
+  {label:"Settings...",act:()=>openTheme()});
  showMenu(x,y,items); }
 function drawingMenu(ctx,d,x,y){ const sel=ctx.selectedIds&&ctx.selectedIds.size>1&&ctx.selectedIds.has(d.id)?[...ctx.selectedIds]:[d.id];
  const multi=sel.length>1;
- const items=[{label:"Template",act:()=>openTemplateMenu(ctx,d)},{label:"Settings…",act:()=>openDrawSettings(ctx,d)},{sep:1},
-  {label:"Clone",act:()=>cloneDrawing(ctx,d,IVL_SEC[ctx.interval]||900)},
-  {label:"Copy",act:()=>{ drawClipboard=JSON.parse(JSON.stringify(d)); toast("描画をコピーしました"); }}];
- if(drawClipboard)items.push({label:"Paste",act:()=>cloneDrawing(ctx,drawClipboard,(IVL_SEC[ctx.interval]||900)*2)});
- items.push({label:"Displacement…",act:()=>openDisplacement(ctx,sel)});
+ const back=()=>drawingMenu(ctx,d,x,y);
+ /* 【(7) 文脈別メニュー】描画上は本家と同じ構成にする: Template › / Visual order › /
+    Visibility on intervals › / Object tree / Clone / Copy / Paste / Lock / Hide / Remove / Settings…
+    サブメニューは同じ位置に開き直し、末尾の「‹ …」で親メニューへ戻る。全項目が実機能に接続されていること */
+ const items=[
+  {label:"Template",shortcut:"›",act:()=>{ const names=Object.keys(templates[d.type]||{});
+    const sub=names.map(n=>({label:n,act:()=>{ snapshotDrawings(); for(const id of sel){ const dd=curDrawings().find(t=>t.id===id); if(dd&&dd.type===d.type)dd.style={...dd.style,...JSON.parse(JSON.stringify(templates[d.type][n]))}; } afterDrawChange(ctx); const prim=curDrawings().find(t=>t.id===ctx.selectedId); if(prim)showFloatBar(ctx,prim); }}));
+    if(names.length)sub.push({sep:1});
+    sub.push({label:"Save as…",act:()=>openPrompt("テンプレートを保存（"+d.type+"）","",name=>{ (templates[d.type]=templates[d.type]||{})[name]=JSON.parse(JSON.stringify(d.style)); markDirty(); toast("テンプレート「"+name+"」を保存しました"); })});
+    sub.push({label:"Apply defaults",act:()=>{ snapshotDrawings(); delete lastStyles[d.type]; for(const id of sel){ const dd=curDrawings().find(t=>t.id===id); if(dd&&dd.type===d.type)dd.style=defaultStyle(dd.type); } afterDrawChange(ctx); const prim=curDrawings().find(t=>t.id===ctx.selectedId); if(prim)showFloatBar(ctx,prim); }});
+    sub.push({sep:1},{label:"‹ Template",act:back});
+    showMenu(x,y,sub); }},
+  {label:"Visual order",shortcut:"›",act:()=>showMenu(x,y,[
+    {label:"Bring to front",act:()=>moveZ(ctx,d.id,Infinity)},
+    {label:"Bring forward",act:()=>moveZ(ctx,d.id,1)},
+    {label:"Send backward",act:()=>moveZ(ctx,d.id,-1)},
+    {label:"Send to back",act:()=>moveZ(ctx,d.id,-Infinity)},
+    {sep:1},{label:"‹ Visual order",act:back} ])},
+  {label:"Visibility on intervals",shortcut:"›",act:()=>{ const sub=INTERVALS.map(([iv])=>{ const vis=!(d.intervals&&d.intervals[iv]===false);
+     return {label:iv,checkable:true,checked:vis,act:()=>{ snapshotDrawings(); for(const id of sel){ const dd=curDrawings().find(t=>t.id===id); if(!dd)continue; dd.intervals=dd.intervals||{}; dd.intervals[iv]=!vis; } afterDrawChange(ctx); }}; });
+    sub.push({sep:1},{label:"‹ Visibility on intervals",act:back}); showMenu(x,y,sub); }},
+  {label:"Object tree",act:()=>{ setObjPanel(true); flashObjRow(d.id); }},
+  {sep:1},
+  {label:"Clone",shortcut:"Ctrl+Drag",act:()=>cloneDrawing(ctx,d,IVL_SEC[ctx.interval]||900)},
+  {label:"Copy",shortcut:"Ctrl+C",act:()=>{ drawClipboard=JSON.parse(JSON.stringify(d)); toast("描画をコピーしました"); }}];
+ if(drawClipboard)items.push({label:"Paste",shortcut:"Ctrl+V",act:()=>pasteDrawingAt(ctx,drawClipboard,null,null)});
  items.push({sep:1},
-  {label:d.visible===false?"Show":"Hide",act:()=>{ snapshotDrawings(); const v=d.visible===false?true:false; for(const id of sel){const dd=curDrawings().find(t=>t.id===id); if(dd)dd.visible=v;} if(!v&&sel.includes(ctx.selectedId)){ctx.selectedId=null; hideFloatBar();} afterDrawChange(ctx); }},
-  {label:d.locked?"Unlock":"Lock",act:()=>{ snapshotDrawings(); const v=!d.locked; for(const id of sel){const dd=curDrawings().find(t=>t.id===id); if(dd)dd.locked=v;} afterDrawChange(ctx); const prim=curDrawings().find(t=>t.id===ctx.selectedId); if(prim)showFloatBar(ctx,prim); }});
- if(multi)items.push({sep:1},{label:"グループを作成…",act:()=>createGroup(ctx,sel)});
- if(d.group)items.push({label:"グループから外す",act:()=>{ snapshotDrawings(); d.group=null; afterDrawChange(ctx); }});
- items.push({label:"最前面へ移動",act:()=>moveZ(ctx,d.id,Infinity)},{label:"最背面へ移動",act:()=>moveZ(ctx,d.id,-Infinity)},{sep:1},
+  {label:"Lock",checkable:true,checked:!!d.locked,act:()=>{ snapshotDrawings(); const v=!d.locked; for(const id of sel){const dd=curDrawings().find(t=>t.id===id); if(dd)dd.locked=v;} afterDrawChange(ctx); const prim=curDrawings().find(t=>t.id===ctx.selectedId); if(prim)showFloatBar(ctx,prim); }},
+  {label:"Hide",act:()=>{ snapshotDrawings(); for(const id of sel){const dd=curDrawings().find(t=>t.id===id); if(dd)dd.visible=false;} if(sel.includes(ctx.selectedId)){ctx.selectedId=null; ctx.selectedIds=new Set(); hideFloatBar();} afterDrawChange(ctx); }},
   {label:"Remove",shortcut:"Del",act:()=>{ if(multi){ctx.selectedIds=new Set(sel); ctx.selectedId=d.id;} deleteSelectedDrawings(ctx); }},
-  {sep:1},{label:"オブジェクトツリー",act:()=>{ setObjPanel(true); flashObjRow(d.id); }});
+  {sep:1},
+  {label:"Settings…",act:()=>openDrawSettings(ctx,d)});
  showMenu(x,y,items); }
 function indicatorMenu(ind,x,y){ showMenu(x,y,[
  {label:"Settings…",act:()=>openIndSettings(ind)},
@@ -1546,7 +1677,7 @@ function chartContext(ctx,e){ e.preventDefault(); activePane=ctx.idx; hideCtxMen
  if(py>r.height-tsH)return timeAxisMenu(ctx,e.clientX,e.clientY); // 時間軸上は軸メニュー
  const list=allDrawingsFor(ctx.symbol);
  for(let i=list.length-1;i>=0;i--){ const d=list[i]; if(!drawVisibleHere(d,ctx))continue;
-  if(drawingHitsRect(ctx,d,px-6,py-6,px+6,py+6)){ if(!(ctx.selectedIds&&ctx.selectedIds.size>1&&ctx.selectedIds.has(d.id)))selectDrawing(ctx,d.id);
+  if(drawingPointHit(ctx,d,px,py)){ if(!(ctx.selectedIds&&ctx.selectedIds.size>1&&ctx.selectedIds.has(d.id)))selectDrawing(ctx,d.id);
    return drawingMenu(ctx,d,e.clientX,e.clientY); } }
  return chartMenu(ctx,e.clientX,e.clientY,y2p(ctx,py),x2t(ctx,px)); }
 function afterDrawChange(ctx){ lastStylesRefresh(ctx); markDirty(); renderDrawings(ctx); renderObjTree(); }
@@ -1591,7 +1722,8 @@ function showFloatBar(ctx,d){ const fb=$("#floatBar"); const st=d.style;
   if(d.type==="rect")h+=`<button data-fb="bg" title="Background color"><span class="sw" style="background:${st.bg}"></span></button>`;
   if(d.type!=="ote")h+=`<button data-fb="textcolor" title="Line tool text colors"><span class="sw" style="background:${st.textColor}"></span><span class="fbA">A</span></button>`;
   h+=`<button data-fb="width" class="fbWide" title="Line tool width">${wVal}px</button><button data-fb="style" class="fbWide" title="Style">${styleGlyph}</button>`;
-  if(d.type==="line"||d.type==="arrow"||d.type==="rect")h+=`<button data-fb="font" class="fbWide" title="Font size">${st.fontSize}</button>`;
+  /* 本家のフローティングツールバーにフォントサイズは無い（フォントサイズは設定ダイアログの Text タブで変更する）。
+     従来あった「14」ボタンを外し、本家の項目・順序に合わせる（テキスト描画専用ツールバーのフォントサイズは本家にもあるため残す） */
  }
  h+=`<button data-fb="settings" title="Settings">${uiIc("gear")}</button>`;
  if(d.type==="text")h+=`<button data-fb="anchor" title="Anchor drawing">${uiIc("anchor")}</button>`;
@@ -2064,7 +2196,7 @@ function updateTabPrices(){ $$("#tabs .tabPx").forEach(sp=>{ const s=sp.dataset.
  const dec=(symInfo(s).dec!=null?symInfo(s).dec:2);
  const pr=(+b.close).toLocaleString("en-US",{minimumFractionDigits:dec,maximumFractionDigits:dec});
  let html=" "+pr;
- if(p){ const chP=b.close-p.close, up=chP>=0; const chF=(+chP).toLocaleString("en-US",{minimumFractionDigits:dec,maximumFractionDigits:dec}); html=` <span class="${up?"tUp":"tDn"}">${up?"▲":"▼"}</span> ${pr} <span class="${up?"tUp":"tDn"}">${up?"+":""}${chF}</span>`; }
+ if(p){ const up=b.close-p.close>=0; html=` <span class="${up?"tUp":"tDn"}">${up?"▲":"▼"}</span> ${pr}`; } /* 本家のタブは「銘柄 ▲▼ 現在値」のみで変動値は出ない（本家実画面 2880×1800 のネイティブ切り出しで実測。従来は変動値まで出していた） */
  if(sp.dataset.v!==html){ sp.dataset.v=html; sp.innerHTML=html; } }); }
 /* ============ レイアウト保存 / JSON入出力 ============ */
 function saveLayoutAs(name){ const j=StorageAdapter.buildJSON(); const ex=App.layouts.find(l=>l.name===name);
@@ -2541,7 +2673,9 @@ function downloadTab(tab){
  download(new Blob([lines.join("\n")],{type:"text/csv;charset=utf-8"}),fn);
  toast("CSVをダウンロードしました"); }
 /* ============ 左ツールバー ============ */
-const ICONS={cursor:'<path d="M12 3v5.2M12 15.8V21M3 12h5.2M15.8 12H21" stroke="currentColor" stroke-width="1.6"/>',
+const ICONS={cursor:'<path d="M6.5 3.5L19 12l-6.8 1.6L9.5 20z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>',
+ cross:'<path d="M12 3v5.2M12 15.8V21M3 12h5.2M15.8 12H21" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="2.2" fill="none" stroke="currentColor" stroke-width="1.4"/>',
+ dot:'<circle cx="12" cy="12" r="3.4" fill="currentColor"/>',
  line:'<path d="M5.5 18.5L18.5 5.5" stroke="currentColor" stroke-width="1.6"/><circle cx="5.5" cy="18.5" r="2.7" fill="#000" stroke="currentColor" stroke-width="1.5"/><circle cx="18.5" cy="5.5" r="2.7" fill="#000" stroke="currentColor" stroke-width="1.5"/>',
  rect:'<rect x="4" y="6" width="16" height="12" fill="none" stroke="currentColor" stroke-width="1.6"/>',
  arrow:'<path d="M4 20L19 5M11.5 5H19v7.5" fill="none" stroke="currentColor" stroke-width="1.6"/>',
@@ -2565,21 +2699,26 @@ const LEFT_ICONS={
 function svgIc(paths){return `<svg class="ic" viewBox="0 0 24 24">${paths}</svg>`;}
 /* 左ツールバーは本家と同じグループ構成・順序（グループボタン＋右下シェブロンでツール切替メニュー） */
 const TOOL_GROUPS=[
- {id:"cursors",label:"Cursors",items:[["cursor","カーソル"]]},
+ {id:"cursors",label:"Cursors",items:[["cross","Cross"],["dot","Dot"],["cursor","Arrow"]]},
  {id:"trend",label:"Trend tools",items:[["line","トレンドライン"],["arrow","矢印"]]},
  {id:"fib",label:"Gann and Fibonacci tools",items:[["ote","Fibリトレースメント（OTE）"]]},
  {id:"forecast",label:"Forecasting and measurement tools",items:[["long","Long Position"],["short","Short Position"]]},
  {id:"shapes",label:"Geometric shapes",items:[["rect","矩形"]]},
  {id:"anno",label:"Annotation tools",items:[["text","テキスト"]]},
 ];
-let groupTool={cursors:"cursor",trend:"line",fib:"ote",forecast:"long",shapes:"rect",anno:"text"};
+let groupTool={cursors:"cross",trend:"line",fib:"ote",forecast:"long",shapes:"rect",anno:"text"};
+/* 【(3) Cursors グループ】本家は Cursors ボタンがフライアウト（Cross / Dot / Arrow）で、既定は Cross。
+   バリアントはカーソルの見た目だけを変え、操作（選択・ドラッグ等）は通常カーソルと同一 */
+let cursorVariant="cross";
+function applyCursorVariant(){ const w=$("#chartsWrap"); if(!w)return;
+ w.classList.toggle("curCross",cursorVariant==="cross"); w.classList.toggle("curDot",cursorVariant==="dot"); }
 function refreshLeftStates(){ const mb=$("#magBtn"); if(mb)mb.classList.toggle("whiteOn",magnetMode!=="off"); // マグネットON時は本家どおり白い角丸四角＋黒アイコンになる（ユーザーの本家キャプチャで実測）
  const kb=$("#keepBtn"); if(kb)kb.classList.toggle("whiteOn",keepDrawing);
  const lb=$("#lockAllBtn"); if(lb&&P[activePane]){ const list=curDrawings(); lb.innerHTML=svgIc(list.length&&list.every(d=>d.locked)?LEFT_ICONS.lock:LEFT_ICONS.unlock); }
- $$("#leftbar [data-grp]").forEach(b=>{ const g=TOOL_GROUPS.find(x=>x.id===b.dataset.grp); if(g)b.classList.toggle("on",tool===groupTool[g.id]); });
+ $$("#leftbar [data-grp]").forEach(b=>{ const g=TOOL_GROUPS.find(x=>x.id===b.dataset.grp); if(g)b.classList.toggle("on",g.id==="cursors"?tool==="cursor":tool===groupTool[g.id]); });
  $$("#leftbar [data-tool]").forEach(b=>b.classList.toggle("on",tool===b.dataset.tool)); }
 function openGroupMenu(g,btn){ const r=btn.getBoundingClientRect();
- showMenu(r.right+4,Math.max(4,Math.min(r.top,innerHeight-40*g.items.length-16)),g.items.map(([k,lb])=>({label:lb,checkable:true,checked:groupTool[g.id]===k,act:()=>{ groupTool[g.id]=k; setTool(k); buildLeftBar(); }}))); }
+ showMenu(r.right+4,Math.max(4,Math.min(r.top,innerHeight-40*g.items.length-16)),g.items.map(([k,lb])=>({label:lb,checkable:true,checked:groupTool[g.id]===k,act:()=>{ groupTool[g.id]=k; if(g.id==="cursors"){ cursorVariant=k; setTool("cursor"); applyCursorVariant(); } else setTool(k); buildLeftBar(); }}))); }
 function confirmRemoveAllDrawings(ctx){ if(!ctx||!curDrawings().length)return; if(curDrawings().some(d=>d.locked&&!App.deleteLocked))return toast("ロック中の描画があります。先にロックを解除するか、右クリックメニューの「Delete locked drawings」をオンにしてください");
  openConfirm("この銘柄の描画を全部削除しますか？",()=>{ snapshotDrawings(); drawingsBySymbol[ctx.symbol]=[]; ctx.selectedId=null; ctx.selectedIds=new Set(); hideFloatBar(); afterDrawChange(ctx); }); }
 function buildLeftBar(){ const w=$("#leftbar"); let h="";
@@ -2600,7 +2739,7 @@ function buildLeftBar(){ const w=$("#leftbar"); let h="";
  <button id="helpBtn" title="ショートカット一覧（ヘルプ）">${svgIc(LEFT_ICONS.help)}</button>`;
  w.innerHTML=h;
  w.querySelectorAll("[data-grp]").forEach(b=>{ const g=TOOL_GROUPS.find(x=>x.id===b.dataset.grp);
-  b.onclick=()=>setTool(groupTool[g.id]);
+  b.onclick=()=>{ if(g.id==="cursors"){ cursorVariant=groupTool[g.id]; setTool("cursor"); applyCursorVariant(); } else setTool(groupTool[g.id]); };
   const cv=b.querySelector(".gchev"); if(cv)cv.onclick=e=>{ e.stopPropagation(); openGroupMenu(g,b); }; });
  w.querySelectorAll("[data-tool]").forEach(b=>b.onclick=()=>setTool(b.dataset.tool));
  $("#magBtn").onclick=e=>{ const r=e.currentTarget.getBoundingClientRect();
@@ -2630,6 +2769,7 @@ function buildLeftBar(){ const w=$("#leftbar"); let h="";
    {label:"Remove drawings & indicators",act:()=>{ if(curDrawings().some(d=>d.locked)&&!App.deleteLocked)return toast("ロック中の描画があります"); confirmRemoveAllDrawings(P[activePane]); removeAllIndicators(); }} ]); };
  $("#undoBtn").onclick=doUndo;
  $("#helpBtn").onclick=openShortcuts;
+ applyCursorVariant();
  refreshLeftStates();
 }
 function openShortcuts(){ openModal("ショートカット一覧",`<div class="hint" style="line-height:2">
@@ -2675,6 +2815,10 @@ function wire(){
   if(replay.active&&e.shiftKey&&e.key==="ArrowRight"){e.preventDefault(); stepReplay(1); return;}
   if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.key)&&!e.ctrlKey&&!e.metaKey&&!e.altKey){ const ctx=P[activePane]; // 矢印キーで選択中の描画を移動（本家と同じ）
    if(ctx&&(ctx.selectedId||(ctx.selectedIds&&ctx.selectedIds.size))){ e.preventDefault(); nudgeSelected(ctx,e.key,e.shiftKey); } return; }
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="c"){ const ctx=P[activePane]; const d=ctx&&curDrawings().find(x=>x.id===ctx.selectedId); // 本家準拠: Ctrl+C = 選択中の描画をコピー（メニューの Copy と同じ）。描画未選択時は通常のコピーを妨げない
+   if(d){ e.preventDefault(); drawClipboard=JSON.parse(JSON.stringify(d)); toast("描画をコピーしました"); return; } }
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="v"){ const ctx=P[activePane]; // 本家準拠: Ctrl+V = コピーした描画を貼り付け
+   if(ctx&&drawClipboard){ e.preventDefault(); pasteDrawingAt(ctx,drawClipboard,null,null); return; } }
   if((e.key==="Delete"||e.key==="Backspace")){const ctx=P[activePane]; if(ctx.selectedId||(ctx.selectedIds&&ctx.selectedIds.size)){e.preventDefault(); deleteSelectedDrawings(ctx);} return;}
   if(e.altKey&&!e.ctrlKey&&!e.metaKey&&e.key.toLowerCase()==="r"){e.preventDefault(); fitAllPanes(P[activePane]); return;} // 本家準拠: Alt+R = チャートをリセット（全データ表示＋価格軸Auto復帰）
   if(e.altKey&&!e.ctrlKey&&!e.metaKey&&e.key.toLowerCase()==="g"){e.preventDefault(); openGotoModal(P[activePane]); return;} // 本家準拠: Alt+G = 日付へ移動
