@@ -51,7 +51,7 @@ svg.ic{width:17px;height:17px;flex:none}
 #symBtn small{color:var(--dim);font-weight:400;font-size:11px}
 .ivl{display:flex;gap:2px}
 .ivl button{min-width:34px;padding:3px 5px}
-.ivl button.on{background:#2e2e2e;color:#b8b8b8} /* 本家はアクティブ時間足も文字色は通常と同じ #b8b8b8 で、背景 #2e2e2e のピルだけで示す（従来は #333+白文字で一段浮いていた） */
+#topbar .ivl button.on{background:#2e2e2e;color:#b8b8b8} /* 本家はアクティブ時間足も文字色は通常と同じ #b8b8b8 で、背景 #2e2e2e のピルだけで示す。#topbar button.on（IDセレクタ, 特異度1-1-1）が .ivl button.on（0-2-1）に勝ち白文字のままだったため、セレクタを #topbar .ivl button.on（1-2-1）に上げて確実に効かせる */
 .sep{width:1px;height:26px;background:var(--line);margin:0 4px;flex:none}
 #ohlcLine{color:var(--dim);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:none}
 #ohlcLine b{color:var(--txt)}
@@ -340,7 +340,9 @@ textarea{width:100%;min-height:110px;font-family:ui-monospace,Menlo,monospace;fo
   /* モバイル トップバー集約: 本家モバイル同様に1段のみ（全体を横スクロール）。2段に折り返してチャート開始位置を下げない */
   #topbar{flex-wrap:nowrap;gap:2px;padding:2px 6px;height:38px;font-size:13px;overflow-x:auto;scrollbar-width:none}
   #topbar::-webkit-scrollbar{display:none}
-  #topbar button{min-height:30px;flex:none}
+  #topbar button{min-height:30px;flex:none;padding:2px 5px} /* モバイル: トップバー内容が 390px 幅に対し 400px で右端ボタンが切れていたため左右パディングを詰める */
+  #topbar .ivl button{min-width:30px;padding:3px 4px}
+  #topbar #symBtn{padding:2px 14px} /* 銘柄ピルの左右パディングはモバイルでも維持（上の汎用詰めで潰さない） */
   #demoBanner{left:52px;bottom:76px} /* モバイルもデスクトップと同じペイン左下（左レール44pxの内側）。従来の中央配置は2行に折り返してローソク中央を覆った。bottom:76px で時間軸帯（ペイン下端から約28px）と非重複 */
   #demoBanner span{font-size:10.5px}
   #tabs{height:23px;align-items:stretch}
@@ -369,7 +371,7 @@ textarea{width:100%;min-height:110px;font-family:ui-monospace,Menlo,monospace;fo
   #rangeMoreBtn{flex:none}
   #scaleGear{flex:none}
   .rangeBtns::-webkit-scrollbar{display:none}
-  .rangeBtns button{flex:none}
+  .rangeBtns button{flex:none;padding:1px 4px} /* モバイル下部バー: 従来は範囲ボタン群が内部幅267pxに対し313pxで「5Y」以降が切れていた。左右パディング 7px→4px で全9ボタン+アイコン群が1画面に収まる幅へ詰める */
   #rangeMoreBtn{display:inline-flex;order:1}
   #rangeMore{display:none}
   #rangeMore.open{display:flex;flex:1 1 100%;flex-wrap:wrap;gap:6px;align-items:center;order:3}
