@@ -2835,7 +2835,15 @@ function resetBacktestSession(){ replay.open=null; replay.pending=null; replay.c
 function rpCtx(){ const c=P[activePane]; if(c&&c.full&&c.full.length)return c; return P[replay.paneIdx]||P[0]; }
 function rpPaneOf(t){ return (t&&P[t.paneIdx||0])||rpCtx(); }
 function alignReplayIdx(ctx,time){ const d=ctx.full; if(!d||!d.length)return -1; const i=d.findIndex(c=>c.time>time); return i<0?d.length-1:Math.max(0,i-1); }
-function applyReplayTime(time){ replay.time=time; for(const c of P){ if(!c||!c.full.length)continue; c.replayIdx=alignReplayIdx(c,time); setPaneData(c); } }
+function applyReplayTime(time,keepView){ replay.time=time; for(const c of P){ if(!c||!c.full.length)continue; c.replayIdx=alignReplayIdx(c,time);
+ /* 【修正: リプレイを進めるとチャートが勝手に動く】LWC の時間軸は「データ末尾からの右オフセット」で
+    表示位置を保持するため、足が1本増えるたびに表示範囲が1本分ずつずれ、再生/ステップのたびに
+    チャート全体が左へ流れていた。本家は時刻で固定され、未来側の空白に足が増えていくだけで画面は動かない。
+    ステップ時は setPaneData の前後で表示中の時刻範囲を保存・復元し、画面を一切動かさない。
+    開始時（startReplay）は開始バーへ寄せる従来動作のまま（keepView を渡さない） */
+ let vr=null; if(keepView){ try{ vr=c.chart.timeScale().getVisibleRange(); }catch(e){} }
+ setPaneData(c);
+ if(vr){ try{ c.chart.timeScale().setVisibleRange(vr); }catch(e){} } } }
 function startReplay(idx,srcCtx){ const ctx=srcCtx||rpCtx(); if(!ctx||!ctx.full.length)return toast("Data is loading"); idx=Math.max(0,Math.min(ctx.full.length-1,idx)); resetBacktestSession(); P.forEach(c=>{if(c)hideGotoTip(c);}); replay.active=true; replay.paneIdx=ctx.idx; replay.barRealStart=Date.now(); applyReplayTime(ctx.full[idx].time);
  $("#replayBar").classList.add("show"); $("#replayBtn").classList.add("on"); $("#tradesPanel").classList.add("show"); refreshBtCapInfo(); updateReplayInfo(); renderTrades(); markDirty(); toast("Replay started. Future bars are hidden until the replay reaches them. The backtest is a new session"); }
 function stopReplay(){ // End replayでバックテストも終了する（ユーザーの決定）。未決済ポジションは最後に表示されたBarsの終値で決済、未約定注文は取消。パネルは閉じ、CSVも出せなくなる
@@ -2849,7 +2857,7 @@ function updateReplayInfo(){ const ctx=rpCtx(); if(!ctx)return; const b=ctx.view
  updateSpeedBtn(); for(const c of P){ if(c)renderOrders(c); }
  $("#rpLong").disabled=!!replay.open; $("#rpShort").disabled=!!replay.open; $("#rpClose").disabled=!replay.open; }
 function stepReplay(dir){ if(!replay.active)return; const ctx=rpCtx(); if(!ctx||!ctx.full.length)return; replay.barRealStart=Date.now();
- const ni=Math.max(0,Math.min(ctx.full.length-1,ctx.replayIdx+dir)); applyReplayTime(ctx.full[ni].time); // 全ペインを同じ時刻へ進める
+ const ni=Math.max(0,Math.min(ctx.full.length-1,ctx.replayIdx+dir)); applyReplayTime(ctx.full[ni].time,true); // 全ペインを同じ時刻へ進める（表示範囲は固定したまま）
  const tCtx=rpPaneOf(replay.open||replay.pending); const bar=tCtx&&tCtx.view.length?tCtx.view[tCtx.view.length-1]:ctx.full[ni]; // 約定判定はトレードのペインの足で
  if(bar){ checkPending(bar); updateFavAdv(bar); if(dir>0)checkTradeHit(bar,tCtx?tCtx.replayIdx:ni); } updateReplayInfo(); }
 function updateFavAdv(bar){ const t=replay.open; if(!t)return; const long=t.side==="Long"; const m=(t.mult!=null?t.mult:effMult(t.symbol||""))||1;
