@@ -1277,7 +1277,7 @@ function loadPane(ctx,symbol,interval,keepRange){
  hideGotoTip(ctx); // 銘柄/時間足の切替で Go to 吹き出しは消える
  ctx.symbol=symbol; ctx.interval=interval; ctx.replayIdx=-1;
  try{ctx.chart.applyOptions({localization:{priceFormatter:priceFmtFor(symbol)}});}catch(e){} // Price軸の表記を銘柄の桁・カンマ区切りに合わせる（本家と同じ）
- ctx.loadingHist=false; ctx.histDone=false; if(ctx.histEndEl)ctx.histEndEl.style.display="none"; // 銘柄/足が変わったら過去読み込み状態をリセット
+ ctx.loadingHist=false; ctx.histDone=false; ctx._bgActive=false; if(ctx._bgTimer){clearTimeout(ctx._bgTimer);ctx._bgTimer=null;} if(ctx.histEndEl)ctx.histEndEl.style.display="none"; // 銘柄/足が変わったら過去読み込み状態をリセット
  { const _L=liveByPane[ctx.idx]; if(_L&&_L.key&&_L.key!==symbol+"|"+interval)stopLive(ctx.idx); } /* そのペインの銘柄/時間足が変わったら旧購読を止める（再接続は取得成功後に新しい値で） */
  const cached=genData(symbol,interval); ctx.full=cached; setPaneData(ctx); setDataMode(hubLive);
  getCandlesHTTP(symbol,interval,(ok,data)=>{ if(ok&&data&&ctx.symbol===symbol&&ctx.interval===interval){ wsRetry.n=0; dataCache[symbol+"|"+interval]=data; ctx.full=data; setPaneData(ctx); setDataMode(true); startLive(ctx); kickPrefetch(ctx); toast("Live data loaded from OHLC Hub (MCP)"); return; }
@@ -1310,13 +1310,29 @@ function genOlderDemo(symbol,interval,beforeTime,countSoFar,anchorOpen){ // Hub�
  return out; }
 /* 初期読み込み直後の先読みキック: 初期取得は500本のみで、粗いズームでは表示左端が最初から最古バーに近い。
    範囲変化イベント任せにせず、取得完了時点で現在範囲で先読み判定を一度走らせる */
-function kickPrefetch(ctx){ if(!ctx||!ctx.chart)return; let vr=null; try{ vr=ctx.chart.timeScale().getVisibleLogicalRange(); }catch(e){} if(vr)maybeLoadOlder(ctx,vr); }
+function kickPrefetch(ctx){ if(!ctx||!ctx.chart)return; let vr=null; try{ vr=ctx.chart.timeScale().getVisibleLogicalRange(); }catch(e){} if(vr)maybeLoadOlder(ctx,vr); startBgPrefetch(ctx); }
+/* バックグラウンド先読み: 初期500本＋マージン読み込み（計2,500本）だけでは粗いズームの最初の大きな
+   ジャンプ（数千本分）を賄えず、端に着いてから逐次取得が始まって最大約7秒スピナーが出ていた。
+   開いた直後からアイドル時間に静かに（スピナーなしで）過去側を貯め、合計12,000本（デモ生成の上限と同じ）
+   に達するか最古バーに届くまで、間隔を空けて1バッチずつ継ぎ足す */
+const BG_TARGET=12000, BG_GAP_MS=400;
+function startBgPrefetch(ctx){ if(!ctx)return; ctx._bgActive=true; ctx._bgSym=ctx.symbol; ctx._bgIv=ctx.interval;
+ if(ctx.loadingHist||ctx.histDone||!ctx.full||ctx.full.length>=BG_TARGET)return; // 読み込み中なら finish 側の連鎖判定が引き継ぐ
+ if(replay.active)return; // リプレイ中は始めない（終了後の範囲変化で通常の先読みが再開する）
+ loadOlder(ctx,true); }
+function scheduleBgPrefetch(ctx,delay){ if(!ctx._bgActive||ctx._bgTimer)return;
+ ctx._bgTimer=setTimeout(()=>{ ctx._bgTimer=null;
+  if(!ctx._bgActive||ctx.histDone||ctx.loadingHist)return;
+  if(ctx.symbol!==ctx._bgSym||ctx.interval!==ctx._bgIv){ ctx._bgActive=false; return; }
+  if(!ctx.full||ctx.full.length>=BG_TARGET){ ctx._bgActive=false; return; }
+  if(replay.active){ scheduleBgPrefetch(ctx,2000); return; } // リプレイ中は待って再試行
+  loadOlder(ctx,true); },delay||BG_GAP_MS); }
 /* 先読み幅: 可視範囲の「3画面分（最小300本・最大6000本）」。粗いズーム（約50日幅）では1回のドラッグで
    数千本分ジャンプするため、従来の1画面分・最大1000本では端に着いてから読み込み待ちになっていた */
 function histMargin(r){ const span=Math.max(1,r.to-r.from); return Math.min(6000,Math.max(300,Math.ceil(span*3))); }
 function maybeLoadOlder(ctx,r){ if(!ctx||ctx.histDone)return; if(replay.active)return; // リプレイ中は読み込まない
  if(!ctx.full||!ctx.full.length||!r)return;
- if(ctx.loadingHist){ if(r.from<=histMargin(r))ctx._histWant=true; return; } // 読み込み中でも端に近づいたら「もう1バッチ必要」を予約し、完了直後に連鎖させる（従来は読み込み中の接近を取りこぼしていた）
+ if(ctx.loadingHist){ if(r.from<=histMargin(r))ctx._histWant=true; if(r.from<=2&&ctx.histSpin)ctx.histSpin.classList.add("show"); return; } // 読み込み中でも端に近づいたら「もう1バッチ必要」を予約し、完了直後に連鎖させる（従来は読み込み中の接近を取りこぼしていた）。静かな先読み中でも最古バーに張り付いたらスピナーを出す（実際に待っているのはこの場合だけ）
  /* 先読み: 端（最古バー）に到達してから読み始めるのでは遅いので、可視範囲の左端が最古バーから
     先読み幅（3画面分）以内に入った時点で次バッチをバックグラウンドで読み始める */
  if(r.from>histMargin(r))return;
@@ -1325,7 +1341,10 @@ function maybeLoadOlder(ctx,r){ if(!ctx||ctx.histDone)return; if(replay.active)r
   if(!ctx._histTimer)ctx._histTimer=setTimeout(()=>{ ctx._histTimer=null; let vr=null; try{ vr=ctx.chart.timeScale().getVisibleLogicalRange(); }catch(e){} if(vr)maybeLoadOlder(ctx,vr); },wait+30);
   return; }
  ctx._histAt=now; ctx._histChain=0; loadOlder(ctx); }
-function loadOlder(ctx){ ctx.loadingHist=true; if(ctx.histSpin)ctx.histSpin.classList.add("show");
+function loadOlder(ctx,silent){ ctx.loadingHist=true;
+ /* スピナーは「利用者が最古バーに張り付いて実際に待っている」ときだけ出す。先読み・マージン内の
+    バックグラウンド取得で出すと、表示は足りているのに数秒スピナーが残る（今回の報告の主因の1つ） */
+ if(!silent&&ctx.histSpin){ let vr0=null; try{ vr0=ctx.chart.timeScale().getVisibleLogicalRange(); }catch(e){} if(vr0&&vr0.from<=2)ctx.histSpin.classList.add("show"); }
  const before=ctx.full[0].time, sym=ctx.symbol, iv=ctx.interval, count=ctx.full.length, anchorOpen=ctx.full[0].open;
  const done=()=>{ ctx.loadingHist=false; if(ctx.histSpin)ctx.histSpin.classList.remove("show"); };
  const finish=older=>{ done(); if(ctx.symbol!==sym||ctx.interval!==iv){ ctx._histWant=false; return; } // 取得中に銘柄/時間足が変わっていたら破棄
@@ -1342,8 +1361,25 @@ function loadOlder(ctx){ ctx.loadingHist=true; if(ctx.histSpin)ctx.histSpin.clas
   const want=ctx._histWant; ctx._histWant=false;
   let vr2=null; try{ vr2=ctx.chart.timeScale().getVisibleLogicalRange(); }catch(e){}
   ctx._histChain=(ctx._histChain||0)+1;
-  if(!ctx.histDone&&!replay.active&&ctx._histChain<=8&&(want||(vr2&&vr2.from<=histMargin(vr2)))){ ctx._histAt=Date.now(); loadOlder(ctx); } };
- if(hubLive){ getCandlesPaged(sym,iv,before,(ok,older)=>{ if(ok)finish(older); else { done(); ctx._histWant=false; toast("Failed to load older data"); } }); }
+  if(!ctx.histDone&&!replay.active&&ctx._histChain<=8&&(want||(vr2&&vr2.from<=histMargin(vr2)))){ ctx._histAt=Date.now(); loadOlder(ctx); }
+  else if(ctx._bgActive&&!ctx.histDone&&!replay.active&&ctx.full.length<BG_TARGET)scheduleBgPrefetch(ctx); };
+ if(hubLive){
+  /* 大きなジャンプ時は必要ページを並列取得する: 従来は2,000本ページを逐次連鎖していたため、
+     1回の往復×3〜4ページで最大約7秒かかっていた。ページ境界は足間隔から時刻で決め打ちでき、
+     境界の重なりは finish 側の重複除去（時刻 < before フィルタ）とここでの時刻ユニーク化で吸収する */
+  let pages=1; const sec=IVL_SEC[iv];
+  if(!silent&&sec){ let vrp=null; try{ vrp=ctx.chart.timeScale().getVisibleLogicalRange(); }catch(e){}
+   if(vrp){ const need=histMargin(vrp)-vrp.from+1; pages=Math.max(1,Math.min(4,Math.ceil(need/2000))); } }
+  if(pages<=1){ getCandlesPaged(sym,iv,before,(ok,older)=>{ if(ok)finish(older); else { done(); ctx._histWant=false; toast("Failed to load older data"); } }); }
+  else { const results=new Array(pages).fill(null); let settled=0;
+   for(let i=0;i<pages;i++){ const toI=before-i*2000*sec;
+    getCandlesPaged(sym,iv,toI,(ok,older)=>{ results[i]=ok?older:null; settled++;
+     if(settled<pages)return;
+     const merged=[]; const seen=new Set();
+     for(let k=0;k<pages;k++){ if(!results[k])break; // 先頭から連続して成功したページだけを使う（途中の失敗以降は継ぎ目が保証できない）
+      for(const c of results[k]){ if(c.time<before&&!seen.has(c.time)){ seen.add(c.time); merged.push(c); } } }
+     if(!merged.length&&!results[0]){ done(); ctx._histWant=false; toast("Failed to load older data"); return; }
+     merged.sort((a,b)=>a.time-b.time); finish(merged); }); } } }
  else finish(genOlderDemo(sym,iv,before,count,anchorOpen)); }
 /* ============ リアルタイム更新（Hub WebSocket: 現在足の更新＋足の区切りで新足） ============ */
 /* ライブ接続はペイン単位。各ペインが自分の銘柄・時間足のクエリで接続する */
