@@ -76,8 +76,10 @@ svg.ic{width:17px;height:17px;flex:none}
 #demoBanner{top:auto;left:66px;bottom:76px;transform:none}
 #demoBanner span{white-space:nowrap}
 /* ホイールズーム後の案内（本家と同じ文言・青文字）。Ctrl を押していないホイール操作のときだけ数秒出す */
-#zoomHint{position:absolute;left:50%;bottom:44px;transform:translateX(-50%);z-index:18;background:rgba(18,20,28,.94);color:#5b9dff;border:1px solid rgba(91,157,255,.35);border-radius:6px;padding:5px 12px;font-size:12.5px;line-height:1.4;text-align:center;white-space:normal;max-width:min(560px,92vw);display:none;pointer-events:none}
-#zoomHint.show{display:block}
+#zoomHint{position:absolute;left:50%;bottom:44px;transform:translateX(-50%);z-index:18;background:#2962ff;color:#fff;border:none;border-radius:6px;padding:5px 10px 5px 14px;font-size:12.5px;line-height:1.4;text-align:center;white-space:normal;max-width:min(560px,92vw);display:none;align-items:center;gap:8px;box-shadow:0 6px 18px rgba(0,0,0,.4)} /* 本家は鮮やかな青ピル＋白文字＋右端に×（従来は暗い紺地に青文字で×も無かった） */
+#zoomHint.show{display:flex}
+#zoomHint .zhX{flex:none;width:20px;height:20px;min-height:20px;padding:0;border:none;border-radius:50%;background:rgba(255,255,255,.18);color:#fff;font-size:13px;line-height:1;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+#zoomHint .zhX:hover{background:rgba(255,255,255,.32)}
 /* Cursors バリアント（Cross=十字 / Dot=ドット / Arrow=通常）のCursor形状 */
 #chartsWrap.curCross .chartBox{cursor:crosshair}
 #chartsWrap.curDot.toolCursor .chartBox{cursor:none} /* Dot バリアント＋Cursorツール選択中は OS Cursorを消し、ページ内ドット（.cursorDot）がマウスを追う。CSS の url Cursorは環境により描画されずArrowのままになることがあったため使わない。描画ツール選択中は通常のポインターに戻す（toolCursor は setTool が付け外しする） */
@@ -579,7 +581,7 @@ textarea{width:100%;min-height:110px;font-family:ui-monospace,Menlo,monospace;fo
       </div>
       <div id="floatBar"></div>
       <div id="colorPop"></div>
-      <div id="zoomHint">Press and hold Ctrl while zooming to maintain the chart position</div>
+      <div id="zoomHint"><span>Press and hold Ctrl while zooming to maintain the chart position</span><button class="zhX" id="zoomHintX" title="Dismiss">×</button></div>
     </div>
     <div id="replayBar">
       <button id="rpPick" class="btn" title="Select replay start point">Select bar</button>
@@ -1075,7 +1077,10 @@ function clampRightEdge(ctx,r){ if(!ctx||ctx._edgeClamp||!r)return;
    const half=tickTextWidth(label,w>=boldThr,timeFontSize,fontFamily)/2;
    if(x-half>=W)continue; // ラベル全体がペイン右端の外にあるティックは描かれないので対象外（次のティックを見る）
    const deficit=(x+half+2)-W; if(deficit<=0)return; // 右端ティックのラベルは収まっている
-   const shift=Math.min(4,deficit/bs); if(!(shift>0))return;
+   let shift=Math.min(4,deficit/bs); if(!(shift>0))return;
+   /* 右端の上限（データ端＋14本）と競合させない: 補正で上限を超える分は削る（超えた分は範囲ハンドラ側の
+      クランプと押し合いになって振動するため）。論理インデックスは表示中データ（view）基準 */
+   if(ctx.view&&ctx.view.length){ const capTo=ctx.view.length-1+14; if(r.to+shift>capTo)shift=capTo-r.to; if(!(shift>0))return; }
    /* ずらす方向に注意: from/to を増やす（範囲を未来側へ寄せる）とバーは画面上で左へ動き、右端との間に
       余白ができる。減らすとバーは右へ寄って切れが悪化する（v56 版はこの向きが逆だったことも効かなかった一因） */
    ctx._edgeClamp=true;
@@ -1182,11 +1187,38 @@ function makePane(idx){
     の中心が毎ティック壊れて表示日付が大きく飛んでいた。時刻範囲なら銘柄が違っても意味が一致する。
     エコー抑制: 同期で他ペインへ適用した範囲（±10秒以内で一致）は再伝播しない（_syncRangeKey） */
  const propagateSync=tr=>{ if(!tr||_syncBusy)return;
+   /* エコー抑制（重要）: このペインが直前に「同期で適用された側」なら、その結果を発生源へ送り返さない。
+      適用先ペインのデータ端（最終バーの時刻がペインごとに違う・リプレイ中は切り取り端）で LWC に
+      クランプされ幅が縮んだ範囲が送り返されると、発生源も縮み、往復のたびに表示幅が狭まって
+      最後は1本に潰れる（右端へ行こうとすると崩壊する不具合の実測原因: span 200→178→15→1）。
+      適用直後に実範囲を読み戻してエコーとして記録し、一致する範囲変化は伝播させない。
+      読み戻しと非同期イベントの間に適用が進んだ場合に備え、短時間の抑制窓も併用する */
+   const ek=ctx._syncEcho;
+   if(ek&&Math.abs(tr.from-ek.from)<=10&&Math.abs(tr.to-ek.to)<=10)return;
+   if(ctx._syncEchoUntil&&Date.now()<ctx._syncEchoUntil)return;
    if(_syncRangeKey&&Math.abs(tr.from-_syncRangeKey.from)<=10&&Math.abs(tr.to-_syncRangeKey.to)<=10)return;
    _syncRangeKey={from:tr.from,to:tr.to}; _syncBusy=true;
-   for(const o of P){ if(o&&o!==ctx){ try{ o.chart.timeScale().setVisibleRange(tr); }catch(e){} } }
+   for(const o of P){ if(o&&o!==ctx){ try{ o.chart.timeScale().setVisibleRange(tr); }catch(e){}
+     try{ const rb=o.chart.timeScale().getVisibleRange(); if(rb){ o._syncEcho={from:rb.from,to:rb.to}; o._syncEchoUntil=Date.now()+250; } }catch(e){} } }
    _syncBusy=false; };
- chart.timeScale().subscribeVisibleLogicalRangeChange(r=>{ if(!r)return; if(ctx.histEndEl&&r.from>2)ctx.histEndEl.style.display="none"; /* 「No more historical data」は最古バーにいる間だけの表示。本家同様、離れたら消す（従来は一度出すと銘柄変更まで残り続け、リプレイ中も左上に張り付いていた） */ if(App.sync.range){ let tr=null; try{ tr=chart.timeScale().getVisibleRange(); }catch(e){} propagateSync(tr); } clampRightEdge(ctx,r); renderDrawings(ctx); updatePricePill(ctx); if(typeof renderOrders==="function")renderOrders(ctx); maybeLoadOlder(ctx,r); });
+ chart.timeScale().subscribeVisibleLogicalRangeChange(r=>{ if(!r)return; if(ctx.histEndEl)ctx.histEndEl.style.display=(ctx.histDone&&r.from<=2)?"block":"none"; /* 「No more historical data」は最古バーに張り付いている間だけ出す（両方向に連動させる: 従来は一度出すと離れても残り続け、逆に先読みで静かに最古へ到達済みだとスクロールしても二度と出なかった） */ if(App.sync.range){ let tr=null; try{ tr=chart.timeScale().getVisibleRange(); }catch(e){} propagateSync(tr); }
+ /* 右端の上限とリプレイ中のズームアンカー（実測で確認した不具合の修正）:
+    - 右端: データ端（通常時は最新バー、リプレイ中はリプレイバー）より先の空白へは進めない。
+      従来はドラッグで平気で100本以上の空白へ入り込めた（本家は最新バー＋小さな右オフセットで止まる）
+    - リプレイ中のズーム: リプレイバーが右端にあったのにカーソル中心ズームでバーが画面外へ出たら、
+      表示幅を保ったままバーが右端（ズーム前と同じ距離）に見える位置へ戻す（本家はズーム後も最終バーが右端に見えたまま） */
+ let rr=r;
+ if(!ctx._rangeFix&&ctx.view&&ctx.view.length){
+   const viewEnd=ctx.view.length-1; let corr=null;
+   const maxTo=viewEnd+14; // 右オフセット10本＋右端ラベル見切れ補正（clampRightEdge）の余地4本
+   if(rr.to>maxTo+0.01)corr={from:rr.from-(rr.to-maxTo),to:maxTo};
+   else if(typeof replay!=="undefined"&&replay.active&&ctx.replayIdx>=0&&ctx._prevLR){
+     const pv=ctx._prevLR, pSpan=pv.to-pv.from, nSpan=rr.to-rr.from, head=pv.to-ctx.replayIdx;
+     if(Math.abs(nSpan-pSpan)>0.01&&head>=-0.01&&head<=12&&(rr.to<ctx.replayIdx||rr.from>ctx.replayIdx)){
+       const nTo=ctx.replayIdx+Math.max(0,head); corr={from:nTo-nSpan,to:nTo}; } }
+   if(corr){ ctx._rangeFix=true; try{ chart.timeScale().setVisibleLogicalRange(corr); }catch(e){} ctx._rangeFix=false; rr=corr; } }
+ ctx._prevLR={from:rr.from,to:rr.to};
+ clampRightEdge(ctx,rr); renderDrawings(ctx); updatePricePill(ctx); if(typeof renderOrders==="function")renderOrders(ctx); maybeLoadOlder(ctx,rr); });
  chart.timeScale().subscribeVisibleTimeRangeChange(r=>{ if(!r)return; if(App.sync.time)propagateSync(r); updatePricePill(ctx); });
  new ResizeObserver(()=>{const b=el.getBoundingClientRect(); if(b.width>0&&b.height>0){chart.applyOptions({width:b.width,height:b.height}); renderDrawings(ctx); updatePricePill(ctx); if(typeof renderOrders==="function")renderOrders(ctx);} }).observe(el);
  el.parentElement.addEventListener("pointerdown",()=>{activePane=idx; refreshHeads();});
@@ -1202,10 +1234,11 @@ function priceFmtFor(sym){ const dec=(symInfo(sym).dec!=null?symInfo(sym).dec:2)
 function fmtPrice(sym,p){ return priceFmtFor(sym)(p); }
 /* 【(9) ホイールズーム後の案内】本家は Ctrl なしのホイールズーム後に青い案内
    "Press and hold Ctrl while zooming to maintain the chart position"を出す。最後のホイール操作から約2.6秒で消す */
-let _zoomHintTimer=null;
-function showZoomHint(){ const h=document.querySelector("#zoomHint"); if(!h)return;
+let _zoomHintTimer=null, _zoomHintOff=false;
+function showZoomHint(){ if(_zoomHintOff)return; const h=document.querySelector("#zoomHint"); if(!h)return;
  h.classList.add("show"); if(_zoomHintTimer)clearTimeout(_zoomHintTimer);
  _zoomHintTimer=setTimeout(()=>h.classList.remove("show"),2600); }
+{ const _zhx=document.querySelector("#zoomHintX"); if(_zhx)_zhx.addEventListener("click",()=>{ _zoomHintOff=true; const h=document.querySelector("#zoomHint"); if(h)h.classList.remove("show"); if(_zoomHintTimer)clearTimeout(_zoomHintTimer); }); } /* ×で閉じたらこのセッション中は再表示しない（本家の閉じるボタンと同じ） */
 function resetPriceScale(ctx){ if(!ctx||!ctx.chart)return;
  try{ ctx.cs.priceScale().applyOptions({autoScale:true}); }catch(e){}
  try{ ctx.chart.priceScale("right").applyOptions({autoScale:true}); }catch(e){}
@@ -1349,7 +1382,12 @@ function loadOlder(ctx,silent){ ctx.loadingHist=true;
  const done=()=>{ ctx.loadingHist=false; if(ctx.histSpin)ctx.histSpin.classList.remove("show"); };
  const finish=older=>{ done(); if(ctx.symbol!==sym||ctx.interval!==iv){ ctx._histWant=false; return; } // 取得中に銘柄/時間足が変わっていたら破棄
   older=(older||[]).filter(c=>c.time<before); // 既存期間との重複は除く
-  if(!older.length){ ctx.histDone=true; ctx._histWant=false; if(ctx.histEndEl)ctx.histEndEl.style.display="block"; toast("No more historical data (reached the oldest bar)"); return; }
+  if(!older.length){ ctx.histDone=true; ctx._histWant=false;
+   /* チップとトーストは「利用者が実際に最古バーに張り付いている」ときだけ出す。バックグラウンド先読みが
+      静かに最古へ到達したときに最新バーを見ている画面へ出すと、離れても消えない張り付きに見えた（ユーザー動画）。
+      最古バー付近にいるかどうかは現在の表示範囲で判定し、表示自体は範囲ハンドラ側の連動（histDone && from<=2）にも任せる */
+   let atEdge=false; try{ const vrE=ctx.chart.timeScale().getVisibleLogicalRange(); atEdge=!!vrE&&vrE.from<=2; }catch(e){}
+   if(atEdge){ if(ctx.histEndEl)ctx.histEndEl.style.display="block"; toast("No more historical data (reached the oldest bar)"); } return; }
   let vr=null; try{ vr=ctx.chart.timeScale().getVisibleLogicalRange(); }catch(e){}
   ctx.full=older.concat(ctx.full); dataCache[sym+"|"+iv]=ctx.full;
   if(ctx.replayIdx>=0)ctx.replayIdx+=older.length;
@@ -2954,7 +2992,7 @@ function openReplayMenu(inReplay,anchor){
 function openReplayDate(){
  const ctx=P[activePane]||P[0]; const d=ctx.full; if(!d.length)return;
  const first=d[0], last=d[d.length-1];
- const defBar=d[Math.floor(d.length*0.55)];
+ const defBar=d[d.length-1]; // 初期値は本家どおり当日（最新バー）。従来は全データの55%地点（約3か月前）になっていた
  const p0=fmtParts(defBar.time);
  let vy=+p0.year, vm=+p0.month;
  const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -3045,22 +3083,43 @@ function recordOrder(o,status,time){ const rec={oid:o.oid||("order_"+uuid4()),sy
 function rpCtx(){ const c=P[activePane]; if(c&&c.full&&c.full.length)return c; return P[replay.paneIdx]||P[0]; }
 function rpPaneOf(t){ return (t&&P[t.paneIdx||0])||rpCtx(); }
 function alignReplayIdx(ctx,time){ const d=ctx.full; if(!d||!d.length)return -1; const i=d.findIndex(c=>c.time>time); return i<0?d.length-1:Math.max(0,i-1); }
-function applyReplayTime(time,keepView){ replay.time=time; for(const c of P){ if(!c||!c.full.length)continue; c.replayIdx=alignReplayIdx(c,time);
+function applyReplayTime(time,keepView){ replay.time=time; for(const c of P){ if(!c||!c.full.length)continue;
+ const prevIdx=c.replayIdx; // 進める前のリプレイバーの位置（追従判定用）
+ c.replayIdx=alignReplayIdx(c,time);
  /* 【修正: リプレイを進めるとチャートが勝手に動く】LWC の時間軸は「データ末尾からの右オフセット」で
     表示位置を保持するため、足が1本増えるたびに表示範囲が1本分ずつずれ、再生/ステップのたびに
-    チャート全体が左へ流れていた。本家は時刻で固定され、未来側の空白に足が増えていくだけで画面は動かない。
-    ステップ時は setPaneData の前後で表示中の時刻範囲を保存・復元し、画面を一切動かさない。
-    開始時（startReplay）は開始バーへ寄せる従来動作のまま（keepView を渡さない） */
- let vr=null; if(keepView){ try{ vr=c.chart.timeScale().getVisibleRange(); }catch(e){} }
+    チャート全体が左へ流れていた。本家は表示位置が固定され、未来側の空白に足が増えていくだけで画面は動かない。
+    ステップ時は setPaneData の前後で表示中の論理範囲を保存・復元し、画面を一切動かさない。
+    論理範囲で復元する理由: 時刻範囲で復元すると、データが数本しかない位置（先頭付近）では LWC が
+    時刻⇄論理の外挿を圧縮し、1ステップで表示幅が数本に潰れてバー間隔が巨大化した（実測）。
+    切り取りは末尾側だけなので、既存バーの論理インデックスは進めても変わらず、論理復元が正確。
+    開始時（startReplay）は開始バーへ寄せる従来動作のまま（keepView を渡さない）
+    【追加: 右端に張り付いているときだけ追従】バーを右端に置いたまま再生/ステップすると、固定した
+    範囲から新しいバーがはみ出して画面外で進み続けた（実測: 30ステップ後にバーが表示範囲外）。
+    本家は右端にいる間はバーに追従してスクロールする。バーが右端の余白（12本分）以内にあり
+    表示範囲内にいた場合だけ、進んだ本数だけ範囲をずらして同じ余白を保つ。
+    過去を見ている（バーが右端から離れている）ときは従来どおり画面を動かさない */
+ let lr=null, followBars=0;
+ if(keepView){ try{ lr=c.chart.timeScale().getVisibleLogicalRange(); }catch(e){}
+   if(lr&&prevIdx>=0){ const head=lr.to-prevIdx;
+     if(prevIdx>=lr.from&&head>=-0.01&&head<=12)followBars=c.replayIdx-prevIdx; } }
  setPaneData(c);
- if(vr){ try{ c.chart.timeScale().setVisibleRange(vr); }catch(e){} } } }
-function startReplay(idx,srcCtx){ const ctx=srcCtx||rpCtx(); if(!ctx||!ctx.full.length)return toast("Data is loading"); idx=Math.max(0,Math.min(ctx.full.length-1,idx)); resetBacktestSession(); P.forEach(c=>{if(c){hideGotoTip(c); if(c.histEndEl)c.histEndEl.style.display="none"; if(c.histSpin)c.histSpin.classList.remove("show");}}); replay.active=true; replay.paneIdx=ctx.idx; replay.barRealStart=Date.now(); applyReplayTime(ctx.full[idx].time);
- $("#replayBar").classList.add("show"); $("#replayBtn").classList.add("on"); const _tp=$("#tradesPanel"); _tp.classList.add("show"); _tp.classList.add("collapsed"); _tp.classList.remove("max"); refreshBtCapInfo(); updateReplayInfo(); renderTrades(); markDirty(); toast("Replay started. Future bars are hidden until the replay reaches them. The backtest is a new session"); }
+ if(lr){ try{ c.chart.timeScale().setVisibleLogicalRange({from:lr.from+followBars,to:lr.to+followBars}); }catch(e){} } } }
+function startReplay(idx,srcCtx){ const ctx=srcCtx||rpCtx(); if(!ctx||!ctx.full.length)return toast("Data is loading"); idx=Math.max(0,Math.min(ctx.full.length-1,idx)); resetBacktestSession(); P.forEach(c=>{if(c){hideGotoTip(c); if(c.histEndEl)c.histEndEl.style.display="none"; if(c.histSpin)c.histSpin.classList.remove("show");}});
+ /* 開始前の表示幅（本数）をペインごとに控える。切り取り後に読むと、データが数本の位置では LWC の
+    クランプで幅が潰れていることがあり、そのまま使うとバー間隔が巨大化する（実測） */
+ const preSpan={}; for(const c of P){ if(c&&c.chart){ try{ const lr=c.chart.timeScale().getVisibleLogicalRange(); if(lr)preSpan[c.idx]=lr.to-lr.from; }catch(e){} } }
+ replay.active=true; replay.paneIdx=ctx.idx; replay.barRealStart=Date.now(); applyReplayTime(ctx.full[idx].time);
+ /* 開始バーを右端に置く（本家と同じ）: データの切り取りだけだと LWC のクランプで開始バーが右端の
+    1本外へ出ることがあった（実測）。開始前の表示幅を保ったまま、開始バー＋右オフセット10本が
+    右端に来るよう各ペインの範囲を寄せる */
+ for(const c of P){ if(!c||!c.chart||c.replayIdx<0)continue; try{ const ts=c.chart.timeScale(); const lr=ts.getVisibleLogicalRange(); const span=preSpan[c.idx]||(lr?lr.to-lr.from:100); ts.setVisibleLogicalRange({from:c.replayIdx+10-span,to:c.replayIdx+10}); }catch(e){} }
+ $("#replayBar").classList.add("show"); $("#replayBtn").classList.add("on"); const _tp=$("#tradesPanel"); _tp.classList.add("show"); _tp.classList.remove("collapsed"); _tp.classList.remove("max"); refreshBtCapInfo(); updateReplayInfo(); renderTrades(); markDirty(); toast("Replay started. Future bars are hidden until the replay reaches them. The backtest is a new session"); }
 function stopReplay(){ // End replayでバックテストも終了する（ユーザーの決定）。未決済ポジションは最後に表示されたBarsの終値で決済、未約定注文は取消。パネルは閉じ、CSVも出せなくなる
  const tCtx=rpPaneOf(replay.open); const lastB=tCtx&&tCtx.view.length?tCtx.view[tCtx.view.length-1]:null;
  replay.active=false; stopPlay(); if(replay.open&&lastB)closeTrade(lastB.close,lastB.time,"End replay");
  if(replay.pending){ replay.pending=null; toast("Pending order cancelled"); }
- replay.time=null; for(const c of P){ if(!c)continue; c.replayIdx=-1; setPaneData(c); renderOrders(c); }
+ replay.time=null; for(const c of P){ if(!c)continue; c.replayIdx=-1; setPaneData(c); renderOrders(c); try{ c.chart.timeScale().scrollToRealTime(); }catch(e){} } /* 終了時は最新バーへ戻る（「Jump to real-time」の名のとおり。本家もリプレイ終了で現在足へ戻る） */
  closeTicket();
  $("#replayBar").classList.remove("show"); $("#replayBtn").classList.remove("on"); $("#tradesPanel").classList.remove("show"); markDirty(); }
 function updateReplayInfo(){ const ctx=rpCtx(); if(!ctx)return; const b=ctx.view[ctx.view.length-1];
