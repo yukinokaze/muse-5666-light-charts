@@ -259,15 +259,92 @@ svg.ic{width:17px;height:17px;flex:none}
 .gtGrid .gday.adj,.gtGrid .gday.fut{color:#565d6b;cursor:default}
 .gtGrid .gday.adj:hover,.gtGrid .gday.fut:hover{background:transparent}
 .calFirst{display:inline-block;margin-top:8px;color:var(--accent);cursor:pointer;font-size:13px;text-decoration:none}
-#tradesPanel{display:none;background:var(--panel);border-top:1px solid var(--line);max-height:220px;overflow:hidden;flex:none}
-#tradesTableWrap{max-height:150px;overflow:auto}
-.atabs{display:flex;gap:2px;padding:0 10px;border-bottom:1px solid var(--line);flex-wrap:wrap}
-.atabs button{min-height:30px}.atabs button.on{background:var(--panel2);color:#fff;box-shadow:inset 0 -2px 0 var(--accent)}
-#tradesPanel.show{display:block}
+/* Replay Trading 下部パネル（本家準拠: 見出し行＋ピル型サマリー＋折りたたみ/最大化。既定は折りたたみ） */
+#tradesPanel{display:none;background:var(--panel);border-top:1px solid var(--line);height:320px;max-height:52vh;overflow:hidden;flex:none;flex-direction:column}
+#tradesPanel.show{display:flex}
+#tradesPanel.max{height:78vh;max-height:78vh}
+#tradesPanel.collapsed{height:auto;max-height:none}
+#tradesPanel.collapsed #rtBody{display:none}
+#rtHead{display:flex;align-items:center;gap:4px;padding:2px 8px 2px 4px;flex:none;min-height:36px}
+.rtTitleBtn{display:flex;align-items:center;gap:6px;background:transparent;border:none;color:#fff;font-size:13px;font-weight:600;padding:5px 8px;border-radius:6px;min-height:32px}
+.rtTitleBtn:hover{background:var(--panel2)}
+.rtTitleBtn .ic{width:16px;height:16px}
+.rtTitleBtn .chevIc{width:12px;height:12px;color:var(--dim)}
+.rtIconBtn{background:transparent;border:none;color:var(--dim);min-width:30px;min-height:30px;padding:4px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center}
+.rtIconBtn:hover{background:var(--panel2);color:#fff}
+.rtIconBtn .ic{width:16px;height:16px}
+#rtSum{display:flex;align-items:center;gap:26px;padding:7px 12px;flex:none;flex-wrap:wrap}
+#rtPill{display:inline-flex;align-items:baseline;gap:7px;background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:7px 16px;color:var(--txt);font-size:13px;white-space:nowrap}
+#rtPill b{color:#fff;font-size:14px}
+#rtPill .rtCur{color:var(--dim);font-size:11px}
+.rtStat{display:flex;flex-direction:column;gap:1px;line-height:1.25}
+.rtStat span{color:var(--dim);font-size:11px}
+.rtStat b{color:#fff;font-size:13px;font-weight:600}
+.rtStat b.pos{color:#26a69a}.rtStat b.neg{color:#ef5350}
+#rtBody{display:flex;flex-direction:column;flex:1;min-height:0}
+#tradesTableWrap{flex:1;overflow:auto;min-height:0}
+.atabs{display:flex;gap:4px;padding:4px 10px;border-bottom:1px solid var(--line);flex-wrap:wrap;align-items:center}
+.atabs button{min-height:30px;border-radius:999px;padding:3px 12px;display:inline-flex;align-items:center;gap:6px}
+.atabs button.on{background:#000;color:#fff;box-shadow:none}
+.atabs .cnt{background:#363c4e;color:#d1d4dc;border-radius:999px;font-size:11px;padding:0 6px;line-height:17px}
+.atabs button.on .cnt{background:#2a2e39;color:#fff}
+#rtSubBar{display:flex;gap:4px;padding:4px 10px;align-items:center;flex-wrap:wrap}
+#rtSubBar:empty{display:none}
+#rtSubBar button{min-height:26px;border-radius:999px;padding:2px 10px;font-size:12px;color:var(--dim)}
+#rtSubBar button.on{background:#000;color:#fff}
+#rtSubBar .cnt{font-size:11px;opacity:.75}
+#rtSubBar .colSetup{margin-left:auto;color:var(--dim)}
 #tradesPanel table{border-collapse:collapse;width:100%;font-size:12px}
 #tradesPanel th,#tradesPanel td{padding:5px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
-#tradesPanel th{color:var(--dim);text-align:right;position:sticky;top:0;background:var(--bg)}
+#tradesPanel th{color:var(--dim);text-align:right;position:sticky;top:0;background:var(--panel);font-weight:400}
 #tradesPanel td:first-child,#tradesPanel th:first-child{text-align:left}
+.rtEmpty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:34px 12px;text-align:center}
+.rtEmpty .rtEmptyT{color:#fff;font-size:17px;font-weight:600}
+.rtEmpty .rtEmptyS{color:var(--dim);font-size:13px}
+.rtEmpty .rtPills{display:flex;align-items:center;gap:10px;margin-top:8px}
+.rtEmpty .rtPills .or{color:var(--dim);font-size:13px}
+.pillSell,.pillBuy{border:none;border-radius:999px;padding:9px 26px;font-size:14px;font-weight:600;color:#fff;cursor:pointer;min-height:38px}
+.pillSell{background:#f23645}.pillSell:hover{background:#d92f3f}
+.pillBuy{background:#2962ff}.pillBuy:hover{background:#1e53e5}
+.rtAnaGrid{display:flex;gap:34px;flex-wrap:wrap;padding:12px 14px 4px}
+.rtAnaGrid .ag{display:flex;flex-direction:column;gap:2px}
+.rtAnaGrid .ag span{color:var(--dim);font-size:11px}
+.rtAnaGrid .ag b{color:#fff;font-size:15px}
+.rtAnaSec{padding:8px 14px;line-height:1.9}
+/* 注文チケット（本家: Buy/Sell から右側に開く Trading パネル） */
+#orderTicket{display:none;position:fixed;top:48px;right:0;bottom:0;width:min(320px,92vw);background:var(--panel);border-left:1px solid var(--line);z-index:320;overflow-y:auto;padding:12px 14px;box-shadow:-10px 0 28px rgba(0,0,0,.5)}
+#orderTicket.show{display:block}
+.otHead{display:flex;align-items:flex-start;gap:6px;margin-bottom:10px}
+.otHead b{color:#fff;font-size:14px}
+.otTypes{display:flex;gap:2px;background:var(--panel2);border-radius:8px;padding:2px;margin-bottom:12px}
+.otTypes button{flex:1;min-height:30px;border-radius:6px;font-size:12px;padding:2px 4px}
+.otTypes button.on{background:#000;color:#fff}
+.otPrices{display:flex;gap:8px;margin-bottom:12px}
+.otPrices>div{flex:1;border-radius:8px;padding:7px 10px;display:flex;flex-direction:column;gap:1px}
+.otPrices span{font-size:10px;letter-spacing:.06em;opacity:.85}
+.otPrices b{font-size:15px;color:#fff}
+.otSellBox{background:rgba(242,54,69,.16);color:#ff8a94}
+.otBuyBox{background:rgba(41,98,255,.16);color:#8db0ff}
+.otRow{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.otRow label{width:86px;flex:none;color:var(--dim);font-size:12px}
+.otRow input{flex:1;min-width:0}
+.otQtyWrap{display:flex;align-items:center;gap:6px;flex:1}
+.otQtyWrap input{flex:1;min-width:0}
+.otQtyWrap span{color:var(--dim);font-size:12px}
+.otBracket{border-top:1px solid var(--line);padding:10px 0 2px;margin-top:2px}
+.otTglRow{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.otTglRow .otName{color:var(--txt);font-size:13px;flex:1}
+.otSwitch{width:36px;height:20px;border-radius:999px;background:#363c4e;border:none;position:relative;flex:none;min-height:20px;padding:0;cursor:pointer}
+.otSwitch::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#d1d4dc;transition:left .15s}
+.otSwitch.on{background:var(--accent)}
+.otSwitch.on::after{left:18px;background:#fff}
+.otBrIn{display:flex;gap:8px}
+.otBrIn input{flex:1;min-width:0}
+.otBrIn .otBrF{display:flex;flex-direction:column;gap:2px;flex:1}
+.otBrIn .otBrF span{color:var(--dim);font-size:10px}
+#otSubmit{width:100%;border:none;border-radius:8px;min-height:42px;font-size:14px;font-weight:600;color:#fff;margin-top:12px;cursor:pointer}
+#otSubmit.buy{background:#2962ff}#otSubmit.buy:hover{background:#1e53e5}
+#otSubmit.sell{background:#f23645}#otSubmit.sell:hover{background:#d92f3f}
 .pos{color:#26a69a}.neg{color:#ef5350}
 /* floating toolbar */
 #floatBar{display:none;position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:20;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:3px 6px;gap:2px;align-items:center;box-shadow:0 6px 18px rgba(0,0,0,.45);max-width:94vw;flex-wrap:wrap}
@@ -382,8 +459,11 @@ textarea{width:100%;min-height:110px;font-family:ui-monospace,Menlo,monospace;fo
 @media (max-width:900px){
   #chartsWrap{min-height:300px;flex:1 1 300px}
   #replayBar{max-height:17vh;overflow-y:auto;flex:none}
-  #tradesPanel{max-height:24vh}
-  #tradesTableWrap{max-height:16vh}
+  #tradesPanel{height:38vh;max-height:38vh}
+  #tradesPanel.max{height:70vh;max-height:70vh}
+  #tradesPanel.collapsed{height:auto;max-height:none}
+  #rtSum{gap:14px}
+  #orderTicket{top:0}
   #floatBar{top:8px}
   /* モバイル凡例: Price軸の手前で折り返し、OHLCが画面外へはみ出さない（本家モバイルと同じ2段表示） */
   .paneLegend{flex-wrap:wrap;row-gap:0;font-size:13px;line-height:1.45;max-width:calc(100% - 62px)}
@@ -504,27 +584,26 @@ textarea{width:100%;min-height:110px;font-family:ui-monospace,Menlo,monospace;fo
       <button id="rpJump" class="btn" title="Jump to real-time (end replay and return to the latest bar)">Jump to real-time</button>
       <button id="rpExit" class="btn" title="Exit replay"><svg class="ic" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2"/></svg></button>
     </div>
-    <div id="tradesPanel">
-      <div style="display:flex;gap:8px;align-items:center;padding:8px 10px;flex-wrap:wrap">
-        <b style="color:#fff" id="rtTitle">Replay Trading</b><span id="rtStats" class="hint"></span><span id="tradeStats" class="hint"></span>
+    <div id="tradesPanel" class="collapsed">
+      <div id="rtHead">
+        <button id="rtMenuBtn" class="rtTitleBtn" title="Replay Trading"><svg class="ic" viewBox="0 0 24 24"><path d="M10.8 6.2 4.6 12l6.2 5.8zM19.6 6.2 13.4 12l6.2 5.8z" fill="currentColor"/></svg><span>Replay Trading</span><svg class="ic chevIc" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
         <span style="flex:1"></span>
-        <button id="dlBtn" class="btn" title="Download data"><svg class="ic" viewBox="0 0 24 24"><path d="M12 4v10m0 0l-4-4m4 4l4-4M5 19h14" fill="none" stroke="currentColor" stroke-width="1.8"/></svg> Download</button>
-        <button id="tradesClear" class="btn danger">Clear records</button>
-        <button id="tradesHide" class="btn">Close</button>
+        <button id="rtCollapse" class="rtIconBtn" title="Collapse panel"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+        <button id="rtMax" class="rtIconBtn" title="Expand panel"><svg class="ic" viewBox="0 0 24 24"><path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       </div>
-      <div id="btBar" style="display:flex;gap:6px;align-items:center;padding:6px 10px;flex-wrap:wrap;border-bottom:1px solid var(--line)">
-        <b style="color:#fff">Backtest (manual trading)</b><span id="rpCapInfo" class="hint"></span>
-        <button id="btCfg" class="btn">Backtest settings (capital, commission, multiplier)</button>
-        <label>TP/SL distance % <input type="number" id="rpDist" value="0.8" step="0.1" min="0.05" style="width:64px"></label>
-        <label>Order <select id="rpOrdType"><option value="market">Market</option><option value="limit">Limit</option><option value="stop">Stop</option><option value="stoplimit">Stop-limit</option></select><input type="number" id="rpOrdPrice" step="any" placeholder="Price" style="width:96px"><input type="number" id="rpOrdPrice2" step="any" placeholder="Limit price" style="width:96px"></label>
-        <button id="rpReverse" class="btn">Reverse</button>
-        <button id="rpLong" class="btn">Long entry</button>
-        <button id="rpShort" class="btn">Short entry</button>
-        <button id="rpClose" class="btn">Manual close</button>
-        <span class="hint">Entries are placed on the bar during bar replay (a separate feature from replay viewing)</span>
+      <div id="rtSum">
+        <span id="rtPill"><span>Replay Trading</span><b id="rtBal">1,000,000.00</b><span class="rtCur" id="rtCurLbl">USD</span></span>
+        <div class="rtStat"><span>Unrealized PnL</span><b id="rtUpl">0.00</b></div>
+        <div class="rtStat"><span>Realized PnL</span><b id="rtRpl">0.00</b></div>
+        <div class="rtStat"><span>Equity</span><b id="rtEq">1,000,000.00</b></div>
+        <span style="flex:1"></span>
+        <button id="rtEye" class="rtIconBtn" title="Hide balance"><svg class="ic" viewBox="0 0 24 24"><path d="M4 4l16 16M9.9 5.2A9.8 9.8 0 0 1 12 5c6 0 9.5 7 9.5 7a17.6 17.6 0 0 1-2.7 3.4M6 8A16.9 16.9 0 0 0 2.5 12S6 19 12 19c1.2 0 2.3-.3 3.3-.7M9.9 9.9a3 3 0 0 0 4.2 4.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>
       </div>
-      <div class="atabs" id="aTabs"><button data-at="positions" class="on">Positions</button><button data-at="orders">Orders</button><button data-at="history">Trade history</button><button data-at="analytics">Analytics</button></div>
-      <div id="tradesTableWrap"></div>
+      <div id="rtBody">
+        <div class="atabs" id="aTabs"><button data-at="positions" class="on">Positions<span class="cnt" id="cntPos" style="display:none"></span></button><button data-at="orders">Orders<span class="cnt" id="cntOrd" style="display:none"></span></button><button data-at="history">Trade history<span class="cnt" id="cntHis" style="display:none"></span></button><button data-at="analytics">Analytics</button></div>
+        <div id="rtSubBar"></div>
+        <div id="tradesTableWrap"></div>
+      </div>
     </div>
     <div id="rangeBar">
       <div class="rangeBtns"><button data-range="1D">1D</button><button data-range="5D">5D</button><button data-range="1M">1M</button><button data-range="3M">3M</button><button data-range="6M">6M</button><button data-range="YTD">YTD</button><button data-range="1Y">1Y</button><button data-range="5Y">5Y</button><button data-range="ALL">All</button></div>
@@ -560,6 +639,25 @@ textarea{width:100%;min-height:110px;font-family:ui-monospace,Menlo,monospace;fo
   </div>
 </div>
 <div id="ctxMenu"></div>
+<div id="orderTicket">
+  <div class="otHead"><div><b id="otSymName">Gold Futures</b><div class="hint" id="otSymEx">COMEX · GC1!</div></div><span style="flex:1"></span><button id="otClose" class="rtIconBtn" title="Close"><svg class="ic" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2"/></svg></button></div>
+  <div class="otTypes" id="otTypes"><button data-ot="market" class="on">Market</button><button data-ot="limit">Limit</button><button data-ot="stop">Stop</button><button data-ot="stoplimit">Stop Limit</button></div>
+  <div class="otPrices"><div class="otSellBox"><span>SELL</span><b id="otSellPx">—</b></div><div class="otBuyBox"><span>BUY</span><b id="otBuyPx">—</b></div></div>
+  <div class="otRow" id="otStopRow" style="display:none"><label>Stop price</label><input type="number" id="otStopPx" step="any"></div>
+  <div class="otRow" id="otPriceRow" style="display:none"><label>Limit price</label><input type="number" id="otPrice" step="any"></div>
+  <div class="otRow"><label>Quantity</label><div class="otQtyWrap"><input type="number" id="otQty" step="any" value="1"><span>Units</span></div></div>
+  <div class="otRow"><label>Tick value</label><b id="otTickVal" style="color:#fff">—</b></div>
+  <div class="otBracket">
+    <div class="otTglRow"><span class="otName">Take profit</span><button class="otSwitch" id="otTpSw" role="switch" aria-checked="false" title="Take profit"></button></div>
+    <div class="otBrIn" id="otTpIn" style="display:none"><div class="otBrF"><input type="number" id="otTpPx" step="any"><span>Price</span></div><div class="otBrF"><input type="number" id="otTpTk" step="any"><span>Ticks</span></div></div>
+  </div>
+  <div class="otBracket">
+    <div class="otTglRow"><span class="otName">Stop loss</span><button class="otSwitch" id="otSlSw" role="switch" aria-checked="false" title="Stop loss"></button></div>
+    <div class="otBrIn" id="otSlIn" style="display:none"><div class="otBrF"><input type="number" id="otSlPx" step="any"><span>Price</span></div><div class="otBrF"><input type="number" id="otSlTk" step="any"><span>Ticks</span></div></div>
+  </div>
+  <button id="otSubmit" class="buy">Buy 1 GC1! MARKET</button>
+  <p class="hint" style="margin-top:10px;line-height:1.6">Orders fill as the replay advances. Take profit / Stop loss are off by default; when on, they attach as bracket orders you can drag on the chart.</p>
+</div>
 <div class="toast" id="toast"></div>
 <div id="modalRoot"></div>
 <iframe id="jsSandbox" sandbox="allow-scripts" style="display:none"></iframe>
@@ -2730,7 +2828,7 @@ function setMulti(n){ App.multi=n; const _mc=$("#multiCnt"); if(_mc)_mc.textCont
 </script>
 <script>
 /* ============ リプレイ & 手動バックテスト ============ */
-const replay={active:false,timer:null,open:null,closed:[],seq:0,cum:0,capital:1000000,currency:"USD",commission:null,pending:null,analysisTab:"positions",speed:3,barRealStart:0,paneIdx:0,time:null}; // 初期資金デフォルトは 1,000,000 USD（本家録画でConfirm済み）。paneIdx/time はマルチペイン同期リプレイ用（開始ペインと現在のリプレイ時刻） // 初期資金・手数料の既定は未決定のため null（未入力）。Backtest settingsで入力する（リプレイ開始には不要）
+const replay={active:false,timer:null,open:null,closed:[],orders:[],ordFilter:"all",ordCols:null,hideBal:false,seq:0,cum:0,capital:1000000,currency:"USD",commission:null,pending:null,analysisTab:"positions",speed:3,barRealStart:0,paneIdx:0,time:null}; // 初期資金デフォルトは 1,000,000 USD（本家録画でConfirm済み）。paneIdx/time はマルチペイン同期リプレイ用（開始ペインと現在のリプレイ時刻） // 初期資金・手数料の既定は未決定のため null（未入力）。Backtest settingsで入力する（リプレイ開始には不要）
 /* Bar Replayの開始点選択（本家と同じ4択Menu）。セッション保存はしないため（ユーザーの決定）、毎回この選択から新しく始める */
 function openReplayMenu(inReplay,anchor){
  const ctx=P[activePane]||P[0]; const d=ctx.full; if(!d.length)return toast("Data is loading");
@@ -2829,7 +2927,9 @@ function wallToUtc(v){ const nv=String(v).trim().replace("T"," "); const [dp,tp]
  for(let i=0;i<3;i++){ const pp=fmtParts(guess,App.timezone); const asWall=Date.UTC(+pp.year,+pp.month-1,+pp.day,+pp.hour,+pp.minute)/1000; const diff=target-asWall; if(!diff)break; guess+=diff; }
  return guess; }
 /* 新しいリプレイ = 新しいバックテストセッション（前回のポジション・注文・残高・損益は引き継がない。初期資金は 1,000,000 USD） */
-function resetBacktestSession(){ replay.open=null; replay.pending=null; replay.closed=[]; replay.seq=0; replay.cum=0; replay.capital=1000000; App.trades=[]; }
+function resetBacktestSession(){ replay.open=null; replay.pending=null; replay.closed=[]; replay.orders=[]; replay.ordFilter="all"; replay.seq=0; replay.cum=0; replay.capital=1000000; App.trades=[]; closeTicket(); }
+/* 本家 Orders タブ用: 全注文（Working / Filled / Cancelled）を記録する。CSV の14列形式とは別の表示専用データ */
+function recordOrder(o,status,time){ const rec={oid:o.oid||("order_"+uuid4()),symbol:o.symbol,paneIdx:o.paneIdx||0,side:o.side,ordType:o.ordType||"market",qty:o.qty,price:o.price,limitPrice:o.limitPrice,tp:o.tp!=null?o.tp:null,sl:o.sl!=null?o.sl:null,time:time,status:status||"Working",commission:replay.commission}; replay.orders.push(rec); return rec; }
 /* リプレイは全ペイン時刻同期（マルチペイン対応）: 開始点は操作したペイン基準で決め、同じ時刻で全ペインを切り取る。
    トレードは約定したペイン（paneIdx・symbol）を保持し、そのペインの足で判定する。パネルの注文はアクティブペインが対象 */
 function rpCtx(){ const c=P[activePane]; if(c&&c.full&&c.full.length)return c; return P[replay.paneIdx]||P[0]; }
@@ -2845,21 +2945,22 @@ function applyReplayTime(time,keepView){ replay.time=time; for(const c of P){ if
  setPaneData(c);
  if(vr){ try{ c.chart.timeScale().setVisibleRange(vr); }catch(e){} } } }
 function startReplay(idx,srcCtx){ const ctx=srcCtx||rpCtx(); if(!ctx||!ctx.full.length)return toast("Data is loading"); idx=Math.max(0,Math.min(ctx.full.length-1,idx)); resetBacktestSession(); P.forEach(c=>{if(c)hideGotoTip(c);}); replay.active=true; replay.paneIdx=ctx.idx; replay.barRealStart=Date.now(); applyReplayTime(ctx.full[idx].time);
- $("#replayBar").classList.add("show"); $("#replayBtn").classList.add("on"); $("#tradesPanel").classList.add("show"); refreshBtCapInfo(); updateReplayInfo(); renderTrades(); markDirty(); toast("Replay started. Future bars are hidden until the replay reaches them. The backtest is a new session"); }
+ $("#replayBar").classList.add("show"); $("#replayBtn").classList.add("on"); const _tp=$("#tradesPanel"); _tp.classList.add("show"); _tp.classList.add("collapsed"); _tp.classList.remove("max"); refreshBtCapInfo(); updateReplayInfo(); renderTrades(); markDirty(); toast("Replay started. Future bars are hidden until the replay reaches them. The backtest is a new session"); }
 function stopReplay(){ // End replayでバックテストも終了する（ユーザーの決定）。未決済ポジションは最後に表示されたBarsの終値で決済、未約定注文は取消。パネルは閉じ、CSVも出せなくなる
  const tCtx=rpPaneOf(replay.open); const lastB=tCtx&&tCtx.view.length?tCtx.view[tCtx.view.length-1]:null;
  replay.active=false; stopPlay(); if(replay.open&&lastB)closeTrade(lastB.close,lastB.time,"End replay");
  if(replay.pending){ replay.pending=null; toast("Pending order cancelled"); }
  replay.time=null; for(const c of P){ if(!c)continue; c.replayIdx=-1; setPaneData(c); renderOrders(c); }
+ closeTicket();
  $("#replayBar").classList.remove("show"); $("#replayBtn").classList.remove("on"); $("#tradesPanel").classList.remove("show"); markDirty(); }
 function updateReplayInfo(){ const ctx=rpCtx(); if(!ctx)return; const b=ctx.view[ctx.view.length-1];
  $("#rpInfo").textContent=b?`${fmtDTs(b.time)} / ${ctx.view.length} of ${ctx.full.length} bars total)`:"";
  updateSpeedBtn(); for(const c of P){ if(c)renderOrders(c); }
- $("#rpLong").disabled=!!replay.open; $("#rpShort").disabled=!!replay.open; $("#rpClose").disabled=!replay.open; }
+ refreshTicketPx(); }
 function stepReplay(dir){ if(!replay.active)return; const ctx=rpCtx(); if(!ctx||!ctx.full.length)return; replay.barRealStart=Date.now();
  const ni=Math.max(0,Math.min(ctx.full.length-1,ctx.replayIdx+dir)); applyReplayTime(ctx.full[ni].time,true); // 全ペインを同じ時刻へ進める（表示範囲は固定したまま）
  const tCtx=rpPaneOf(replay.open||replay.pending); const bar=tCtx&&tCtx.view.length?tCtx.view[tCtx.view.length-1]:ctx.full[ni]; // 約定判定はトレードのペインの足で
- if(bar){ checkPending(bar); updateFavAdv(bar); if(dir>0)checkTradeHit(bar,tCtx?tCtx.replayIdx:ni); } updateReplayInfo(); }
+ if(bar){ checkPending(bar); updateFavAdv(bar); if(dir>0)checkTradeHit(bar,tCtx?tCtx.replayIdx:ni); } updateReplayInfo(); renderTrades(); } // 本家同様、進めるたびにサマリーと Positions の現在価格・含み損益を即時更新する
 function updateFavAdv(bar){ const t=replay.open; if(!t)return; const long=t.side==="Long"; const m=(t.mult!=null?t.mult:effMult(t.symbol||""))||1;
  const favP=long?bar.high-t.entryPrice:t.entryPrice-bar.low; const advP=long?t.entryPrice-bar.low:bar.high-t.entryPrice;
  t.fav=Math.max(t.fav,favP*t.qty*m); t.adv=Math.max(t.adv,advP*t.qty*m); }
@@ -2868,9 +2969,9 @@ function checkPending(bar){ const pd=replay.pending; if(!pd||replay.open)return;
  else if(pd.ordType==="stop")hit=long?bar.high>=pd.price:bar.low<=pd.price;
  else if(pd.ordType==="stoplimit"){ if(long?bar.high>=pd.price:bar.low<=pd.price){pd.ordType="limit"; pd.price=pd.limitPrice||pd.price;} }
  if(hit){ replay.pending=null; const ctx=P[pd.paneIdx||0]||rpCtx(); const isFx=/XAU|XAG|USD/.test(ctx.symbol)&&symInfo(ctx.symbol).t.includes("FX");
-  const pctD=(parseFloat(($("#rpDist")||{}).value)||0.8)/100, distD=pd.price*pctD, longD=pd.side==="Long"; // 右クリック注文などTP/SL未指定の約定には既定距離でブラケットを付ける
-  replay.open={num:++replay.seq,side:pd.side,paneIdx:ctx.idx,symbol:ctx.symbol,entryTime:bar.time,entryPrice:pd.price,qty:pd.qty||(isFx?1000:1),tp:pd.tp!=null?pd.tp:(longD?pd.price+distD:pd.price-distD),sl:pd.sl!=null?pd.sl:(longD?pd.price-distD:pd.price+distD),fav:0,adv:0,entryIdx:ctx.replayIdx,commission:replay.commission,ordType:pd.ordType,mult:effMult(ctx.symbol),oid:pd.oid||("order_"+uuid4())};
-  updateFavAdv(bar); toast(`${pd.side} limit order filled @ ${pd.price}`); updateReplayInfo(); renderTrades(); } }
+  if(pd.rec)pd.rec.status="Filled"; // 本家準拠: TP/SL は注文時に指定された場合のみ付く（既定OFF。自動で距離ブラケットを付けない）
+  replay.open={num:++replay.seq,side:pd.side,paneIdx:ctx.idx,symbol:ctx.symbol,entryTime:bar.time,entryPrice:pd.price,qty:pd.qty||(isFx?1000:1),tp:pd.tp!=null?pd.tp:null,sl:pd.sl!=null?pd.sl:null,fav:0,adv:0,entryIdx:ctx.replayIdx,commission:replay.commission,ordType:pd.ordType,mult:effMult(ctx.symbol),oid:pd.oid||("order_"+uuid4())};
+  updateFavAdv(bar); toast(`${pd.side} ${orderTypeName(pd.ordType)} order filled @ ${pd.price}`); updateReplayInfo(); renderTrades(); } }
 function stopPlay(){ if(replay.timer){clearInterval(replay.timer);replay.timer=null; $("#rpPlay").innerHTML=uiIc("play");} }
 function togglePlay(){ if(replay.timer){stopPlay();return;} const sp=replay.speed||3; replay.barRealStart=Date.now();
  replay.timer=setInterval(()=>{ const ctx=rpCtx(); if(!ctx||ctx.replayIdx>=ctx.full.length-1){stopPlay();return;} stepReplay(1); },Math.max(50,Math.round(1000/sp))); $("#rpPlay").innerHTML=uiIc("pause"); }
@@ -2937,7 +3038,10 @@ function orderMenuItems(ctx,price){
 function placeOrder(ctx,o){
  if(!replay.active)return toast("Orders can be placed during bar replay");
  if(replay.open)return toast("A position is open. Close it before placing a new order");
- replay.pending={side:o.side,ordType:o.ordType,price:o.price,limitPrice:o.limitPrice||o.price,qty:o.qty||defaultQty(ctx.symbol),tp:null,sl:null,paneIdx:ctx.idx,symbol:ctx.symbol,oid:"order_"+uuid4()};
+ if(replay.pending)return toast("An order is already working. Cancel it before placing a new one");
+ const bar=ctx.view[ctx.view.length-1];
+ replay.pending={side:o.side,ordType:o.ordType,price:o.price,limitPrice:o.limitPrice||o.price,qty:o.qty||defaultQty(ctx.symbol),tp:o.tp!=null?o.tp:null,sl:o.sl!=null?o.sl:null,paneIdx:ctx.idx,symbol:ctx.symbol,oid:"order_"+uuid4()};
+ replay.pending.rec=recordOrder(replay.pending,"Working",bar?bar.time:0);
  const tick=ctx.symbol.split(":")[1]||ctx.symbol;
  toast(`${orderTypeName(o.ordType)} order placed on ${exchDisp(ctx.symbol)}:${tick} ${o.side==="Long"?"Buy":"Sell"} ${replay.pending.qty} at ${fmtPx(o.price)}`);
  renderOrders(ctx); renderTrades();
@@ -2949,7 +3053,7 @@ function openOrderDialog(ctx,price){
   <label style="width:auto">Type</label><select id="odType"><option value="limit">Limit</option><option value="stop">Stop</option><option value="stoplimit">Stop-limit</option></select></div>
   <div class="frow"><label>Price</label><input type="number" id="odPrice" step="any" value="${price}"><label style="width:auto">Limit price</label><input type="number" id="odLimit" step="any" placeholder="For stop-limit"></div>
   <div class="frow"><label>Qty</label><input type="number" id="odQty" step="any" value="${defaultQty(ctx.symbol)}"></div>
-  <p class="hint">Place an order on ${esc(tick)}. Fills are checked as the replay advances; when the order fills, brackets are attached at the default distance (TP/SL distance %).</p>`,
+  <p class="hint">Place an order on ${esc(tick)}. Fills are checked as the replay advances. No take profit / stop loss brackets are attached (they are set in the order ticket from the Replay Trading panel).</p>`,
   `<button class="btn" id="odCancel">Cancel</button><button class="btn primary" id="odPlace">Place order</button>`);
  $("#odCancel").onclick=closeModal;
  $("#odPlace").onclick=()=>{ const side=$("#odSide").value, type=$("#odType").value;
@@ -2996,8 +3100,7 @@ function renderOrders(ctx){ const w=ctx&&ctx.ordEl; if(!w)return;
   if(op.sl!=null){ const yS=Y(op.sl);
    if(yS!=null&&yE!=null){ h+=`<div class="ordZone" style="top:${Math.round(Math.min(yS,yE))}px;height:${Math.max(1,Math.round(Math.abs(yS-yE)))}px;width:${cw}px;background:rgba(242,108,36,0.22)"></div>`;
     h+=line(yS,"#f26d24")+pill(yS,fmtMoney((op.sl-op.entryPrice)*dir*op.qty*m),"#f26d24")+axisLbl(yS,fmtPx(op.sl),"#f26d24")+handle("sl",yS); } }
-  if(yE!=null){ h+=line(yE,"#2962ff")+pill(yE,`${op.side==="Long"?"Buy":"Sell"} ${op.qty} @ ${fmtPx(op.entryPrice)}`,"#2962ff")+axisLbl(yE,fmtPx(op.entryPrice),"#2962ff");
-   h+=pill(yE,fmtMoney(upl),upl>=0?"#089981":"#f23645",12); }
+  if(yE!=null){ h+=line(yE,"#2962ff")+pill(yE,`${op.qty} ${upl<0?"-":""}${fmtNum2(Math.abs(upl))} ${replay.currency}`,"#2962ff")+axisLbl(yE,fmtPx(op.entryPrice),"#2962ff"); } // 本家準拠: 青ライン＋青ピル「数量 損益」
  }
  w.innerHTML=h;
  w.querySelectorAll(".ordHandle").forEach(hd=>hd.addEventListener("pointerdown",e=>startOrderDrag(ctx,e,hd.dataset.okind)));
@@ -3005,7 +3108,7 @@ function renderOrders(ctx){ const w=ctx&&ctx.ordEl; if(!w)return;
 function startOrderDrag(ctx,e,kind){ e.preventDefault(); e.stopPropagation();
  const target=kind==="pending"?replay.pending:replay.open; if(!target)return;
  const move=ev=>{ const r=ctx.el.getBoundingClientRect(); const p=y2p(ctx,ev.clientY-r.top); if(p==null||!isFinite(p)||p<=0)return;
-  if(kind==="pending")target.price=p; else if(kind==="tp")target.tp=p; else if(kind==="sl")target.sl=p;
+  if(kind==="pending"){ target.price=p; if(target.rec)target.rec.price=p; } else if(kind==="tp")target.tp=p; else if(kind==="sl")target.sl=p;
   renderOrders(ctx); };
  const up=()=>{ document.removeEventListener("pointermove",move); document.removeEventListener("pointerup",up);
   const tick=ctx.symbol.split(":")[1]||ctx.symbol, ex=exchDisp(ctx.symbol);
@@ -3020,25 +3123,22 @@ function startOrderDrag(ctx,e,kind){ e.preventDefault(); e.stopPropagation();
 }
 function registerTradeFromDrawing(d,ctxHint){ if(!replay.active)return; const ctx=ctxHint||P[activePane]||P[0]; if(replay.open)return toast("A position is already open. Close it first");
  const bar=ctx.view[ctx.view.length-1]; if(!bar)return;
- replay.open={num:++replay.seq,side:d.type==="long"?"Long":"Short",paneIdx:ctx.idx,symbol:ctx.symbol,entryTime:bar.time,entryPrice:d.entry,qty:d.style.qty||d.style.lotSize||1,tp:d.target,sl:d.stop,fav:0,adv:0,entryIdx:ctx.replayIdx,commission:replay.commission,ordType:"market",mult:effMult(ctx.symbol),oid:"order_"+uuid4()}; updateFavAdv(bar);
+ replay.open={num:++replay.seq,side:d.type==="long"?"Long":"Short",paneIdx:ctx.idx,symbol:ctx.symbol,entryTime:bar.time,entryPrice:d.entry,qty:d.style.qty||d.style.lotSize||1,tp:d.target,sl:d.stop,fav:0,adv:0,entryIdx:ctx.replayIdx,commission:replay.commission,ordType:"market",mult:effMult(ctx.symbol),oid:"order_"+uuid4()}; recordOrder({side:replay.open.side,ordType:"market",qty:replay.open.qty,price:d.entry,tp:d.target,sl:d.stop,paneIdx:ctx.idx,symbol:ctx.symbol,oid:replay.open.oid},"Filled",bar.time); updateFavAdv(bar);
  toast(`${replay.open.side} entry @ ${d.entry} (TP ${d.target} / SL ${d.stop})`); updateReplayInfo(); renderTrades(); }
 function quickEntry(side,ctxHint){ if(!replay.active)return toast("Backtest entries are made during bar replay (start bar replay first)"); const ctx=ctxHint||P[activePane]||P[0]; const bar=ctx.view[ctx.view.length-1]; if(!bar)return;
- const ordType=($("#rpOrdType")||{}).value||"market";
  if(replay.open){ // Reverse: 現ポジションを決済して反対にエントリー（決済価格はポジションのペインの足を使う）
    const prev=replay.open.side; const tCtx=rpPaneOf(replay.open); const tBar=tCtx&&tCtx.view.length?tCtx.view[tCtx.view.length-1]:bar; closeTrade(tBar.close,tBar.time,"Reverse"); if(prev===side)return; }
- const pct=(parseFloat(($("#rpDist")||{}).value)||0.8)/100; const dist=bar.close*pct; const long=side==="Long";
+ if(replay.pending)return toast("An order is already working. Cancel it before placing a new one");
  const isFx=symInfo(ctx.symbol).t.includes("FX"); const qty=isFx?1000:1;
- if(ordType!=="market"){ const px=parseFloat(($("#rpOrdPrice")||{}).value); if(!(px>0))return toast("Enter the limit order price");
-   const lp=parseFloat(($("#rpOrdPrice2")||{}).value);
-   replay.pending={side,ordType,price:px,limitPrice:lp||px,qty,tp:long?px+dist:px-dist,sl:long?px-dist:px+dist,paneIdx:ctx.idx,symbol:ctx.symbol,oid:"order_"+uuid4()};
-   toast(`${side} ${ordType} limit order @ ${px} (TP/SL distance ${($("#rpDist")||{}).value||0.8}%)`); renderTrades(); return; }
- replay.open={num:++replay.seq,side,paneIdx:ctx.idx,symbol:ctx.symbol,entryTime:bar.time,entryPrice:bar.close,qty,tp:long?bar.close+dist:bar.close-dist,sl:long?bar.close-dist:bar.close+dist,fav:0,adv:0,entryIdx:ctx.replayIdx,commission:replay.commission,ordType:"market",mult:effMult(ctx.symbol),oid:"order_"+uuid4()};
+ // 本家準拠: 成行エントリーに TP/SL は自動で付かない（既定OFF。付ける場合は注文チケットで指定する）
+ replay.open={num:++replay.seq,side,paneIdx:ctx.idx,symbol:ctx.symbol,entryTime:bar.time,entryPrice:bar.close,qty,tp:null,sl:null,fav:0,adv:0,entryIdx:ctx.replayIdx,commission:replay.commission,ordType:"market",mult:effMult(ctx.symbol),oid:"order_"+uuid4()};
+ recordOrder({side,ordType:"market",qty,price:bar.close,paneIdx:ctx.idx,symbol:ctx.symbol,oid:replay.open.oid},"Filled",bar.time);
  updateFavAdv(bar);
- toast(`${side} entry @ ${bar.close} (TP ${replay.open.tp.toFixed(2)} / SL ${replay.open.sl.toFixed(2)})`); updateReplayInfo(); renderTrades(); }
+ toast(`${side} entry @ ${bar.close}`); updateReplayInfo(); renderTrades(); }
 function checkTradeHit(bar,idx){ const t=replay.open; if(!t)return; const long=t.side==="Long";
- updateFavAdv(bar); // TP/SL同時到達時は SL 優先（保守的ルール、仕様として明記）
- if(long){ if(bar.low<=t.sl)return closeTrade(t.sl,bar.time,"SL"); if(bar.high>=t.tp)return closeTrade(t.tp,bar.time,"TP"); }
- else{ if(bar.high>=t.sl)return closeTrade(t.sl,bar.time,"SL"); if(bar.low<=t.tp)return closeTrade(t.tp,bar.time,"TP"); } }
+ updateFavAdv(bar); // TP/SL同時到達時は SL 優先（保守的ルール、仕様として明記）。TP/SL 未設定（null）の側は判定しない
+ if(long){ if(t.sl!=null&&bar.low<=t.sl)return closeTrade(t.sl,bar.time,"SL"); if(t.tp!=null&&bar.high>=t.tp)return closeTrade(t.tp,bar.time,"TP"); }
+ else{ if(t.sl!=null&&bar.high>=t.sl)return closeTrade(t.sl,bar.time,"SL"); if(t.tp!=null&&bar.low<=t.tp)return closeTrade(t.tp,bar.time,"TP"); } }
 function closeTrade(price,time,reason){ const t=replay.open; if(!t)return; const ctx=rpPaneOf(t);
  const dir=t.side==="Long"?1:-1; const m=(t.mult!=null?t.mult:effMult(t.symbol||ctx.symbol)); const pnl=(price-t.entryPrice)*dir*t.qty*(m||1) - (t.commission||0)*2;
  const idx=ctx.full.findIndex(c=>c.time>=time); const bars=Math.max(0,(idx<0?ctx.replayIdx:idx)-t.entryIdx);
@@ -3048,45 +3148,153 @@ function closeTrade(price,time,reason){ const t=replay.open; if(!t)return; const
  replay.closed.push(done); App.trades=replay.closed; replay.open=null;
  toast(`Closed (${reason}) @ ${price} — PnL ${pnl>=0?"+":""}${pnl.toFixed(2)} USD`); updateReplayInfo(); renderTrades(); }
 function fmtNum2(v){ return (Math.round(v*100)/100).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtSizeVal(v,cur){ const a=Math.abs(v); const f=(x,d)=>x.toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d});
+ if(a>=1e6)return f(v/1e6,2)+"M "+cur; if(a>=1e3)return f(v/1e3,2)+"K "+cur; return f(v,2)+" "+cur; }
+function symDisp(sym){ return exchDisp(sym)+":"+(sym.split(":")[1]||""); }
 function renderTrades(){ const w=$("#tradesTableWrap"); if(!w)return;
  const wins=replay.closed.filter(t=>t.pnl>0).length;
+ /* サマリー（本家準拠: ピルの金額は初期資金で固定。Unrealized / Realized / Equity は2段表示で即時更新） */
  { const cap=replay.capital>0?replay.capital:1000000; const ctx0=replay.open?rpPaneOf(replay.open):rpCtx(); const curB=ctx0&&ctx0.view.length?ctx0.view[ctx0.view.length-1]:null;
   let upl=0; if(replay.open&&curB){ const dir=replay.open.side==="Long"?1:-1; const mm=replay.open.mult!=null?replay.open.mult:(effMult(replay.open.symbol||ctx0.symbol)||1); upl=(curB.close-replay.open.entryPrice)*dir*replay.open.qty*mm; }
-  const bal=cap+replay.cum, eq=bal+upl;
-  const rt=$("#rtTitle"); if(rt)rt.textContent=`Replay Trading ${fmtNum2(bal)} ${replay.currency}`;
-  const rs=$("#rtStats"); if(rs)rs.textContent=`Unrealized PnL: ${fmtNum2(upl)} · Realized PnL: ${fmtNum2(replay.cum)} · Equity: ${fmtNum2(eq)}`; }
- $("#tradeStats").textContent=replay.closed.length?`Closed: ${replay.closed.length} / Win rate ${(wins/replay.closed.length*100).toFixed(1)}% / Cumulative PnL ${replay.cum>=0?"+":""}${replay.cum.toFixed(2)} ${replay.currency}`:"No records yet";
+  const eq=cap+replay.cum+upl, mask=replay.hideBal?"••••••":null;
+  const bal=$("#rtBal"); if(bal)bal.textContent=mask||fmtNum2(cap);
+  const cl=$("#rtCurLbl"); if(cl)cl.textContent=replay.currency;
+  const uu=$("#rtUpl"); if(uu){ uu.textContent=mask||fmtNum2(upl); uu.className=upl>0?"pos":upl<0?"neg":""; }
+  const rr=$("#rtRpl"); if(rr){ rr.textContent=mask||fmtNum2(replay.cum); rr.className=replay.cum>0?"pos":replay.cum<0?"neg":""; }
+  const ee=$("#rtEq"); if(ee)ee.textContent=mask||fmtNum2(eq); }
+ /* タブの件数バッジ（本家準拠: 選択中は黒ピル＋件数バッジ） */
+ const setCnt=(id,n)=>{ const e=$(id); if(e){ e.textContent=n||""; e.style.display=n?"":"none"; } };
+ setCnt("#cntPos",replay.open?1:0); setCnt("#cntOrd",replay.orders.length); setCnt("#cntHis",replay.closed.length);
  $$("#aTabs button").forEach(b=>{b.classList.toggle("on",b.dataset.at===replay.analysisTab); b.onclick=()=>{replay.analysisTab=b.dataset.at; renderTrades();};});
  const tab=replay.analysisTab;
+ const sub=$("#rtSubBar"); if(sub)sub.innerHTML="";
  const nothingToShow=`<p class="hint" style="padding:10px">Nothing to show yet. Your account activity will appear here.</p>`;
+ const tabsEl=$("#aTabs");
+ /* 空状態（本家準拠: 見出し＋サマリーの下に「Make a trade to get started」と赤 Sell / 青 Buy ピル。タブは出ない） */
+ if(!replay.open&&!replay.pending&&!replay.closed.length&&!replay.orders.length){
+  if(tabsEl)tabsEl.style.display="none";
+  w.innerHTML=`<div class="rtEmpty"><div class="rtEmptyT">Make a trade to get started</div><div class="rtEmptyS">Red or blue — choose your pill.</div><div class="rtPills"><button class="pillSell" id="rtSellBtn">Sell</button><span class="or">or</span><button class="pillBuy" id="rtBuyBtn">Buy</button></div></div>`;
+  const sb=$("#rtSellBtn"), bb=$("#rtBuyBtn"); if(sb)sb.onclick=()=>openTicket("Short"); if(bb)bb.onclick=()=>openTicket("Long");
+  $("#tradesPanel").classList.toggle("show",!!replay.active); return; }
+ if(tabsEl)tabsEl.style.display="";
  if(tab==="positions"){ const ctx0=rpPaneOf(replay.open); const curB=ctx0&&ctx0.view.length?ctx0.view[ctx0.view.length-1]:null;
   if(!replay.open)w.innerHTML=nothingToShow;
-  else { const t=replay.open; const dir=t.side==="Long"?1:-1; const mm=t.mult!=null?t.mult:(effMult(t.symbol||ctx0.symbol)||1); const upl2=curB?(curB.close-t.entryPrice)*dir*t.qty*mm:0;
-   w.innerHTML=`<table><tr><th>Symbol</th><th>Side</th><th>Qty</th><th>Entry price</th><th>Current price</th><th>Unrealized PnL ${replay.currency}</th></tr><tr><td>${esc(t.symbol||ctx0.symbol)}</td><td>${t.side}</td><td>${t.qty}</td><td>${t.entryPrice}</td><td>${curB?curB.close:""}</td><td class="${upl2>=0?"pos":"neg"}">${upl2.toFixed(2)}</td></tr></table>`; }
+  else { const t=replay.open; const dir=t.side==="Long"?1:-1; const mm=t.mult!=null?t.mult:(effMult(t.symbol||ctx0.symbol)||1); const last=curB?curB.close:t.entryPrice; const upl2=(last-t.entryPrice)*dir*t.qty*mm;
+   const tv=t.entryPrice*t.qty*mm, mv=last*t.qty*mm, pct=tv?upl2/Math.abs(tv)*100:0;
+   w.innerHTML=`<table><tr><th>Symbol</th><th>Side</th><th>Quantity</th><th>Avg fill price</th><th>Last price</th><th>Unrealized PnL</th><th>Unrealized PnL %</th><th>Take profit</th><th>Stop loss</th><th>Trade value</th><th>Market value</th><th></th></tr><tr><td>${esc(symDisp(t.symbol||ctx0.symbol))}</td><td>${t.side}</td><td>${t.qty}</td><td>${fmtPx(t.entryPrice)}</td><td>${fmtPx(last)}</td><td class="${upl2>=0?"pos":"neg"}">${fmtNum2(upl2)} ${replay.currency}</td><td class="${upl2>=0?"pos":"neg"}">${pct.toFixed(2)}%</td><td>${t.tp!=null?fmtPx(t.tp):"—"}</td><td>${t.sl!=null?fmtPx(t.sl):"—"}</td><td>${fmtNum2(tv)} ${replay.currency}</td><td>${fmtNum2(mv)} ${replay.currency}</td><td><button class="btn" id="posRevBtn" title="Reverse position">Reverse</button> <button class="btn danger" id="posCloseBtn" title="Close position">×</button></td></tr></table>`;
+   const cb=$("#posCloseBtn"); if(cb)cb.onclick=()=>{ const c2=rpPaneOf(replay.open); const b2=c2&&c2.view.length?c2.view[c2.view.length-1]:null; if(b2)closeTrade(b2.close,b2.time,"Manual close"); };
+   const rb=$("#posRevBtn"); if(rb)rb.onclick=()=>{ const c2=rpPaneOf(replay.open); if(!replay.open)return; quickEntry(replay.open.side==="Long"?"Short":"Long",c2); }; }
   $("#tradesPanel").classList.toggle("show",!!replay.active); return; }
  if(tab==="orders"){
-  if(!replay.pending)w.innerHTML=nothingToShow;
-  else { const p=replay.pending;
-   w.innerHTML=`<table><tr><th>Symbol</th><th>Side</th><th>Type</th><th>Price</th><th>Qty</th><th></th></tr><tr><td>${esc(p.symbol||(P[p.paneIdx||0]||{}).symbol||"")}</td><td>${p.side==="Long"?"Buy":"Sell"}</td><td>${esc(orderTypeName(p.ordType))}</td><td>${p.price}</td><td>${p.qty}</td><td><button class="btn danger" id="ordCancelBtn">Cancel</button></td></tr></table>`;
-   const cb=$("#ordCancelBtn"); if(cb)cb.onclick=()=>{ replay.pending=null; toast("Order cancelled"); renderOrders(P[p.paneIdx||0]||P[0]); renderTrades(); }; }
+  const ords=replay.orders; const nWork=ords.filter(o=>o.status==="Working").length, nFill=ords.filter(o=>o.status==="Filled").length, nCanc=ords.filter(o=>o.status==="Cancelled").length, nRej=ords.filter(o=>o.status==="Rejected").length;
+  const filters=[["all","All",ords.length],["working","Working",nWork],["inactive","Inactive",nFill+nCanc+nRej],["filled","Filled",nFill],["cancelled","Cancelled",nCanc],["rejected","Rejected",nRej]];
+  if(sub)sub.innerHTML=filters.map(([k,lb,n])=>`<button data-of="${k}" class="${replay.ordFilter===k?"on":""}">${lb} <span class="cnt">${n}</span></button>`).join("")+`<button class="colSetup" id="ordColBtn" title="Column setup">Column setup</button>`;
+  if(sub)sub.querySelectorAll("[data-of]").forEach(b=>b.onclick=()=>{ replay.ordFilter=b.dataset.of; renderTrades(); });
+  const colBtn=$("#ordColBtn"); if(colBtn)colBtn.onclick=e=>{ const cols=ordColDefs(); const r=e.currentTarget.getBoundingClientRect();
+   showMenu(r.left-160,r.bottom+4,cols.map(([k,lb])=>({label:lb,checkable:true,checked:ordColOn(k),act:()=>{ replay.ordCols=replay.ordCols||{}; replay.ordCols[k]=!ordColOn(k); renderTrades(); }}))); };
+  const f=replay.ordFilter; const rows=ords.filter(o=>f==="all"?true:f==="working"?o.status==="Working":f==="inactive"?o.status!=="Working":f==="filled"?o.status==="Filled":f==="cancelled"?o.status==="Cancelled":o.status==="Rejected");
+  if(!rows.length)w.innerHTML=nothingToShow;
+  else { const cols=ordColDefs().filter(([k])=>ordColOn(k));
+   const cell=(o,k)=>{ switch(k){
+    case "symbol": return esc(symDisp(o.symbol||""));
+    case "side": return o.side==="Long"?"Buy":"Sell";
+    case "type": return o.ordType==="market"?"Market":orderTypeName(o.ordType);
+    case "qty": return o.qty;
+    case "limit": return o.ordType==="limit"?fmtPx(o.price):(o.ordType==="stoplimit"?fmtPx(o.limitPrice||o.price):"");
+    case "stop": return o.ordType==="stop"?fmtPx(o.price):(o.ordType==="stoplimit"?fmtPx(o.price):"");
+    case "tp": return o.tp!=null?fmtPx(o.tp):"";
+    case "sl": return o.sl!=null?fmtPx(o.sl):"";
+    case "time": return o.time?fmtDTs(o.time):"";
+    case "status": return `<span style="color:${o.status==="Filled"?"#089981":o.status==="Working"?"#d1d4dc":"#787b86"}">${o.status}</span>`;
+    case "comm": return o.commission!=null?fmtNum2(o.commission):"";
+    default: return ""; } };
+   w.innerHTML=`<table><tr>${cols.map(([,lb])=>`<th>${lb}</th>`).join("")}<th></th></tr>${rows.map(o=>`<tr>${cols.map(([k])=>`<td>${cell(o,k)}</td>`).join("")}<td>${o.status==="Working"?`<button class="btn danger" data-cancel="${esc(o.oid)}">Cancel</button>`:""}</td></tr>`).join("")}</table>`;
+   w.querySelectorAll("[data-cancel]").forEach(b=>b.onclick=()=>{ const o=replay.orders.find(x=>x.oid===b.dataset.cancel); if(o)o.status="Cancelled"; if(replay.pending&&replay.pending.oid===o?.oid){ const pc=P[replay.pending.paneIdx||0]||P[0]; replay.pending=null; renderOrders(pc); } toast("Order cancelled"); renderTrades(); }); }
   $("#tradesPanel").classList.toggle("show",!!replay.active); return; }
  if(tab==="analytics"){
-   const cl=replay.closed; const grossW=cl.filter(t=>t.pnl>0).reduce((a,t)=>a+t.pnl,0), grossL=cl.filter(t=>t.pnl<0).reduce((a,t)=>a+t.pnl,0);
+   const cl=replay.closed;
+   if(!cl.length){ w.innerHTML=nothingToShow+`<div style="padding:0 10px 10px"><button class="btn" id="anaDlBtn">Download data</button></div>`; const db=$("#anaDlBtn"); if(db)db.onclick=openDownloadData; $("#tradesPanel").classList.toggle("show",!!replay.active); return; }
+   const grossW=cl.filter(t=>t.pnl>0).reduce((a,t)=>a+t.pnl,0), grossL=cl.filter(t=>t.pnl<0).reduce((a,t)=>a+t.pnl,0);
    const pf=grossL? (grossW/Math.abs(grossL)).toFixed(2):"—"; const avg=cl.length?(cl.reduce((a,t)=>a+t.pnl,0)/cl.length):0;
    let maxDD=0,peak=0,cum=0; for(const t of cl){cum+=t.pnl; peak=Math.max(peak,cum); maxDD=Math.min(maxDD,cum-peak);}
    const sharpe=(()=>{ if(cl.length<2)return "—"; const rs=cl.map(t=>t.ret); const mu=rs.reduce((a,x)=>a+x,0)/rs.length; const sd=Math.sqrt(rs.reduce((a,x)=>a+(x-mu)*(x-mu),0)/rs.length); return sd? (mu/sd).toFixed(2):"—"; })();
+   const wTrades=cl.filter(t=>t.pnl>0), lTrades=cl.filter(t=>t.pnl<0);
+   const avgRR=(wTrades.length&&lTrades.length)?((grossW/wTrades.length)/Math.abs(grossL/lTrades.length)).toFixed(2):"—";
+   const cumPts=[0,...cl.map(t=>t.cum)]; const cMin=Math.min(0,...cumPts), cMax=Math.max(0,...cumPts), cRg=(cMax-cMin)||1;
+   const chart=`<svg width="100%" height="72" viewBox="0 0 600 72" preserveAspectRatio="none" style="display:block;margin:4px 0 2px"><polyline fill="none" stroke="#2962ff" stroke-width="1.6" points="${cumPts.map((v,i)=>`${(i/(cumPts.length-1||1)*600).toFixed(1)},${(66-((v-cMin)/cRg)*60).toFixed(1)}`).join(" ")}"/></svg>`;
    const bodies={
     overview:`Closed trades: ${cl.length} / Cumulative PnL ${replay.cum.toFixed(2)} ${replay.currency} / Initial capital ${replay.capital} ${replay.currency} / Cumulative PnL% ${replay.capital?(replay.cum/replay.capital*100).toFixed(2):"—"}%`,
     perf:`Win rate ${cl.length?(wins/cl.length*100).toFixed(1):0}% / Profit Factor ${pf} / Avg PnL ${avg.toFixed(2)} / Gross profit ${grossW.toFixed(2)} / Gross loss ${grossL.toFixed(2)}`,
     analysis:`Avg bars held ${cl.length?(cl.reduce((a,t)=>a+(t.bars||0),0)/cl.length).toFixed(1):0} / Max win streak ${(()=>{let m2=0,c2=0;for(const t of cl){c2=t.pnl>0?c2+1:0;m2=Math.max(m2,c2);}return m2;})()} / Max loss streak ${(()=>{let m2=0,c2=0;for(const t of cl){c2=t.pnl<0?c2+1:0;m2=Math.max(m2,c2);}return m2;})()}`,
     risk:`Max drawdown ${maxDD.toFixed(2)} ${replay.currency} / Sharpe ratio (per trade) ${sharpe} / Total commission ${cl.reduce((a,t)=>a+(t.commission||0)*2,0).toFixed(2)}`};
-   w.innerHTML=`<div class="hint" style="padding:10px;line-height:1.9"><b style="color:#fff">Overview</b><br>${bodies.overview}<br><b style="color:#fff">Performance</b><br>${bodies.perf}<br><b style="color:#fff">Trades analysis</b><br>${bodies.analysis}<br><b style="color:#fff">Risk ratios</b><br>${bodies.risk}</div>`; $("#tradesPanel").classList.toggle("show",!!replay.active); return;
+   w.innerHTML=`<div class="rtAnaGrid"><div class="ag"><span>Profitable trades</span><b>${cl.length?(wins/cl.length*100).toFixed(2):"0.00"}% ${wins}/${cl.length}</b></div><div class="ag"><span>Profit factor</span><b>${pf}</b></div><div class="ag"><span>Expectancy</span><b>${fmtNum2(avg)} ${replay.currency}</b></div><div class="ag"><span>Average R:R</span><b>${avgRR}</b></div></div><div style="padding:0 14px"><span class="hint">Cumulative PnL</span>${chart}</div><div class="hint rtAnaSec"><b style="color:#fff">Overview</b><br>${bodies.overview}<br><b style="color:#fff">Performance</b><br>${bodies.perf}<br><b style="color:#fff">Trades analysis</b><br>${bodies.analysis}<br><b style="color:#fff">Risk ratios</b><br>${bodies.risk}<br><button class="btn" id="anaDlBtn" style="margin-top:6px">Download data</button></div>`;
+   const db=$("#anaDlBtn"); if(db)db.onclick=openDownloadData;
+   $("#tradesPanel").classList.toggle("show",!!replay.active); return;
  }
  const rows=[...replay.closed];
  if(!rows.length){w.innerHTML=nothingToShow; $("#tradesPanel").classList.toggle("show",!!replay.active); return;}
- w.innerHTML=`<table><tr><th>#</th><th>Type</th><th>Entry</th><th>Price</th><th>Exit</th><th>Price</th><th>Reason</th><th>Qty</th><th>Net PnL ${replay.currency}</th><th>Return %</th><th>Bars</th></tr>
- ${rows.map(t=>`<tr><td>${t.num}</td><td>${t.side}</td><td>${fmtDT(t.entryTime)}</td><td>${t.entryPrice}</td><td>${fmtDT(t.exitTime)}</td><td>${t.exitPrice}</td><td>${esc(t.reason)}</td><td>${t.qty}</td><td class="${t.pnl>=0?"pos":"neg"}">${t.pnl.toFixed(2)}</td><td>${t.ret.toFixed(2)}</td><td>${t.bars}</td></tr>`).join("")}</table>`;
+ /* Trade history（本家準拠: 1トレード = Entry / Exit の2行。CSV の14列形式は従来どおり別途維持） */
+ w.innerHTML=`<table><tr><th>Symbol</th><th>Side</th><th>Type</th><th>Date and time</th><th>Order ID</th><th>Price</th><th>Size</th><th>Net PnL</th><th>Return</th></tr>
+ ${rows.map(t=>{ const tsym=t.symbol||P[0].symbol; const mm=t.mult!=null?t.mult:(effMult(tsym)||1); const sideB=t.side==="Long"?"Buy":"Sell", sideX=t.side==="Long"?"Sell":"Buy";
+  return `<tr><td>${esc(symDisp(tsym))}</td><td>${sideB}</td><td>Entry</td><td>${fmtDT(t.entryTime)}</td><td>${esc(t.oid||"")}</td><td>${fmtPx(t.entryPrice)}</td><td>${fmtSizeVal(t.entryPrice*t.qty*mm,replay.currency)}</td><td></td><td></td></tr><tr><td>${esc(symDisp(tsym))}</td><td>${sideX}</td><td>Exit</td><td>${fmtDT(t.exitTime)}</td><td>${esc(t.exitOid||"")}</td><td>${fmtPx(t.exitPrice)}</td><td>${fmtSizeVal(t.exitPrice*t.qty*mm,replay.currency)}</td><td class="${t.pnl>=0?"pos":"neg"}">${fmtNum2(t.pnl)} ${replay.currency}</td><td class="${t.pnl>=0?"pos":"neg"}">${t.ret.toFixed(2)}%</td></tr>`; }).join("")}</table>`;
  $("#tradesPanel").classList.toggle("show",!!replay.active); }
+function ordColDefs(){ return [["symbol","Symbol"],["side","Side"],["type","Type"],["qty","Quantity"],["limit","Limit price"],["stop","Stop price"],["tp","Take profit"],["sl","Stop loss"],["time","Placing time"],["status","Status"],["comm","Commission"]]; }
+function ordColOn(k){ return !replay.ordCols||replay.ordCols[k]!==false; }
+/* ============ 注文チケット（本家 Trading パネル準拠: Sell/Buy から開く） ============ */
+const ticket={side:"Long",type:"market",tpOn:false,slOn:false,ctx:null};
+function closeTicket(){ const t=$("#orderTicket"); if(t)t.classList.remove("show"); }
+function ticketBasePx(){ const ctx=ticket.ctx; if(!ctx)return 0; const cur=ctx.view.length?ctx.view[ctx.view.length-1].close:0;
+ if(ticket.type==="limit")return parseFloat(($("#otPrice")||{}).value)||cur;
+ if(ticket.type==="stop"||ticket.type==="stoplimit")return parseFloat(($("#otStopPx")||{}).value)||cur; return cur; }
+function ticketSyncBr(which){ const ctx=ticket.ctx; if(!ctx)return; const step=tickStep(ctx.symbol,ticketBasePx()); const dir=ticket.side==="Long"?1:-1;
+ const isTp=which==="tp"; const sgn=isTp?dir:-dir;
+ const pxEl=$(isTp?"#otTpPx":"#otSlPx"), tkEl=$(isTp?"#otTpTk":"#otSlTk"); if(!pxEl||!tkEl)return;
+ const px=parseFloat(pxEl.value), tk=parseFloat(tkEl.value);
+ if(document.activeElement===tkEl&&isFinite(tk))pxEl.value=+(ticketBasePx()+sgn*tk*step).toFixed(6);
+ else if(document.activeElement===pxEl&&isFinite(px))tkEl.value=Math.round(Math.abs(px-ticketBasePx())/step); }
+function renderTicket(){ const ctx=ticket.ctx; if(!ctx)return; const tk=$("#orderTicket"); if(!tk)return;
+ const bar=ctx.view[ctx.view.length-1]; const cur=bar?bar.close:0; const tick=ctx.symbol.split(":")[1]||ctx.symbol;
+ const nm=$("#otSymName"); if(nm)nm.textContent=symInfo(ctx.symbol).n||tick;
+ const ex=$("#otSymEx"); if(ex)ex.textContent=`${exchDisp(ctx.symbol)} · ${tick} · ${ctx.interval}`;
+ $$("#otTypes button").forEach(b=>b.classList.toggle("on",b.dataset.ot===ticket.type));
+ const sp=$("#otSellPx"), bp=$("#otBuyPx"); if(sp)sp.textContent=fmtPx(cur); if(bp)bp.textContent=fmtPx(cur);
+ const pr=$("#otPriceRow"), sr=$("#otStopRow");
+ if(pr)pr.style.display=(ticket.type==="limit"||ticket.type==="stoplimit")?"":"none";
+ if(sr)sr.style.display=(ticket.type==="stop"||ticket.type==="stoplimit")?"":"none";
+ const m=effMult(ctx.symbol); const tv=$("#otTickVal"); if(tv)tv.textContent=m!=null?fmtNum2(tickStep(ctx.symbol,cur)*m)+" "+replay.currency:"—";
+ const tpI=$("#otTpIn"), slI=$("#otSlIn"), tpS=$("#otTpSw"), slS=$("#otSlSw");
+ if(tpI)tpI.style.display=ticket.tpOn?"":"none"; if(slI)slI.style.display=ticket.slOn?"":"none";
+ if(tpS){tpS.classList.toggle("on",ticket.tpOn); tpS.setAttribute("aria-checked",ticket.tpOn);}
+ if(slS){slS.classList.toggle("on",ticket.slOn); slS.setAttribute("aria-checked",ticket.slOn);}
+ const q=parseFloat(($("#otQty")||{}).value)||defaultQty(ctx.symbol);
+ const sub=$("#otSubmit"); if(sub){ sub.textContent=`${ticket.side==="Long"?"Buy":"Sell"} ${q} ${tick} ${ticket.type==="stoplimit"?"STOP LIMIT":ticket.type.toUpperCase()}`; sub.className=ticket.side==="Long"?"buy":"sell"; } }
+function refreshTicketPx(){ const tk=$("#orderTicket"); if(!tk||!tk.classList.contains("show")||!ticket.ctx)return; renderTicket(); }
+function openTicket(side){ if(!replay.active)return toast("Launch replay to start — select a bar to start replay and get trading");
+ if(replay.open)return toast("A position is open. Close it before placing a new order");
+ if(replay.pending)return toast("An order is already working. Cancel it before placing a new one");
+ const ctx=rpCtx(); if(!ctx||!ctx.view.length)return toast("Data is loading");
+ ticket.side=side; ticket.type="market"; ticket.tpOn=false; ticket.slOn=false; ticket.ctx=ctx;
+ const bar=ctx.view[ctx.view.length-1], cur=bar.close, step=tickStep(ctx.symbol,cur), dir=side==="Long"?1:-1;
+ const q=$("#otQty"); if(q)q.value=defaultQty(ctx.symbol);
+ const pp=$("#otPrice"); if(pp)pp.value=cur; const spx=$("#otStopPx"); if(spx)spx.value=cur;
+ const tpP=$("#otTpPx"), tpT=$("#otTpTk"), slP=$("#otSlPx"), slT=$("#otSlTk");
+ if(tpT)tpT.value=75; if(slT)slT.value=25; // 本家の既定: TP 75 ticks / SL 25 ticks（どちらも既定OFF）
+ if(tpP)tpP.value=+(cur+dir*75*step).toFixed(6); if(slP)slP.value=+(cur-dir*25*step).toFixed(6);
+ $("#orderTicket").classList.add("show"); renderTicket(); }
+function submitTicket(){ const ctx=ticket.ctx; if(!ctx)return; const bar=ctx.view[ctx.view.length-1]; if(!bar)return;
+ const qty=parseFloat(($("#otQty")||{}).value)||defaultQty(ctx.symbol);
+ const tp=ticket.tpOn?parseFloat(($("#otTpPx")||{}).value):null, sl=ticket.slOn?parseFloat(($("#otSlPx")||{}).value):null;
+ if(ticket.tpOn&&!(tp>0))return toast("Enter the take profit price");
+ if(ticket.slOn&&!(sl>0))return toast("Enter the stop loss price");
+ if(ticket.type==="market"){ closeTicket();
+  replay.open={num:++replay.seq,side:ticket.side,paneIdx:ctx.idx,symbol:ctx.symbol,entryTime:bar.time,entryPrice:bar.close,qty,tp:tp!=null&&isFinite(tp)?tp:null,sl:sl!=null&&isFinite(sl)?sl:null,fav:0,adv:0,entryIdx:ctx.replayIdx,commission:replay.commission,ordType:"market",mult:effMult(ctx.symbol),oid:"order_"+uuid4()};
+  recordOrder({side:ticket.side,ordType:"market",qty,price:bar.close,tp:replay.open.tp,sl:replay.open.sl,paneIdx:ctx.idx,symbol:ctx.symbol,oid:replay.open.oid},"Filled",bar.time);
+  updateFavAdv(bar); toast(`${ticket.side==="Long"?"Buy":"Sell"} ${qty} ${ctx.symbol.split(":")[1]||""} @ ${fmtPx(bar.close)} filled`); updateReplayInfo(); renderTrades(); return; }
+ const price=parseFloat((ticket.type==="limit"?($("#otPrice")||{}).value:($("#otStopPx")||{}).value));
+ if(!(price>0))return toast("Enter the order price");
+ const lp=parseFloat(($("#otPrice")||{}).value);
+ closeTicket();
+ placeOrder(ctx,{side:ticket.side,ordType:ticket.type,price,limitPrice:isFinite(lp)?lp:price,qty,tp:tp!=null&&isFinite(tp)?tp:null,sl:sl!=null&&isFinite(sl)?sl:null}); }
 function fmtCsvNum(v){ if(v==null||!isFinite(v))return ""; const r=Math.round(v); return Math.abs(v-r)<1e-9?String(r):String(parseFloat(v.toFixed(4))); }
 function fmtCsvPct(v){ return isFinite(v)?(Math.round(v*100)/100).toFixed(2):""; }
 function fmtCsvDate(ts){ const p=fmtParts(ts,App.timezone); const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -3390,15 +3598,25 @@ function wire(){
  const _sg=$("#scaleGear"); if(_sg)_sg.onclick=e=>{ const ctx=P[activePane]; if(ctx)priceAxisMenu(ctx,e.clientX,e.clientY); };
  const _rpPick=$("#rpPick"); if(_rpPick)_rpPick.onclick=e=>openReplayMenu(true,e.currentTarget);
  const _spB=$("#rpSpeedBtn"); if(_spB)_spB.onclick=e=>openSpeedMenu(e.currentTarget);
- const _btCfg=$("#btCfg"); if(_btCfg)_btCfg.onclick=openBacktestSettings;
  $("#rpPlay").onclick=togglePlay; $("#rpFwd").onclick=()=>stepReplay(1); $("#rpBack").onclick=()=>stepReplay(-1);
  $("#rpExit").onclick=stopReplay;
- $("#rpLong").onclick=()=>quickEntry("Long"); $("#rpShort").onclick=()=>quickEntry("Short");
- $("#rpClose").onclick=()=>{const ctx=rpPaneOf(replay.open); const b=ctx&&ctx.view.length?ctx.view[ctx.view.length-1]:null; if(b)closeTrade(b.close,b.time,"Manual close");};
- const _dl=$("#dlBtn"); if(_dl)_dl.onclick=openDownloadData;
- $("#tradesBtn").onclick=()=>{ if(!replay.active)return toast("Trade history (Replay Trading) is only available during replay"); $("#tradesPanel").classList.toggle("show"); renderTrades(); };
- $("#tradesHide").onclick=()=>{ if(replay.active)stopReplay(); else $("#tradesPanel").classList.remove("show"); }; // パネルをCloseとリプレイ（＝バックテスト）も終了する
- $("#tradesClear").onclick=()=>{openConfirm("Clear all trade records?",()=>{replay.closed=[];replay.seq=0;replay.cum=0;App.trades=[];renderTrades();});};
+ $("#tradesBtn").onclick=()=>{ if(!replay.active)return toast("Trade history (Replay Trading) is only available during replay"); const p=$("#tradesPanel"); p.classList.toggle("show"); if(p.classList.contains("show"))p.classList.remove("collapsed"); renderTrades(); };
+ /* Replay Trading パネル見出し（本家準拠: タイトル横シェブロン=Menu、—=折りたたみ、全画面=最大化） */
+ const _rtMenu=$("#rtMenuBtn"); if(_rtMenu)_rtMenu.onclick=e=>{ const r=e.currentTarget.getBoundingClientRect();
+  showMenu(r.left,r.top-132,[ {label:"Backtest settings (capital, commission, multiplier)",act:openBacktestSettings}, {label:"Download data",act:openDownloadData}, {sep:1}, {label:"Clear records",act:()=>openConfirm("Clear all trade records?",()=>{replay.closed=[];replay.orders=[];replay.seq=0;replay.cum=0;App.trades=[];renderTrades();})} ]); };
+ const _rtCol=$("#rtCollapse"); if(_rtCol)_rtCol.onclick=()=>{ $("#tradesPanel").classList.toggle("collapsed"); };
+ const _rtHead=$("#rtHead"); if(_rtHead)_rtHead.addEventListener("click",e=>{ if(e.target===_rtHead)$("#tradesPanel").classList.toggle("collapsed"); });
+ const _rtMax=$("#rtMax"); if(_rtMax)_rtMax.onclick=()=>{ const p=$("#tradesPanel"); p.classList.remove("collapsed"); p.classList.toggle("max"); };
+ const _rtEye=$("#rtEye"); if(_rtEye)_rtEye.onclick=()=>{ replay.hideBal=!replay.hideBal; renderTrades(); };
+ /* 注文チケットの操作 */
+ const _otClose=$("#otClose"); if(_otClose)_otClose.onclick=closeTicket;
+ $$("#otTypes button").forEach(b=>b.onclick=()=>{ ticket.type=b.dataset.ot; renderTicket(); });
+ const _otSub=$("#otSubmit"); if(_otSub)_otSub.onclick=submitTicket;
+ const _otQty=$("#otQty"); if(_otQty)_otQty.oninput=renderTicket;
+ const _otTpSw=$("#otTpSw"); if(_otTpSw)_otTpSw.onclick=()=>{ ticket.tpOn=!ticket.tpOn; renderTicket(); };
+ const _otSlSw=$("#otSlSw"); if(_otSlSw)_otSlSw.onclick=()=>{ ticket.slOn=!ticket.slOn; renderTicket(); };
+ [["#otTpPx","tp"],["#otTpTk","tp"],["#otSlPx","sl"],["#otSlTk","sl"]].forEach(([id,w])=>{ const el=$(id); if(el)el.oninput=()=>ticketSyncBr(w); });
+ ["#otPrice","#otStopPx"].forEach(id=>{ const el=$(id); if(el)el.oninput=()=>{ if(ticket.tpOn)ticketSyncBr("tp"); if(ticket.slOn)ticketSyncBr("sl"); }; });
  $$("#rangeBar [data-range]").forEach(b=>b.onclick=()=>setRange(b.dataset.range));
  $("#gotoBtn").onclick=()=>{const v=$("#gotoDate").value; if(!v)return; const ts=wallToUtc(v); if(isNaN(ts))return toast("Enter the date and time in YYYY-MM-DD HH:MM format"); const ctx=P[activePane];
   if(ctx.full.length&&ts<ctx.full[0].time)return toast("the start of the data ("+fmtDT(ctx.full[0].time)+") — cannot go earlier than this");
@@ -3408,7 +3626,6 @@ function wire(){
  $("#gotoReplayBtn").onclick=()=>{const v=$("#gotoDate").value; if(!v)return toast("Enter a date and time first"); const ts=wallToUtc(v); const ctx=P[activePane]||P[0];
   const idx=ctx.full.findIndex(c=>c.time>=ts); if(idx<0)return toast("No data at that date and time"); startReplay(idx,ctx); toast("Go to: replay started at "+fmtDT(ctx.full[idx].time)+""); };
  $("#rpJump").onclick=()=>{ if(replay.active){stopReplay(); toast("Jumped to the current bar (replay ended)");} };
- $("#rpReverse").onclick=()=>{ const ctx=rpPaneOf(replay.open); if(!replay.open)return toast("No open position"); const opp=replay.open.side==="Long"?"Short":"Long"; quickEntry(opp,ctx); };
  setInterval(()=>{const n=Math.floor(Date.now()/1000); $("#clock").textContent=fmtDTs(n)+" "+tzOffsetLabel(App.timezone);
   const _bc=$("#bbClock"); if(_bc){const pp=fmtParts(n); _bc.textContent=`${pp.hour}:${pp.minute}:${pp.second} ${tzOffsetLabel(App.timezone)}`;} },1000); // 下部Bars右側のライブ時計（本家形式 "02:40:26 UTC+9"）
  setInterval(()=>{ for(const c of P){ if(c)updatePricePill(c); } },500); // Countdown to bar close: 残り時間を毎秒更新し、ピル位置にも追従させる
