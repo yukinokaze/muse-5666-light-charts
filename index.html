@@ -2230,7 +2230,7 @@ function openTheme(){
 function openDataCfg(){
  const m=openModal("データソース設定",`
   <div class="frow"><label>OHLC Hub ベースURL</label><input type="text" id="dcBase" value="${esc(App.dataBase)}"></div>
-  <p class="hint">MCP: <span class="kbd">${esc(App.dataBase)}/api/mcp</span> / WebSocket: <span class="kbd">${esc(App.dataBase.replace(/^http/,"ws"))}/ws</span><br>ドメインが変わったらここを変更してください（ハードコードしていません）。接続できない場合はデモデータに自動で切り替わり、画面上部に「デモデータで表示中」と表示されます。現在の状態: <b style="color:#fff">${hubLive?"Hub接続中（実データ）":"デモデータ"}</b></p>
+  <p class="hint">MCP: <span class="kbd">${esc(App.dataBase)}/api/mcp</span> / WebSocket: <span class="kbd">${esc(App.dataBase.replace(/^http/,"ws"))}/ws</span><br>ドメインが変わったらここを変更してください（ハードコードしていません）。接続できない場合はデモデータに自動で切り替わり、チャート左下に「デモデータで表示中」のチップが表示されます。現在の状態: <b style="color:#fff">${hubLive?"Hub接続中（実データ）":"デモデータ"}</b></p>
   <div class="frow"><label>保存先（将来のサーバー）</label><input type="text" id="dcSaveBase" value="${esc(StorageAdapter.serverBase)}" placeholder="例: https://save.example.com（未設定ならメモリ＋JSON）"></div>
   <p class="hint">保存はアダプター方式です。現在の保存先はブラウザの localStorage です。サーバー保存（fetch POST）は未実装のため、この欄に入力しても送信は行われません（将来の差し替え用）。</p>
   <div class="frow"><label>現在の銘柄の契約倍率</label><input type="number" id="dcMult" step="any" value="${effMult(App.symbol)!=null?effMult(App.symbol):""}" placeholder="未設定"><span class="hint">GC1! = 100 は決定済み。他銘柄は未決定のためここで明示してください</span></div>`,
