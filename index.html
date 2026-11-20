@@ -421,8 +421,8 @@ textarea{width:100%;min-height:110px;font-family:ui-monospace,Menlo,monospace;fo
   <button id="moreBtn" title="Menu (theme, data, layouts, grid, JSON)"><svg class="ic" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2"/></svg></button>
   <button id="replayBtn" title="Bar Replay"><svg class="ic" viewBox="0 0 24 24"><path d="M3.5 5h2.2v14H3.5zM13 5.6L6.2 12 13 18.4zM20.5 5.6L13.7 12l6.8 6.4z" fill="currentColor"/></svg></button>
   <div class="sep"></div>
-  <button id="undoBtnTop" title="Undo（Ctrl+Z）"><svg class="ic" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 9h9.5a6.5 6.5 0 0 1 0 13H10" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
-  <button id="redoBtnTop" title="Redo（Ctrl+Shift+Z）"><svg class="ic" viewBox="0 0 24 24"><path d="M15 14l5-5-5-5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M20 9h-9.5a6.5 6.5 0 0 0 0 13H14" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
+  <button id="undoBtnTop" title="Undo (Ctrl+Z)"><svg class="ic" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 9h9.5a6.5 6.5 0 0 1 0 13H10" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
+  <button id="redoBtnTop" title="Redo (Ctrl+Shift+Z)"><svg class="ic" viewBox="0 0 24 24"><path d="M15 14l5-5-5-5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M20 9h-9.5a6.5 6.5 0 0 0 0 13H14" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
   <div class="sep"></div>
   <span class="tbSpacer"></span>
   <button id="layoutBtn"><svg class="ic" viewBox="0 0 24 24"><path d="M6.5 19a4.5 4.5 0 0 1-.4-8.98 6 6 0 0 1 11.6-1.2A4.25 4.25 0 0 1 17.5 19h-11z" fill="none" stroke="currentColor" stroke-width="1.8"/></svg> Unnamed <svg class="ic" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
@@ -638,7 +638,7 @@ function validateSaveJSON(j){
  if(j.symbol!=null&&!SYMBOLS.some(x=>x.s===j.symbol)&&!/^[A-Z0-9]+:[A-Z0-9!._-]+$/.test(j.symbol)) return {ok:false,msg:"symbol is not an allowed value"};
  if(j.interval!=null&&!IVL_SEC[j.interval]) return {ok:false,msg:"interval is not an allowed value"};
  if(j.timezone!=null&&!TZLIST.some(x=>x[0]===j.timezone)) return {ok:false,msg:"timezone is not an allowed value"};
- if(j.dataBase!=null&&(typeof j.dataBase!=="string"||!/^https?:\/\/[^\s"'<>]+$/.test(j.dataBase))) return {ok:false,msg:"dataBase は http(s) URL でなければなりません"};
+ if(j.dataBase!=null&&(typeof j.dataBase!=="string"||!/^https?:\/\/[^\s"'<>]+$/.test(j.dataBase))) return {ok:false,msg:"dataBase must be an http(s) URL"};
  /* 旧データの watchlist フィールドは無視する（ウォッチリスト機能はRemove済み。含まれていても読み込みを壊さない） */
  for(const k of ["tabs","indicators","layouts","trades"]) if(j[k]!=null&&!Array.isArray(j[k])) return {ok:false,msg:k+" must be an array"};
  if(j.drawings!=null&&(typeof j.drawings!=="object"||Array.isArray(j.drawings))) return {ok:false,msg:"drawings: invalid format"};
@@ -1906,9 +1906,9 @@ function shiftDrawings(ctx,ids,dt,dp){ for(const id of ids){ const d=curDrawings
   if(d.type==="long"||d.type==="short"){ d.entry+=dp; d.target+=dp; d.stop+=dp; if(d.endTime)d.endTime+=dt; } } }
 function openDisplacement(ctx,ids){ const sec=IVL_SEC[ctx.interval]||900;
  const m=openModal("Displacement",`
-  <div class="frow"><label>水平（Bars数）</label><input type="number" id="dpBars" value="0" step="1"><span class="hint">正で未来方向・負で過去方向</span></div>
-  <div class="frow"><label>垂直（Price）</label><input type="number" id="dpPrice" value="0" step="any"><span class="hint">正で上・負で下</span></div>
-  <p class="hint">選択中の描画 ${ids.length} 件をまとめて移動します（Lock中の描画は除きます）。</p>`,
+  <div class="frow"><label>Horizontal (bars)</label><input type="number" id="dpBars" value="0" step="1"><span class="hint">Positive: future · Negative: past</span></div>
+  <div class="frow"><label>Vertical (price)</label><input type="number" id="dpPrice" value="0" step="any"><span class="hint">Positive: up · Negative: down</span></div>
+  <p class="hint">Move the ${ids.length} selected drawings together (locked drawings are excluded).</p>`,
   `<button class="btn" id="dpCancel">Cancel</button><button class="btn primary" id="dpOk">Go to</button>`);
  $("#dpCancel").onclick=closeModal;
  $("#dpOk").onclick=()=>{ const db=+$("#dpBars").value||0, dp=+$("#dpPrice").value||0; closeModal(); if(!db&&!dp)return;
@@ -1946,8 +1946,8 @@ function renderObjTree(){ const w=$("#objTree"); if(!w)return; const ctx=P[activ
  for(const d of list){ if(d.group){ if(seenGrp.has(d.group))continue; seenGrp.add(d.group);
    const mem=list.filter(x=>x.group===d.group); const key=ctx.symbol+"|"+d.group; const col=collapsedGroups.has(key);
    const allH=mem.every(x=>x.visible===false), allL=mem.every(x=>x.locked);
-   h+=`<div class="objRow grpHead" data-grp="${esc(d.group)}"><span class="chevT ${col?"closed":""}">${uiIc("chev")}</span><span class="nm"><b>${esc(d.group)}</b> <span style="color:var(--dim)">${mem.length}件</span></span>
-   <button data-ga="vis" class="${allH?"off":""}" title="Show/hide group">${uiIc("eye")}</button><button data-ga="lock" class="${allL?"":"off"}" title="Lock group">${uiIc("lock")}</button><button data-ga="ungroup" title="Ungroup" style="width:auto;padding:0 6px;font-size:11px">解除</button><button data-ga="del" title="Remove all drawings in group">${uiIc("x")}</button></div>`;
+   h+=`<div class="objRow grpHead" data-grp="${esc(d.group)}"><span class="chevT ${col?"closed":""}">${uiIc("chev")}</span><span class="nm"><b>${esc(d.group)}</b> <span style="color:var(--dim)">${mem.length} items</span></span>
+   <button data-ga="vis" class="${allH?"off":""}" title="Show/hide group">${uiIc("eye")}</button><button data-ga="lock" class="${allL?"":"off"}" title="Lock group">${uiIc("lock")}</button><button data-ga="ungroup" title="Ungroup" style="width:auto;padding:0 6px;font-size:11px">Ungroup</button><button data-ga="del" title="Remove all drawings in group">${uiIc("x")}</button></div>`;
    if(!col)for(const m of mem)h+=rowFor(m); // 折りたたみ中は一覧からHideだけ（チャート上の描画は消えない）
   } else h+=rowFor(d); }
  if(!list.length&&!inds.length)h+=`<div class="hint" style="padding:8px 10px">No drawings or indicators. Draw with the tools on the left, or add indicators from "+ Indicators" above.</div>`;
@@ -2038,11 +2038,11 @@ function openDlgPicker(input,anchor){
  let p=$("#dlgPicker"); if(!p){ p=document.createElement("div"); p.id="dlgPicker"; document.body.appendChild(p); }
  if(!_dpOutsideReg){ _dpOutsideReg=true; document.addEventListener("pointerdown",e=>{ const pp=$("#dlgPicker"); if(pp&&pp.classList.contains("show")&&!pp.contains(e.target)&&!(e.target.closest&&e.target.closest(".cpSwatch")))closeDlgPicker(); },true); }
  let cur=/^#[0-9a-fA-F]{6}$/.test(input.value||"")?input.value:"#2962ff"; let hsv=hexToHsv(cur);
- p.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><b style="color:#fff">色のSettings</b><button id="dpX" class="btn">${uiIc("x")}</button></div>
+ p.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><b style="color:#fff">Color</b><button id="dpX" class="btn">${uiIc("x")}</button></div>
   ${paletteHTML(cur)}
   <div class="dlgSv" id="dpSv"><div class="dlgSvDot" id="dpDot"></div></div>
-  <div class="frow"><label style="width:70px">色相</label><input type="range" id="dpHue" min="0" max="360" value="${hsv.h}" style="flex:1;background:linear-gradient(to right,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)"></div>
-  <div class="frow"><label style="width:70px">カスタム色</label><input type="text" id="dpHex" value="${cur}" style="flex:1"></div>
+  <div class="frow"><label style="width:70px">Hue</label><input type="range" id="dpHue" min="0" max="360" value="${hsv.h}" style="flex:1;background:linear-gradient(to right,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)"></div>
+  <div class="frow"><label style="width:70px">Custom color</label><input type="text" id="dpHex" value="${cur}" style="flex:1"></div>
   <div style="display:flex;justify-content:flex-end;gap:8px"><button class="btn" id="dpCancel">Cancel</button><button class="btn primary" id="dpOk">OK</button></div>`;
  p.classList.add("show");
  const r=anchor.getBoundingClientRect(); const pw=Math.min(330,innerWidth*0.94), ph=p.offsetHeight||470;
@@ -2067,11 +2067,11 @@ function openColorPop(ctx,d,target,anchorBtn){
  const effW=isOte?(st.fibLineWidth||1):st.width, effLS=isOte?(st.fibLineStyle||"Line"):st.lineStyle;
  const pop=$("#colorPop");
  let hsv=hexToHsv(cur);
- pop.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><b style="color:#fff">色のSettings</b><button id="cpX" class="btn">${uiIc("x")}</button></div>
+ pop.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><b style="color:#fff">Color</b><button id="cpX" class="btn">${uiIc("x")}</button></div>
   ${paletteHTML(cur)}
   <div id="svBox" style="background:linear-gradient(to top,#000,transparent),linear-gradient(to right,#fff,transparent),hsl(${hsv.h},100%,50%)"><div id="svDot"></div></div>
-  <div class="frow"><label style="width:70px">色相</label><input type="range" id="cpHue" min="0" max="360" value="${hsv.h}" style="flex:1;background:linear-gradient(to right,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)"></div>
-  <div class="frow"><label style="width:70px">カスタム色</label><input type="color" id="cpNative" value="${cur}"><input type="text" id="cpHex" value="${cur}" style="flex:1"></div>
+  <div class="frow"><label style="width:70px">Hue</label><input type="range" id="cpHue" min="0" max="360" value="${hsv.h}" style="flex:1;background:linear-gradient(to right,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)"></div>
+  <div class="frow"><label style="width:70px">Custom color</label><input type="color" id="cpNative" value="${cur}"><input type="text" id="cpHex" value="${cur}" style="flex:1"></div>
   <div class="frow"><label style="width:70px">Opacity</label><input type="range" id="cpOp" min="0" max="100" value="${st[opKey]}" style="flex:1"><input type="number" id="cpOpN" min="0" max="100" value="${st[opKey]}" style="width:70px;flex:none"> %</div>
   ${(target==="color")?`<div class="frow"><label style="width:70px">Width</label><span class="seg" id="cpW">${[1,2,3,4].map(w=>`<button data-w="${w}" class="${effW===w?"on":""}">${w}px</button>`).join("")}</span></div>
   <div class="frow"><label style="width:70px">Line style</label><span class="seg" id="cpLS">${["Line","Dashed","Dotted"].map(x=>`<button data-s="${x}" class="${effLS===x?"on":""}">${x}</button>`).join("")}</span></div>`:""}
@@ -2131,7 +2131,7 @@ function openDrawSettings(ctx,d){
  const DS_TITLES={line:"Trendline",arrow:"Arrow",rect:"Rectangle",ote:"Fib retracement",text:"Text",long:"Long Position",short:"Short Position"};
  const initTab=tabs.some(([k])=>k===drawSettingsTab)?drawSettingsTab:tabs[0][0];
  const m=openModal(DS_TITLES[d.type]||"Drawing settings",`
-  <div class="frow"><label>Template</label><button class="btn" id="dsTmpl">Template ${uiIc("chev")}（Save as… / Apply defaults）</button>
+  <div class="frow"><label>Template</label><button class="btn" id="dsTmpl">Template ${uiIc("chev")} (Save as… / Apply defaults)</button>
   <label style="width:auto">Sync scope</label><select id="dsSync"><option value="off">Off</option><option value="layout">Sync in layout</option><option value="global">Global sync</option></select></div>
   <div class="dtabs" style="padding:0;margin:0 -16px 6px">${tabs.map(([k])=>`<button data-tab="${k}" class="${k===initTab?"on":""}">${k}</button>`).join("")}</div>
   ${isPos?`<div data-pane="Inputs">
@@ -2152,9 +2152,9 @@ function openDrawSettings(ctx,d){
    <div class="frow"><label>Extend</label><label class="chk"><input type="checkbox" id="dsExL" ${st.extendL?"checked":""}> Extend left line</label><label class="chk"><input type="checkbox" id="dsExR" ${st.extendR?"checked":""}> Extend right line</label></div>`:""}
    ${d.type==="rect"?`<div class="frow"><label>Background</label><label class="chk"><input type="checkbox" id="dsBgOn" ${st.bgOn!==false?"checked":""}> Background</label><input type="color" id="dsBg" value="${st.bg}"><label style="width:auto">Opacity</label><input type="number" id="dsBgOp" min="0" max="100" value="${st.bgOpacity}" style="width:76px;flex:none">%</div>`:""}
    ${isPos?`<div class="frow"><label>INFO / Stats</label><label class="chk"><input type="checkbox" id="dsShowInfo" ${st.showInfo!==false?"checked":""}> INFO</label><label class="chk"><input type="checkbox" id="dsCompact" ${st.compactStats?"checked":""}> Compact stats mode</label><label class="chk"><input type="checkbox" id="dsAlwaysStats" ${st.alwaysShowStats?"checked":""}> Always show stats</label></div>
-   <div class="frow"><label>表示</label><label class="chk"><input type="checkbox" id="dsPriceLabels" ${st.priceLabels!==false?"checked":""}> Price labels</label><label class="chk"><input type="checkbox" id="dsMid" ${st.middlePoint?"checked":""}> Middle point</label></div>
-   <div class="frow"><label>Target色</label><input type="color" id="dsTgC" value="${st.targetColor}"><label style="width:auto">Opacity</label><input type="number" id="dsTgOp" min="0" max="100" value="${st.targetOpacity}" style="width:70px;flex:none">%</div>
-   <div class="frow"><label>Stop色</label><input type="color" id="dsStC" value="${st.stopColor}"><label style="width:auto">Opacity</label><input type="number" id="dsStOp" min="0" max="100" value="${st.stopOpacity}" style="width:70px;flex:none">%</div>`:""}
+   <div class="frow"><label>Show</label><label class="chk"><input type="checkbox" id="dsPriceLabels" ${st.priceLabels!==false?"checked":""}> Price labels</label><label class="chk"><input type="checkbox" id="dsMid" ${st.middlePoint?"checked":""}> Middle point</label></div>
+   <div class="frow"><label>Target color</label><input type="color" id="dsTgC" value="${st.targetColor}"><label style="width:auto">Opacity</label><input type="number" id="dsTgOp" min="0" max="100" value="${st.targetOpacity}" style="width:70px;flex:none">%</div>
+   <div class="frow"><label>Stop color</label><input type="color" id="dsStC" value="${st.stopColor}"><label style="width:auto">Opacity</label><input type="number" id="dsStOp" min="0" max="100" value="${st.stopOpacity}" style="width:70px;flex:none">%</div>`:""}
    ${isFib?`<div class="frow"><label>OTE zone</label><span class="hint">0.618–0.786 is shown in gold</span><label class="chk"><input type="checkbox" id="dsFibBg" ${st.fibBg?"checked":""}> Background</label><label class="chk"><input type="checkbox" id="dsFibRev" ${st.fibReverse?"checked":""}> Reverse</label></div>
    <div class="frow"><label>Fib display</label><label class="chk"><input type="checkbox" id="dsFibPrices" ${st.fibPrices!==false?"checked":""}> Prices</label><label class="chk"><input type="checkbox" id="dsFibLv" ${st.fibLevelsLbl!==false?"checked":""}> Levels</label><label class="chk"><input type="checkbox" id="dsFibLabels" ${st.fibLabels!==false?"checked":""}> Labels</label><label style="width:auto">Font size</label><input type="number" id="dsFibFS" value="${st.fibFontSize||12}" style="width:64px;flex:none"></div>
    <div class="frow"><label>Levels line</label><span class="seg" id="dsFibW">${[1,2,3,4].map(w=>`<button data-w="${w}" class="${(st.fibLineWidth||1)===w?"on":""}">${w}px</button>`).join("")}</span><span class="seg" id="dsFibLS">${["Line","Dashed","Dotted"].map(x=>`<button data-s="${x}" class="${(st.fibLineStyle||"Line")===x?"on":""}">${x}</button>`).join("")}</span></div>
@@ -2257,17 +2257,17 @@ function openIndSettings(ind){
  const m=openModal("IndicatorsSettings — "+ind.type,`
   <div class="dtabs" style="padding:0;margin:0 -16px 6px">${["Inputs","Style","Visibility"].map((t,i)=>`<button data-tab="${t}" class="${i===0?"on":""}">${t}</button>`).join("")}</div>
   <div data-pane="Inputs">${paramRows||'<p class="hint">No parameters</p>'}
-   ${ind.type==="CUSTOM"?`<div class="frow"><label>Name</label><input type="text" id="inName" value="${(ind.name||"").replace(/"/g,"&quot;")}"></div><label class="hint">JavaScript（calculate(candles, params) =&gt; [{time, value}]）</label><textarea id="inCode">${(ind.code||"").replace(/</g,"&lt;")}</textarea><div class="frow"><label>Re-run</label><button class="btn" type="button" id="inRerun">Re-run custom JS (with confirmation)</button></div>`:""}
+   ${ind.type==="CUSTOM"?`<div class="frow"><label>Name</label><input type="text" id="inName" value="${(ind.name||"").replace(/"/g,"&quot;")}"></div><label class="hint">JavaScript (calculate(candles, params) =&gt; [{time, value}])</label><textarea id="inCode">${(ind.code||"").replace(/</g,"&lt;")}</textarea><div class="frow"><label>Re-run</label><button class="btn" type="button" id="inRerun">Re-run custom JS (with confirmation)</button></div>`:""}
    ${["RSI","SMA","EMA","MACD"].includes(ind.type)?`<div class="frow"><label>Source</label><select id="inSource">${["close","open","high","low"].map(x=>`<option ${ind.params.source===x?"selected":""}>${x}</option>`).join("")}</select></div>`:""}
    ${ind.type==="MACD"?`<div class="frow"><label>MA type</label><select id="inMaType">${["EMA","SMA"].map(x=>`<option ${ind.params.maType===x?"selected":""}>${x}</option>`).join("")}</select></div><div class="frow"><label>Signal MA Type</label><select id="inSigType">${["EMA","SMA"].map(x=>`<option ${ind.params.sigType===x?"selected":""}>${x}</option>`).join("")}</select></div>`:""}
    ${ind.type==="RSI"?`<p class="hint">RSI-based MA and band colors are not decided yet; the 70/30 bands are currently shown in fixed colors.</p>`:""}</div>
   <div data-pane="Style" style="display:none">
-   <div class="frow"><label>色</label><input type="color" id="inColor" value="${ind.style.color}"><input type="text" id="inColorHex" value="${ind.style.color}"></div>
+   <div class="frow"><label>Color</label><input type="color" id="inColor" value="${ind.style.color}"><input type="text" id="inColorHex" value="${ind.style.color}"></div>
    ${ind.type==="MACD"?`<div class="frow"><label>Signal line color</label><input type="color" id="inSigColor" value="${ind.style.signalColor||"#ff6d00"}"><input type="text" id="inSigColorHex" value="${ind.style.signalColor||"#ff6d00"}"></div>`:""}
    <div class="frow"><label>Width</label><span class="seg" id="inW">${[1,2,3,4].map(w=>`<button data-w="${w}" class="${ind.style.width===w?"on":""}">${w}px</button>`).join("")}</span>
    <label style="width:auto">Line style</label><span class="seg" id="inLS">${["Line","Dashed","Dotted"].map(s=>`<button data-s="${s}" class="${ind.style.style===s?"on":""}">${s==="Line"?"Solid":s}</button>`).join("")}</span></div>
-   <div class="frow"><label class="chk"><input type="checkbox" id="inVis" ${ind.visible!==false?"checked":""}> 表示する</label></div></div>
-  <div data-pane="Visibility" style="display:none"><p class="hint">表示する時間足を制限できます。</p>
+   <div class="frow"><label class="chk"><input type="checkbox" id="inVis" ${ind.visible!==false?"checked":""}> Visible</label></div></div>
+  <div data-pane="Visibility" style="display:none"><p class="hint">Restrict the intervals on which this indicator is visible.</p>
    ${INTERVALS.map(([iv])=>`<label class="chk" style="margin-right:10px"><input type="checkbox" data-vis="${iv}" ${!ind.visibility||ind.visibility[iv]!==false?"checked":""}> ${iv}</label>`).join("")}</div>`,
   `<button class="btn" id="inDel" style="margin-right:auto">Remove</button><button class="btn" id="inCancel">Cancel</button><button class="btn primary" id="inOk">OK</button>`);
  m.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{m.querySelectorAll("[data-tab]").forEach(x=>x.classList.toggle("on",x===b));m.querySelectorAll("[data-pane]").forEach(p=>p.style.display=p.dataset.pane===b.dataset.tab?"":"none");});
@@ -2315,15 +2315,15 @@ function saveLayoutAs(name){ const j=StorageAdapter.buildJSON(); const ex=App.la
  App.layoutName=name; StorageAdapter.save(); toast("Layout \u201c"+name+"\u201d saved"); }
 function openLayoutMenu(){
  const m=openModal("Manage layouts",`
-  <div class="frow"><label>現在のレイアウト</label><b style="color:#fff">${esc(App.layoutName)}</b><span class="hint">${dirty?"You have unsaved changes":"All changes saved"}</span></div>
-  <div class="frow"><label>Nameを付けて保存</label><input type="text" id="lyName" value="${esc(App.layoutName)}"><button class="btn primary" id="lySave">保存（Ctrl+S）</button></div>
-  <div class="frow"><label class="chk"><input type="checkbox" id="lyAuto" ${App.autosave?"checked":""}> Autosave（自動保存）On</label></div>
-  <h4 style="color:#fff;margin:12px 0 4px">Savedレイアウト / Recently used</h4>
+  <div class="frow"><label>Current layout</label><b style="color:#fff">${esc(App.layoutName)}</b><span class="hint">${dirty?"You have unsaved changes":"All changes saved"}</span></div>
+  <div class="frow"><label>Save as</label><input type="text" id="lyName" value="${esc(App.layoutName)}"><button class="btn primary" id="lySave">Save (Ctrl+S)</button></div>
+  <div class="frow"><label class="chk"><input type="checkbox" id="lyAuto" ${App.autosave?"checked":""}> Autosave</label></div>
+  <h4 style="color:#fff;margin:12px 0 4px">Saved layouts</h4>
   <div id="lyList">${App.layouts.map((l,i)=>`<div class="listRow"><span class="grow"><b style="color:#fff">${esc(l.name)}</b> <span class="hint">${l.data.symbol||""} · ${new Date(l.savedAt).toLocaleString("en-US")}</span></span>
-   <button class="btn" data-load="${i}">Load</button><button class="btn" data-ren="${i}">Rename</button><button class="btn" data-copy="${i}">Copy</button><button class="btn danger" data-del="${i}">Remove</button></div>`).join("")||'<p class="hint">まだSavedレイアウトはありません</p>'}</div>
+   <button class="btn" data-load="${i}">Load</button><button class="btn" data-ren="${i}">Rename</button><button class="btn" data-copy="${i}">Copy</button><button class="btn danger" data-del="${i}">Remove</button></div>`).join("")||'<p class="hint">No saved layouts yet</p>'}</div>
   <h4 style="color:#fff;margin:14px 0 4px">JSON export / import</h4>
-  <p class="hint">保存内容（レイアウト・描画・Indicators・テーマ・Timezone）を1つのJSONで出し入れします。将来のサーBars保存でも同じJSON形を使います（保存先アダプター方式）。</p>
-  <div class="frow"><button class="btn primary" id="lyExport">JSON エクスポート</button><label class="btn" style="display:inline-flex;align-items:center;min-height:36px;padding:4px 10px;border:1px solid var(--line);border-radius:6px;cursor:pointer">JSON インポート<input type="file" id="lyImport" accept=".json,application/json" style="display:none"></label></div>`,
+  <p class="hint">Import or export everything — layout, drawings, indicators, theme, and timezone — as a single JSON file. The same JSON format will be used for future server-side saving (storage adapter).</p>
+  <div class="frow"><button class="btn primary" id="lyExport">Export JSON</button><label class="btn" style="display:inline-flex;align-items:center;min-height:36px;padding:4px 10px;border:1px solid var(--line);border-radius:6px;cursor:pointer">Import JSON<input type="file" id="lyImport" accept=".json,application/json" style="display:none"></label></div>`,
   `<button class="btn" id="lyNew">New layout</button><button class="btn" id="lyClose">Close</button>`);
  $("#lySave").onclick=()=>{saveLayoutAs($("#lyName").value.trim()||"Unnamed");closeModal();};
  $("#lyAuto").onchange=e=>{App.autosave=e.target.checked; markDirty(); toast("Autosave: "+(App.autosave?"On":"Off")+"");};
@@ -2476,9 +2476,9 @@ function refreshBtCapInfo(){ const ci=$("#rpCapInfo"); if(ci)ci.textContent=(rep
 function openBacktestSettings(){
  const ctx=P[0]; const mult=effMult(ctx.symbol);
  const m=openModal("Backtest settings",`
-  <div class="frow"><label>初期資金（必須）</label><input type="number" id="rpCap" value="${replay.capital!=null?replay.capital:""}" placeholder="Empty (required)" min="1" step="any"><label style="width:auto">基準通貨</label><select id="rpCur"><option ${replay.currency==="USD"?"selected":""}>USD</option><option ${replay.currency==="JPY"?"selected":""}>JPY</option><option ${replay.currency==="EUR"?"selected":""}>EUR</option></select></div>
-  <div class="frow"><label>手数料（片道・必須）</label><input type="number" id="rpComm" value="${replay.commission!=null?replay.commission:""}" placeholder="Empty (required; 0 allowed)" min="0" step="any"><label style="width:auto">契約倍率</label><input type="number" id="rpMult" value="${mult!=null?mult:""}" placeholder="${mult!=null?"":"未Settings（銘柄Settingsで指定）"}" step="any"></div>
-  <p class="hint">契約倍率は GC1! = 100 のみ仕様決定済みです。他銘柄は未決定のため、ここで明示した値を使います（未SettingsのままではCSVの金額計算ができません）。Forex銘柄の数量既定は 1000、その他は 1 です。TP/SL は Long/Short Position 描画のドラッグで変更できるブラケット注文です。TPとSLが同じBarsで両方到達した場合は SL を優先します（保守的ルール）。</p>`,
+  <div class="frow"><label>Initial capital (required)</label><input type="number" id="rpCap" value="${replay.capital!=null?replay.capital:""}" placeholder="Empty (required)" min="1" step="any"><label style="width:auto">Base currency</label><select id="rpCur"><option ${replay.currency==="USD"?"selected":""}>USD</option><option ${replay.currency==="JPY"?"selected":""}>JPY</option><option ${replay.currency==="EUR"?"selected":""}>EUR</option></select></div>
+  <div class="frow"><label>Commission (one-way, required)</label><input type="number" id="rpComm" value="${replay.commission!=null?replay.commission:""}" placeholder="Empty (required; 0 allowed)" min="0" step="any"><label style="width:auto">Contract multiplier</label><input type="number" id="rpMult" value="${mult!=null?mult:""}" placeholder="${mult!=null?"":"Not set (specify it in the symbol settings)"}" step="any"></div>
+  <p class="hint">The contract multiplier has been decided only for GC1! = 100. Other symbols are undecided, so the values specified here are used (without them, the amounts in the CSV cannot be calculated). The default quantity is 1000 for Forex symbols and 1 for all others. TP/SL are bracket orders that can be adjusted by dragging the Long/Short Position drawing. If TP and SL are both reached in the same bar, SL takes priority (conservative rule).</p>`,
   `<button class="btn" id="btCfgCancel">Cancel</button><button class="btn primary" id="btCfgSave">Save</button>`);
  $("#btCfgCancel").onclick=closeModal;
  $("#btCfgSave").onclick=()=>{ const cap=+$("#rpCap").value; if(!(cap>0))return toast("Enter the initial capital (required; the base for Cumulative PnL %)");
@@ -2597,7 +2597,7 @@ function openOrderDialog(ctx,price){
   <label style="width:auto">Type</label><select id="odType"><option value="limit">Limit</option><option value="stop">Stop</option><option value="stoplimit">Stop-limit</option></select></div>
   <div class="frow"><label>Price</label><input type="number" id="odPrice" step="any" value="${price}"><label style="width:auto">Limit price</label><input type="number" id="odLimit" step="any" placeholder="For stop-limit"></div>
   <div class="frow"><label>Qty</label><input type="number" id="odQty" step="any" value="${defaultQty(ctx.symbol)}"></div>
-  <p class="hint">${esc(tick)} の注文を置きます。約定はリプレイを進めたときに判定され、約定時に既定距離（TP/SL distance %）のブラケットが付きます。</p>`,
+  <p class="hint">Place an order on ${esc(tick)}. Fills are checked as the replay advances; when the order fills, brackets are attached at the default distance (TP/SL distance %).</p>`,
   `<button class="btn" id="odCancel">Cancel</button><button class="btn primary" id="odPlace">Place order</button>`);
  $("#odCancel").onclick=closeModal;
  $("#odPlace").onclick=()=>{ const side=$("#odSide").value, type=$("#odType").value;
@@ -2669,7 +2669,7 @@ function startOrderDrag(ctx,e,kind){ e.preventDefault(); e.stopPropagation();
 function registerTradeFromDrawing(d){ if(!replay.active)return; const ctx=P[0]; if(replay.open)return toast("A position is already open. Close it first");
  const bar=ctx.view[ctx.view.length-1]; if(!bar)return;
  replay.open={num:++replay.seq,side:d.type==="long"?"Long":"Short",entryTime:bar.time,entryPrice:d.entry,qty:d.style.qty||d.style.lotSize||1,tp:d.target,sl:d.stop,fav:0,adv:0,entryIdx:ctx.replayIdx,commission:replay.commission,ordType:"market",mult:effMult(ctx.symbol),oid:"order_"+uuid4()}; updateFavAdv(bar);
- toast(`${replay.open.side} entry @ ${d.entry}（TP ${d.target} / SL ${d.stop}）`); updateReplayInfo(); renderTrades(); }
+ toast(`${replay.open.side} entry @ ${d.entry} (TP ${d.target} / SL ${d.stop})`); updateReplayInfo(); renderTrades(); }
 function quickEntry(side){ if(!replay.active)return toast("Backtest entries are made during bar replay (start bar replay first)"); const ctx=P[0]; const bar=ctx.view[ctx.view.length-1]; if(!bar)return;
  const ordType=($("#rpOrdType")||{}).value||"market";
  if(replay.open){ // Reverse: 現ポジションを決済して反対にエントリー
@@ -2679,10 +2679,10 @@ function quickEntry(side){ if(!replay.active)return toast("Backtest entries are 
  if(ordType!=="market"){ const px=parseFloat(($("#rpOrdPrice")||{}).value); if(!(px>0))return toast("Enter the limit order price");
    const lp=parseFloat(($("#rpOrdPrice2")||{}).value);
    replay.pending={side,ordType,price:px,limitPrice:lp||px,qty,tp:long?px+dist:px-dist,sl:long?px-dist:px+dist,oid:"order_"+uuid4()};
-   toast(`${side} ${ordType} limit order @ ${px} (TP/SL distance ${($("#rpDist")||{}).value||0.8}%）`); renderTrades(); return; }
+   toast(`${side} ${ordType} limit order @ ${px} (TP/SL distance ${($("#rpDist")||{}).value||0.8}%)`); renderTrades(); return; }
  replay.open={num:++replay.seq,side,entryTime:bar.time,entryPrice:bar.close,qty,tp:long?bar.close+dist:bar.close-dist,sl:long?bar.close-dist:bar.close+dist,fav:0,adv:0,entryIdx:ctx.replayIdx,commission:replay.commission,ordType:"market",mult:effMult(ctx.symbol),oid:"order_"+uuid4()};
  updateFavAdv(bar);
- toast(`${side} entry @ ${bar.close}（TP ${replay.open.tp.toFixed(2)} / SL ${replay.open.sl.toFixed(2)}）`); updateReplayInfo(); renderTrades(); }
+ toast(`${side} entry @ ${bar.close} (TP ${replay.open.tp.toFixed(2)} / SL ${replay.open.sl.toFixed(2)})`); updateReplayInfo(); renderTrades(); }
 function checkTradeHit(bar,idx){ const t=replay.open; if(!t)return; const long=t.side==="Long";
  updateFavAdv(bar); // TP/SL同時到達時は SL 優先（保守的ルール、仕様として明記）
  if(long){ if(bar.low<=t.sl)return closeTrade(t.sl,bar.time,"SL"); if(bar.high>=t.tp)return closeTrade(t.tp,bar.time,"TP"); }
@@ -2694,7 +2694,7 @@ function closeTrade(price,time,reason){ const t=replay.open; if(!t)return; const
  const exitOid=reason==="TP"?"Bracket Take Profit-"+uuid4():reason==="SL"?(t.oid||("order_"+uuid4()))+"_bracket_sl_"+uuid4():"order_"+uuid4();
  const done={...t,exitPrice:price,exitTime:time,reason,exitOid,pnl,ret:(m&&t.entryPrice)? pnl/(t.entryPrice*t.qty*m)*100:0,bars,cum:replay.cum,mult:m};
  replay.closed.push(done); App.trades=replay.closed; replay.open=null;
- toast(`Closed (${reason}）@ ${price} — PnL ${pnl>=0?"+":""}${pnl.toFixed(2)} USD`); updateReplayInfo(); renderTrades(); }
+ toast(`Closed (${reason}) @ ${price} — PnL ${pnl>=0?"+":""}${pnl.toFixed(2)} USD`); updateReplayInfo(); renderTrades(); }
 function fmtNum2(v){ return (Math.round(v*100)/100).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function renderTrades(){ const w=$("#tradesTableWrap"); if(!w)return;
  const wins=replay.closed.filter(t=>t.pnl>0).length;
@@ -2732,7 +2732,7 @@ function renderTrades(){ const w=$("#tradesTableWrap"); if(!w)return;
  }
  const rows=[...replay.closed];
  if(!rows.length){w.innerHTML=nothingToShow; $("#tradesPanel").classList.toggle("show",!!replay.active); return;}
- w.innerHTML=`<table><tr><th>#</th><th>種別</th><th>エントリー</th><th>Price</th><th>決済</th><th>Price</th><th>理由</th><th>Qty</th><th>Net PnL ${replay.currency}</th><th>Return %</th><th>本数</th></tr>
+ w.innerHTML=`<table><tr><th>#</th><th>Type</th><th>Entry</th><th>Price</th><th>Exit</th><th>Price</th><th>Reason</th><th>Qty</th><th>Net PnL ${replay.currency}</th><th>Return %</th><th>Bars</th></tr>
  ${rows.map(t=>`<tr><td>${t.num}</td><td>${t.side}</td><td>${fmtDT(t.entryTime)}</td><td>${t.entryPrice}</td><td>${fmtDT(t.exitTime)}</td><td>${t.exitPrice}</td><td>${esc(t.reason)}</td><td>${t.qty}</td><td class="${t.pnl>=0?"pos":"neg"}">${t.pnl.toFixed(2)}</td><td>${t.ret.toFixed(2)}</td><td>${t.bars}</td></tr>`).join("")}</table>`;
  $("#tradesPanel").classList.toggle("show",!!replay.active); }
 function fmtCsvNum(v){ if(v==null||!isFinite(v))return ""; const r=Math.round(v); return Math.abs(v-r)<1e-9?String(r):String(parseFloat(v.toFixed(4))); }
