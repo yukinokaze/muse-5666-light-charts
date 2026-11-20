@@ -1138,7 +1138,12 @@ function genOlderDemo(symbol,interval,beforeTime,countSoFar,anchorOpen){ // Hub�
   p=open; }
  return out; }
 function maybeLoadOlder(ctx,r){ if(!ctx||ctx.loadingHist||ctx.histDone)return; if(replay.active)return; // リプレイ中は読み込まない
- if(!ctx.full||!ctx.full.length||!r||r.from>8)return;
+ if(!ctx.full||!ctx.full.length||!r)return;
+ /* 先読み: 端（最古バー）に到達してから読み始めるのでは遅いので、可視範囲の左端が最古バーから
+    「表示中バー数の1画面分（最小60本・最大1000本）」以内に入った時点で次バッチをバックグラウンドで読み始める。
+    Hub の get_candles 応答（数百ms〜1秒程度）より先に読み込みが終わる余裕を持たせる */
+ const span=Math.max(1,r.to-r.from); const margin=Math.min(1000,Math.max(60,Math.ceil(span)));
+ if(r.from>margin)return;
  const now=Date.now(); const wait=ctx._histAt?Math.max(0,900-(now-ctx._histAt)):0;
  if(wait>0){ // クールダウン中に左端へ到達した場合は、明けたら現在範囲で再判定する（スクロールを止めても読み込まれるように）
   if(!ctx._histTimer)ctx._histTimer=setTimeout(()=>{ ctx._histTimer=null; let vr=null; try{ vr=ctx.chart.timeScale().getVisibleLogicalRange(); }catch(e){} if(vr)maybeLoadOlder(ctx,vr); },wait+30);
