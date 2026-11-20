@@ -30,7 +30,7 @@ svg.ic{width:17px;height:17px;flex:none}
 /* 本家のアイコンは細線（実測ストローク約1.5px）。現行SVGは各パスが stroke-width 1.8〜2.2 で描かれ、Bars類のアイコンが一様に太く見えることが画面全体の印象の最大の残差異だった。表示属性はCSSに負けるため、クローム（トップBars/左レール/右レール/下部Bars/フローティングBars/軸ギア）のアイコンに限り CSS で 1.5 に統一する。塗りのみのアイコン（リプレイ等）には影響しない */
 #topbar svg.ic *,#leftbar svg.ic *,#rightRail svg.ic *,#rangeBar svg.ic *,#floatBar svg.ic *, .axisGear svg.ic *{stroke-width:1.5}
 /* top bar */
-#topbar{display:flex;align-items:center;gap:1px;padding:2px 8px;height:42px;flex:none;background:var(--bg);border-bottom:1px solid var(--line);flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;z-index:30;font-size:13px} /* 帯の高さと文字Sizeは本家実画面（2880×1800）のピクセル実測: 本家のツールBars帯は約42pxで、現行38pxではボタンが窮屈だった。時間足文字のグリフ高は本家約10px vs 現行約11px（14px指定）→ 13pxで一致させる */
+#topbar{display:flex;align-items:center;gap:1px;padding:2px 8px;height:42px;flex:none;background:var(--bg);border-bottom:1px solid var(--line);flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;z-index:30;font-size:12px} /* 帯の高さは本家実画面（2880×1800）のピクセル実測で約42px。文字は本家でトップBarsが凡例の銘柄名より明確に小さい階層（時間足のグリフ高 実測約9.5〜10 CSS px）に合わせ、時間足ボタン等の基本サイズを 12px に下げる（従来13pxでは凡例との差が付かなかった） */
 #topbar::-webkit-scrollbar{display:none}
 #topbar>*{flex:none}
 #topbar button{min-height:34px;padding:2px 7px;color:#b8b8b8} /* Bars前景色は本家実画面のネイティブ実測で文字・アイコンとも #b8b8b8（従来 #c9ccd4 は青みが強く明るすぎた）。ボタンの高さは本家実画面ネイティブ実測でアクティブ時間足ピルが帯68→152px中 72→140px＝CSS換算34px（従来28pxでは帯の中でボタンが小さく浮いていた） */
@@ -46,7 +46,7 @@ svg.ic{width:17px;height:17px;flex:none}
 #expBtn{background:transparent;border-color:transparent}
 #expBtn:hover{background:var(--panel2)}
 .saveDot{width:7px;height:7px;border-radius:50%;background:var(--gold);display:inline-block;flex:none}
-#symBtn{font-weight:600;font-size:14px;color:#b8b8b8;background:#303030;border-radius:16px;padding:2px 14px;min-height:30px} /* 銘柄ピル: 本家実画面ではBarsの高さの大半を占める大きめのピル（高さ約30px）。文字グリフ高は本家実測約10px vs 現行15px指定で約12px → 14pxに下げる。Text colorは本家実測 #b8b8b8 で太字にしない（従来 #fff・700 は白く太く浮いていた） */
+#symBtn{font-weight:600;font-size:13px;color:#b8b8b8;background:#303030;border-radius:16px;padding:2px 14px;min-height:30px} /* 銘柄ピル: 本家実画面ではBarsの高さの大半を占める大きめのピル（高さ約30px）。文字グリフ高は本家実測約10px vs 現行15px指定で約12px → 14pxに下げる。Text colorは本家実測 #b8b8b8 で太字にしない（従来 #fff・700 は白く太く浮いていた） */
 #symBtn:hover{background:#3a3a3a}
 #topbar #symBtn{min-height:28px} /* 銘柄ピルだけは本家実測どおり高さ28px（ネイティブ78→134px）。#topbar button の34pxに引きずられないよう特異度を上げて固定 */
 #symBtn small{color:var(--dim);font-weight:400;font-size:11px}
@@ -203,7 +203,7 @@ svg.ic{width:17px;height:17px;flex:none}
 @keyframes histRot{to{transform:rotate(360deg)}}
 .histEnd{position:absolute;top:34px;left:8px;z-index:8;display:none;background:rgba(0,0,0,.75);color:#fff;font-size:11px;padding:3px 8px;border-radius:5px;pointer-events:none}
 .gtTip{position:absolute;z-index:8;display:none;background:#131722;color:#fff;font-size:12px;line-height:1.35;padding:3px 8px;border-radius:4px;pointer-events:none;white-space:nowrap;transform:translateX(-50%);box-shadow:0 2px 8px rgba(0,0,0,.45)}
-.pricePill .ppIn{border-radius:3px;padding:1px 2px;font-size:13px;line-height:16px;text-align:center;min-width:100%;font-variant-numeric:tabular-nums;white-space:nowrap} /* ピル文字は軸ラベルと同等の大きさ（本家実画面で実測） */
+.pricePill .ppIn{border-radius:3px;padding:1px 2px;font-size:12px;line-height:16px;text-align:center;min-width:100%;font-variant-numeric:tabular-nums;white-space:nowrap} /* ピル文字はPrice軸ラベルと同等の大きさ（本家実画面で実測。軸フォント 12px に連動） */
 .barCountdown{position:absolute;right:0;z-index:5;pointer-events:none;display:none;text-align:center;font-size:11px;line-height:14px;height:14px;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;border-radius:3px}
 @media (min-width:901px) and (max-width:1600px){
   /* デスクトップ: 1440px級では時計を隠してトップBarsを1段に収める */
@@ -365,8 +365,8 @@ svg.ic{width:17px;height:17px;flex:none}
 #leftbar button.blue{color:#2962ff}
 #leftbar .gchev{position:absolute;right:0;bottom:0;width:16px;height:16px;background:#787b86;clip-path:polygon(100% 52%,100% 100%,52% 100%);cursor:pointer} /* 見た目は本家どおり約7pxの小三角形（右下の三角だけを塗る）だが、当たり判定は16px四方に広げる。従来は border 描画の約10×5pxしかクリックできず、フライアウトが「時々開かない」不安定さの主因だった */
 /* ペイン内凡例（マルチチャート時に各ペインのOHLCを表示） */
-.paneLegend{position:absolute;top:1px;left:8px;z-index:6; /* 凡例グリフのペイン上端からの距離は本家実測で約9px（グリフ上端87px・ペイン上端78px）vs 現行キャプチャ約10px（88px）→ top を 2px から 1px に詰めて一致させる */display:flex;gap:6px;align-items:center;background:transparent;color:var(--chart-text,#000);font-size:16px;line-height:1.5;padding:0;max-width:calc(100% - 74px);white-space:nowrap;overflow:hidden;pointer-events:none} /* 凡例: 本家実画面（2026-11-20_2.40.27）を同スケールで並べると文字の縦幅は約12.5 CSS px。16px＋通常字で一致させる（15pxでは約11pxで一回り小さい） */
-.paneLegend b{white-space:nowrap;font-weight:400} /* 本家実画面の凡例は通常字（同スケール比較でストロークが細い）。従来の600では本家より明らかに太く見えたため通常字に */
+.paneLegend{position:absolute;top:1px;left:8px;z-index:6; /* 凡例グリフのペイン上端からの距離は本家実測で約9px（グリフ上端87px・ペイン上端78px）vs 現行キャプチャ約10px（88px）→ top を 2px から 1px に詰めて一致させる */display:flex;gap:6px;align-items:center;background:transparent;color:var(--chart-text,#000);font-size:13px;line-height:1.5;padding:0;max-width:calc(100% - 74px);white-space:nowrap;overflow:hidden;pointer-events:none} /* 凡例の基本サイズは OHLC・変動率側（本家実測グリフ高 約9.5 CSS px → 13px）。銘柄名だけは .paneLegend b の 17px（同 約12.5 CSS px）で大きく出す。本家は凡例内でも銘柄名と数値でサイズが違う */
+.paneLegend b{white-space:nowrap;font-weight:400;font-size:17px} /* 本家実画面の凡例は通常字（同スケール比較でストロークが細い）。従来の600では本家より明らかに太く見えたため通常字に。銘柄名部分は本家実測でグリフ高 約12.5 CSS px と画面内で最も大きく、OHLC・変動率（同 約9.5 CSS px）とは別サイズのため、銘柄名だけ 17px に切り分ける */
 .paneLegend span{font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .paneLegend .pos{color:var(--chart-text,#000)}.paneLegend .neg{color:var(--chart-text,#000)}
 .paneLegend .symIco{width:24px;height:24px;flex:none} /* 凡例アイコン: SVG内の円は viewBox 24 に対し直径18単位（箱の75%）。本家実画面で金色円の直径を実測すると36px（ネイティブ2880幅）＝CSS 18px。箱20pxでは円が15pxになり3px小さかったため、箱24pxで円18pxに一致させる */
@@ -466,7 +466,8 @@ textarea{width:100%;min-height:110px;font-family:ui-monospace,Menlo,monospace;fo
   #orderTicket{top:0}
   #floatBar{top:8px}
   /* モバイル凡例: Price軸の手前で折り返し、OHLCが画面外へはみ出さない（本家モバイルと同じ2段表示） */
-  .paneLegend{flex-wrap:wrap;row-gap:0;font-size:13px;line-height:1.45;max-width:calc(100% - 62px)}
+  .paneLegend{flex-wrap:wrap;row-gap:0;font-size:12px;line-height:1.45;max-width:calc(100% - 62px)}
+  .paneLegend b{font-size:15px} /* モバイルでも銘柄名は数値部より大きく保つ（本家の階層どおり） */
   .paneLegend .lgOhlc{font-size:11px;letter-spacing:-.3px} /* モバイルでは OHLC 行を少し詰めて、変動率の途中切れ（…）を防ぐ */
   #tzWrap{display:flex} /* モバイルは"日付・TZ"展開時に従来のセレクトでTimezone変更 */
   #rightbar{display:none}
@@ -935,13 +936,45 @@ function vwapCalc(d){const o=[];let pv=0,vv=0,day=null;for(const c of d){const p
 </script>
 <script>
 /* ============ チャートペイン ============ */
+/* 時間軸フォントを Price軸より 1px 小さくする（本家の階層: Price軸 12px / 時間軸 11px）。
+   LWC v4.2 は layout.fontSize が両軸共通で個別設定が無いため、時間軸キャンバス
+   （高さが小さく幅が広い軸専用キャンバス）への font 指定だけを割り込みで縮小する。
+   Price軸キャンバス（縦長）・ペイン本体キャンバス（大判）には一切触れない。
+   時間軸のラベル計測も同じキャンバスの context 経由のため、実測幅も小さいフォントに揃う */
+(function patchTimeAxisFont(){
+ try{
+  const proto=CanvasRenderingContext2D.prototype;
+  if(proto.__tvTimeFontPatched)return;
+  const desc=Object.getOwnPropertyDescriptor(proto,"font");
+  if(!desc||!desc.get||!desc.set)return;
+  Object.defineProperty(proto,"font",{
+   configurable:true,enumerable:desc.enumerable,
+   get:function(){ return desc.get.call(this); },
+   set:function(v){
+    try{
+     const c=this.canvas;
+     if(c&&typeof v==="string"){
+      const dpr=window.devicePixelRatio||1;
+      const h=c.clientHeight||(c.height?c.height/dpr:0);
+      const w=c.clientWidth||(c.width?c.width/dpr:0);
+      if(h>=10&&h<=40&&w>120&&w>h*3){
+       v=v.replace(/(\d+(?:\.\d+)?)px/,function(m,n){ return Math.max(8,Math.round(parseFloat(n)*11/12))+"px"; });
+      }
+     }
+    }catch(_){}
+    return desc.set.call(this,v);
+   }
+  });
+  proto.__tvTimeFontPatched=true;
+ }catch(_){}
+})();
 const LWC=window.LightweightCharts;
 let activePane=0;
 let _syncBusy=false; // 範囲/時間同期の相互再入ガード
 let _syncRangeKey=null; // 同期で最後に伝播した時刻範囲（エコー抑制用: 同期適用で生じた他ペインの範囲変更イベントを再伝播しない）
 const P=[]; // pane contexts
 function chartOpts(){const t=App.theme;return{
- layout:{background:{type:"solid",color:t.background},textColor:t.text,fontSize:15,fontFamily:"'Trebuchet MS','Segoe UI',Verdana,'Hiragino Kaku Gothic ProN','Yu Gothic UI','Noto Sans JP',sans-serif",attributionLogo:false}, // 軸フォント: 本家実画面（2026-11-20_2.40.27）のPrice軸ラベル数字高を再実測すると 23px@DPR2 = 11.5 CSS px（9ラベル連続で一致）。従来の 13px Settingsではクローン側の数字高が 10px しかなく約13%小さいため 15px に上げる（数字高≒11.5px）。狭いペインでは makePane 側で 13px に戻す
+ layout:{background:{type:"solid",color:t.background},textColor:t.text,fontSize:12,fontFamily:"'Trebuchet MS','Segoe UI',Verdana,'Hiragino Kaku Gothic ProN','Yu Gothic UI','Noto Sans JP',sans-serif",attributionLogo:false}, // 軸フォント: 本家実画面（2026-11-20 16:07, 2880×1800 DPR2）のグリフ高を再実測すると Price軸の数字高 約8.5 CSS px。LWC の layout.fontSize は Price/Time 共通のため、ここは Price軸基準の 12px とし、時間軸は下の Canvas パッチで 11px に落として「時間軸は価格軸より小さい」本家の階層を再現する（従来は両軸とも 15px で同サイズ・大きすぎた）。狭いペインでは makePane 側で 11px に戻す
  grid:{vertLines:{color:t.grid,visible:App.grid!==false,style:0},horzLines:{color:t.grid,visible:App.grid!==false,style:0}},
  crosshair:{mode:0,vertLine:{color:t.crosshair,labelBackgroundColor:"#353434",style:2,visible:window.__cursorVariant==null||window.__cursorVariant==="cross"},horzLine:{color:t.crosshair,labelBackgroundColor:"#353434",style:2,visible:window.__cursorVariant==null||window.__cursorVariant==="cross"}}, // CrosshairMode は LWC 4.2.0 の定義で Normal=0 / Magnet=1 / Hidden=2（バンドル内 enum でConfirm）。mode:0 = Normal: 横線はマウスYのPriceを示す（Magnet はホBars中のBarsの終値へ吸着する。本家はマウスY）。以前 mode:1 と書いたため Magnet そのものになっていた。線は破線（style:2 = Dashed）。Dot/Arrow バリアントでは十字線を出さない
  handleScale:{axisDoubleClickReset:true,axisPressedMouseMove:{time:false,price:true}}, // 時間軸ドラッグはスケール変更（ズーム）が正しいが、ネイティブの倍率は急激すぎる（400pxで期間2〜4倍）ため無効化し、makePane 側の自前ハンドラで穏やかな倍率のズームに置き換える。Price軸ドラッグのスケールと軸ダブルクリックリセットは従来どおり
@@ -1015,9 +1048,10 @@ function buildTickMarks(ctx,full,minDist){
  return result; }
 function clampRightEdge(ctx,r){ if(!ctx||ctx._edgeClamp||!r)return;
  const full=ctx.full; if(!full||full.length<2)return;
- let bs=6,W=0,fontSize=15,fontFamily="",timeVisible=true,secondsVisible=false;
+ let bs=6,W=0,fontSize=12,fontFamily="",timeVisible=true,secondsVisible=false;
  try{ bs=ctx.chart.timeScale().options().barSpacing||6; W=ctx.chart.timeScale().width()||0; }catch(_){}
- try{ const o=ctx.chart.options(); fontSize=o.layout.fontSize||15; fontFamily=o.layout.fontFamily||""; timeVisible=o.timeScale.timeVisible!==false; secondsVisible=o.timeScale.secondsVisible===true; }catch(_){}
+ try{ const o=ctx.chart.options(); fontSize=o.layout.fontSize||12; fontFamily=o.layout.fontFamily||""; timeVisible=o.timeScale.timeVisible!==false; secondsVisible=o.timeScale.secondsVisible===true; }catch(_){}
+ const timeFontSize=Math.max(8,Math.round(fontSize*11/12)); // 時間軸ラベルは Canvas パッチで Price軸より 1px 小さく描かれるため、幅の実測も時間軸サイズで行う
  if(bs<8||!W)return; // ズームイン時だけが対象（通常表示・初期表示には干渉しない）
  const maxLabelW=5*(fontSize+4)/8*8; // LWC ja() のラベル幅見積もり（tickMarkMaxCharacterLength 既定8）
  const minDist=Math.ceil(maxLabelW/bs); // TickMarks.nu の minIndexDistance
@@ -1031,7 +1065,7 @@ function clampRightEdge(ctx,r){ if(!ctx||ctx._edgeClamp||!r)return;
    const x=t2x(ctx,full[m].time); if(x==null)continue;
    const w=wOf(m);
    const label=tickFmt(full[m].time,tickTypeFor(w,timeVisible,secondsVisible));
-   const half=tickTextWidth(label,w>=boldThr,fontSize,fontFamily)/2;
+   const half=tickTextWidth(label,w>=boldThr,timeFontSize,fontFamily)/2;
    if(x-half>=W)continue; // ラベル全体がペイン右端の外にあるティックは描かれないので対象外（次のティックを見る）
    const deficit=(x+half+2)-W; if(deficit<=0)return; // 右端ティックのラベルは収まっている
    const shift=Math.min(4,deficit/bs); if(!(shift>0))return;
@@ -1044,7 +1078,7 @@ function makePane(idx){
  const el=$("#chart"+idx); const chart=LWC.createChart(el,chartOpts());
  /* 初期Bars間隔は本家の実測に合わせる: ユーザーの実画面（2ペイン）では約665px幅に約107本 ≒ 6px/本。
     TradingView のBars間隔はペイン幅に依らないズーム量なので幅で割らず 6px を基準とし、極端に狭いペインでのみ詰める */
- try{ const w=el.clientWidth||0; if(w>0){ const bs=Math.max(3.5,Math.min(6,w/60)); chart.timeScale().applyOptions({barSpacing:bs}); chart.applyOptions({layout:{fontSize:w>=480?15:13}}); } }catch(e){} // 軸フォントも幅連動: 幅480px未満（モバイル等）は13px、以上は本家実測（数字高11.5px）に合わせ15px
+ try{ const w=el.clientWidth||0; if(w>0){ const bs=Math.max(3.5,Math.min(6,w/60)); chart.timeScale().applyOptions({barSpacing:bs}); chart.applyOptions({layout:{fontSize:w>=480?12:11}}); } }catch(e){} // 軸フォントも幅連動: 幅480px未満（モバイル等）は Price軸 11px、以上は本家実測（数字高 約8.5 CSS px）に合わせ 12px。時間軸は Canvas パッチで常に 1px 小さくなる
  const cs=createMainSeries(chart);
  try{cs.priceScale().applyOptions({scaleMargins:{top:0.10,bottom:0.08}});}catch(e){} // Canvas余白: Top 10% / Bottom 8%（本家と同じ）
  try{chart.timeScale().applyOptions({rightOffset:10});}catch(e){} // Canvas余白: Right 10 bars（本家と同じ）
@@ -1482,7 +1516,7 @@ const TOOLS=[
 let tool="cursor", magnetMode="off", eraserOn=false, lastStyles={}, keepDrawing=false; // 既定は本家どおり描画を1回完了すると Cursor（Crosshair）へ戻る（Keep drawing Off）。On にすると描画後も同じツールが継続する
 function defaultStyle(type){
  const base={color:"#2962ff",opacity:100,width:2,lineStyle:"Line",endL:"Normal",endR:"Normal",extendL:false,extendR:false,
-  text:"",textColor:"#2962ff",fontSize:14,bold:false,italic:false,align:"Top",bgOn:false,bg:"#2962ff",bgOpacity:20,
+  text:"",textColor:"#2962ff",fontSize:12,bold:false,italic:false,align:"Top",bgOn:false,bg:"#2962ff",bgOpacity:20, /* 描画ラベルの既定は本家実測（グリフ高 約7.5 CSS px 級の小さなラベル）に合わせ 12px（従来14pxは軸や凡例と同等に大きく見えた）。ユーザーが設定で大きくした既存描画は lastStyles / 保存値が優先され変わらない */
   stopColor:"#f23645",targetColor:"#089981",stopOpacity:20,targetOpacity:20,
   accountSize:1000,lotSize:1,risk:25,leverage:10000,qty:1,
   fibLevels:FIB_LEVELS.map((lv,i)=>({level:lv,on:FIB_ON.includes(lv),color:FIB_COLORS[i]})),fibBg:true,fibReverse:false};
@@ -1492,10 +1526,10 @@ function defaultStyle(type){
      公式スクリーンショットで確認: 中心線は価格中点を通る水平線のみ（縦の中心線は無い）、破線・紫が例示され、枠とは独立した色/太さ/線種を持つ。
      新規の既定はオフ（本家の新規長方形は中心線なしで描かれる。項目名・既定の最終確認は比較タスク 3f7e8e9a の報告で照合すること） */
   base.midOn=false;base.midColor="#ab47bc";base.midOpacity=100;base.midWidth=1;base.midLineStyle="Dashed";}
- if(type==="ote"){base.fibFontSize=12; base.fibPrices=true; base.fibLevelsLbl=true; base.fibLabels=true; base.fibLineWidth=2; base.fibLineStyle="Line"; base.logScale=false;
+ if(type==="ote"){base.fibFontSize=11; base.fibPrices=true; base.fibLevelsLbl=true; base.fibLabels=true; base.fibLineWidth=2; base.fibLineStyle="Line"; base.logScale=false;
   base.fibTrend=true; base.trendColor="#787b86"; base.trendStyle="Dashed"; base.fibExtend="none"; base.fibBgOpacity=28; base.fibValuesFmt="Values"; base.fibLabelsPos="Left"; base.fibTextH="Center"; base.fibTextV="Middle";} // フィボの既定の線のWidthは本家と同じ 2px（従来 1px は細すぎた）
  if(type==="long"||type==="short"){base.showInfo=true; base.compactStats=false; base.alwaysShowStats=false; base.priceLabels=true; base.middlePoint=false;
-  base.lineColor="#787b86"; base.fontSize=12; base.textColor="#ffffff"; base.accUnit="Default"; base.riskUnit="%";}
+  base.lineColor="#787b86"; base.fontSize=11; base.textColor="#ffffff"; base.accUnit="Default"; base.riskUnit="%";}
  if(type==="line"||type==="arrow"){base.middlePoint=false; base.priceLabels=false; base.statsMode="Hidden"; base.statsPos="Right"; base.alwaysShowStats=false; base.alignH="Center";}
  if(type==="arrow"){base.endR="Arrow";} // 本家の Arrow は右端に矢印頭があるのが既定（設定表示と描画を一致させる。Trendline は左右とも Normal のまま）
  if(type==="rect"){base.textColor="#ab47bc"; base.alignH="Center";} // 本家の Rectangle は文字色の既定も枠と同じ紫
@@ -1562,7 +1596,7 @@ function renderDrawings(ctx){
  if(ctx.measure){ const m=ctx.measure; const mx1=t2x(ctx,m.p1.time),my1=p2y(ctx,m.p1.price),mx2=t2x(ctx,m.p2.time),my2=p2y(ctx,m.p2.price);
   if([mx1,my1,mx2,my2].every(v=>v!=null)){ el("line",{x1:mx1,y1:my1,x2:mx2,y2:my2,stroke:"#2962ff","stroke-width":1.5},svg);
    const dp=m.p2.price-m.p1.price, pct=m.p1.price?dp/m.p1.price*100:0, bars=Math.round(Math.abs(m.p2.time-m.p1.time)/(IVL_SEC[ctx.interval]||900));
-   const mt=el("text",{x:(mx1+mx2)/2,y:(my1+my2)/2-8,"font-size":12,fill:"#2962ff","text-anchor":"middle","font-weight":600},svg);
+   const mt=el("text",{x:(mx1+mx2)/2,y:(my1+my2)/2-8,"font-size":11,fill:"#2962ff","text-anchor":"middle","font-weight":600},svg);
    mt.textContent=`${dp>=0?"+":""}${dp.toFixed(2)} (${pct>=0?"+":""}${pct.toFixed(2)}%) · ${bars} bars`; } }
  positionGotoTip(ctx); // Go to 吹き出しの位置を現在の表示範囲に追従させる
  if(ctx.idx===0)renderObjTree();
@@ -1625,8 +1659,8 @@ function drawOne(ctx,svg,d,sel){
      if(st.fibLabels!==false&&(st.fibLevelsLbl!==false||st.fibPrices!==false)){ const lpos=st.fibLabelsPos||"Left";
        const lx=lpos==="Middle"?(Math.min(x1,x2)+Math.max(x1,x2))/2:Math.min(x1,x2)+5, la=lpos==="Middle"?"middle":"start";
        const lvTxt=st.fibValuesFmt==="Percents"?(Math.round(fl.level*1000)/10)+"%":fl.level;
-       const t=el("text",{x:lx,y:y+4,"font-size":st.fibFontSize||12,fill:fl.color,"text-anchor":la},g); t.textContent=((st.fibLevelsLbl!==false?lvTxt+" ":"")+(st.fibPrices!==false?"("+price.toFixed(2)+")":"")).trim();} }
-   const t=el("text",{x:Math.min(x1,x2)+4,y:(yTop!=null?yTop:20)-5,"font-size":12,fill:"#f0b90b","font-weight":700},g); t.textContent="OTE 0.618–0.786";
+       const t=el("text",{x:lx,y:y+4,"font-size":st.fibFontSize||11,fill:fl.color,"text-anchor":la},g); t.textContent=((st.fibLevelsLbl!==false?lvTxt+" ":"")+(st.fibPrices!==false?"("+price.toFixed(2)+")":"")).trim();} }
+   const t=el("text",{x:Math.min(x1,x2)+4,y:(yTop!=null?yTop:20)-5,"font-size":11,fill:"#f0b90b","font-weight":700},g); t.textContent="OTE 0.618–0.786";
    handles([[x1,p2y(ctx,d.p1.price)],[x2,p2y(ctx,d.p2.price)]]);
  } else if(d.type==="long"||d.type==="short"){
    const x1=t2x(ctx,d.p1.time),x2=t2x(ctx,d.endTime||d.p2.time); if(x1==null||x2==null)return;
@@ -1641,7 +1675,7 @@ function drawOne(ctx,svg,d,sel){
    const calcQty=mult&&distP>0?riskAmt/(distP*mult):(st.qty||st.lotSize||1);
    const lastB=ctx.view[ctx.view.length-1]; const openPnl=(lastB&&mult)?(lastB.close-d.entry)*(d.type==="long"?1:-1)*calcQty*mult:null;
    const openPct=(lastB)?(lastB.close-d.entry)*(d.type==="long"?1:-1)/Math.max(1e-9,d.entry)*100:0;
-   const tc=st.textColor||"#fff", tfs=st.fontSize||12;
+   const tc=st.textColor||"#fff", tfs=st.fontSize||11;
    const mk=(y,txt,c)=>{const t=el("text",{x:xa+w/2,y:y+4,"font-size":tfs,fill:c,"text-anchor":"middle","font-weight":600},g);t.textContent=txt;};
    mk((yE+yT)/2,`Target ${d.target.toFixed(2)}`, tc); mk((yE+yS)/2,`Stop ${d.stop.toFixed(2)}`,tc);
    mk(yE-8,st.compactStats?`${d.type==="long"?"Long":"Short"} · R/R ${rr.toFixed(2)} · Qty ${(+calcQty).toFixed(2)}`:`${d.type==="long"?"Long":"Short"} Entry ${d.entry.toFixed(2)} · R/R ${rr.toFixed(2)} · Qty ${(+calcQty).toFixed(2)} · Risk ${riskAmt.toFixed(2)}${openPnl!=null?` · Open PnL ${openPnl>=0?"+":""}${openPnl.toFixed(2)} (${openPct>=0?"+":""}${openPct.toFixed(2)}%)`:" · Multiplier not set, so PnL is the price difference only"}`,tc);
@@ -2237,7 +2271,7 @@ function floatAction(ctx,d,act,btn){
   fbMenu(btn,[1,2,3,4].map(w=>({label:w+"px",checkable:true,checked:cur===w,act:()=>applyAll(t=>{ if(t.type==="ote")t.style.fibLineWidth=w; else t.style.width=w; })}))); }
  else if(act==="style"){ const cur=d.type==="ote"?(st.fibLineStyle||"Line"):st.lineStyle;
   fbMenu(btn,["Line","Dashed","Dotted"].map(x=>({label:x,checkable:true,checked:cur===x,act:()=>applyAll(t=>{ if(t.type==="ote")t.style.fibLineStyle=x; else t.style.lineStyle=x; })}))); }
- else if(act==="font"){ const cur=d.type==="ote"?(st.fibFontSize||12):st.fontSize;
+ else if(act==="font"){ const cur=d.type==="ote"?(st.fibFontSize||11):st.fontSize;
   fbMenu(btn,[8,10,12,14,16,20,24,28,32].map(z=>({label:String(z),checkable:true,checked:cur===z,act:()=>applyAll(t=>{ if(t.type==="ote")t.style.fibFontSize=z; else t.style.fontSize=z; })}))); }
  else if(act==="bold")applyAll(t=>t.style.bold=!st.bold);
  else if(act==="italic")applyAll(t=>t.style.italic=!st.italic);
@@ -2546,7 +2580,7 @@ function openDrawSettings(ctx,d){
    ${isPos?`<div class="frow"><label>Lines</label><input type="color" id="dsLineColor" value="${st.lineColor||"#787b86"}">${segLS("dsLS",st.lineStyle)}${segW("dsW",st.width)}</div>
    <div class="frow"><label>Stop color</label><input type="color" id="dsStC" value="${st.stopColor}"></div>
    <div class="frow"><label>Target color</label><input type="color" id="dsTgC" value="${st.targetColor}"></div>
-   <div class="frow"><label>Text</label><input type="color" id="dsPosTC" value="${st.textColor||"#ffffff"}"><label style="width:auto">Font size</label><input type="number" id="dsPosFS" value="${st.fontSize||12}" style="width:70px;flex:none"></div>
+   <div class="frow"><label>Text</label><input type="color" id="dsPosTC" value="${st.textColor||"#ffffff"}"><label style="width:auto">Font size</label><input type="number" id="dsPosFS" value="${st.fontSize||11}" style="width:70px;flex:none"></div>
    <div class="frow"><label></label>${chk("dsPriceLabels",st.priceLabels!==false,"Price labels")}</div>
    <div class="dsSec">INFO</div>
    <div class="frow"><label>Stats</label><select id="dsStatsMode"><option value="all" ${st.showInfo!==false&&!st.compactStats?"selected":""}>All stats</option><option value="compact" ${st.compactStats?"selected":""}>Compact</option><option value="hidden" ${st.showInfo===false?"selected":""}>Hidden</option></select></div>
@@ -2562,7 +2596,7 @@ function openDrawSettings(ctx,d){
    <div class="frow"><label>Levels</label>${chk("dsFibLv",st.fibLevelsLbl!==false,"Levels")}<select id="dsFibValues"><option ${st.fibValuesFmt!=="Percents"?"selected":""}>Values</option><option ${st.fibValuesFmt==="Percents"?"selected":""}>Percents</option></select></div>
    <div class="frow"><label>Labels</label><select id="dsFibLabelsPos"><option ${st.fibLabelsPos!=="Middle"?"selected":""}>Left</option><option ${st.fibLabelsPos==="Middle"?"selected":""}>Middle</option></select></div>
    <div class="frow"><label>Text</label>${chk("dsFibLabels",st.fibLabels!==false,"Text")}<select id="dsFibTextH">${["Center","Left","Right"].map(s=>`<option ${(st.fibTextH||"Center")===s?"selected":""}>${s}</option>`).join("")}</select><select id="dsFibTextV">${["Middle","Top","Bottom"].map(s=>`<option ${(st.fibTextV||"Middle")===s?"selected":""}>${s}</option>`).join("")}</select></div>
-   <div class="frow"><label>Font size</label><input type="number" id="dsFibFS" value="${st.fibFontSize||12}" style="width:76px;flex:none"></div>
+   <div class="frow"><label>Font size</label><input type="number" id="dsFibFS" value="${st.fibFontSize||11}" style="width:76px;flex:none"></div>
    <div class="frow"><label></label><label class="chk"><input type="checkbox" disabled> Fib levels based on log scale</label></div>
    <p class="hint">OTE zone 0.618–0.786 is shown in gold</p>`:""}
   </div>`}
@@ -2633,18 +2667,18 @@ function openDrawSettings(ctx,d){
    d.stop=readPrice("#dsStop",d.stop);
    d.p1.price=d.entry;
    st.targetColor=$("#dsTgC").value; st.stopColor=$("#dsStC").value;
-   st.textColor=$("#dsPosTC").value; st.fontSize=+$("#dsPosFS").value||12;
+   st.textColor=$("#dsPosTC").value; st.fontSize=+$("#dsPosFS").value||11;
    st.priceLabels=$("#dsPriceLabels").checked;
    const sm=$("#dsStatsMode"); st.showInfo=sm.value!=="hidden"; st.compactStats=$("#dsCompact").checked||sm.value==="compact"; }
   if(isFib){st.fibTrend=$("#dsFibTrend").checked; st.trendColor=$("#dsTrendColor").value; st.fibExtend=$("#dsFibExtend").value;
    st.fibBg=$("#dsFibBg").checked; st.fibBgOpacity=+$("#dsFibBgOp").value; st.fibReverse=$("#dsFibRev").checked;
    st.fibPrices=$("#dsFibPrices").checked; st.fibLevelsLbl=$("#dsFibLv").checked; st.fibLabels=$("#dsFibLabels").checked;
    st.fibValuesFmt=$("#dsFibValues").value; st.fibLabelsPos=$("#dsFibLabelsPos").value; st.fibTextH=$("#dsFibTextH").value; st.fibTextV=$("#dsFibTextV").value;
-   st.fibFontSize=+$("#dsFibFS").value||12;
+   st.fibFontSize=+$("#dsFibFS").value||11;
    m.querySelectorAll("[data-fi]").forEach(c=>{st.fibLevels[+c.dataset.fi].on=c.checked;});
    m.querySelectorAll("[data-fv]").forEach(c=>{st.fibLevels[+c.dataset.fv].level=+c.value;});
    m.querySelectorAll("[data-fc]").forEach(c=>{st.fibLevels[+c.dataset.fc].color=c.value;});}
-  const _t=$("#dsText"); if(_t){st.text=_t.value; st.textColor=$("#dsTC").value; st.fontSize=+$("#dsFS").value||14;}
+  const _t=$("#dsText"); if(_t){st.text=_t.value; st.textColor=$("#dsTC").value; st.fontSize=+$("#dsFS").value||12;}
   const av=$("#dsAlignV"); if(av)st.align=av.value; const ah=$("#dsAlignH"); if(ah)st.alignH=ah.value;
   const txBg=$("#dsTxBgOn"); if(txBg){st.bgOn=txBg.checked; st.bg=$("#dsTxBg").value; st.bgOpacity=+$("#dsTxBgOp").value;}
   const txBd=$("#dsTxBdOn"); if(txBd){st.borderOn=txBd.checked; st.borderColor=$("#dsTxBd").value;}
