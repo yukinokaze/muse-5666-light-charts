@@ -835,18 +835,81 @@ function applyChartType(ctx){ if(!ctx||!ctx.chart)return;
 /* 描画SVGレイヤーのイベント透過を一元管理する: ルートの inline style と peOff クラス（子要素まで pointer-events:none を強制する CSS）を常に同期させる。
    Cursor時（値 "none"）はレイヤー全体がチャート本体のパン／ズームに一切干渉しないことがパンの前提条件 */
 function svgPE(svg,val){ if(!svg)return; svg.style.pointerEvents=val; svg.classList.toggle("peOff",val==="none"); }
-/* 右端の時間ラベル切れ防止: ズームイン時（バー間隔が広い時）に最終バーがペイン右端へ寄りすぎると、そのバーの時刻ラベル
-   （中心揃えで約30px幅）がキャンバス端で切れて「05:0」のようになる。本家は右端のラベルがペイン内に収まるため、
-   最終バーの中心が右端から 22px 未満になった場合だけ表示範囲を最小限（最大3本分）左へずらして余白を確保する。
-   通常表示（右Offセット10本）やズームアウト時（間隔<8px ではラベルは最終バーに付かない）には一切干渉しない */
-function clampRightEdge(ctx,r){ if(!ctx||ctx._edgeClamp||!r)return; const n=ctx.view?ctx.view.length:0; if(n<2)return;
- const lastIdx=n-1; if(r.to<=lastIdx)return; // データ末尾が画面の右側にある（＝末尾バーが見えている）場合だけ対象
- let bs=6; try{ bs=ctx.chart.timeScale().options().barSpacing||6; }catch(_){}
- if(bs<8)return;
- const deficitPx=22-(r.to-lastIdx)*bs; if(deficitPx<=0||deficitPx>60)return;
- ctx._edgeClamp=true; const shift=Math.min(3,deficitPx/bs);
- try{ ctx.chart.timeScale().setVisibleLogicalRange({from:r.from-shift,to:r.to-shift}); }catch(_){}
- ctx._edgeClamp=false; }
+/* 右端の時間ラベル切れ防止（一般化）:
+   LWC v4.2 は右端ティックラベルの位置合わせ（needAlignCoordinate）を timeScale.fixRightEdge 有効時にしか行わない。
+   しかし fixRightEdge は右Offセット上限を 0 に潰す（Eu/uc の分岐で確認）ため、右余白10Bars・未来側への
+   スクロール/ズームと両立せず使えない。従来の clamp は「最終Barsが右端に近い時」だけを対象にしていたため、
+   ズームインして表示範囲の右端がデータ途中にあるケース（右端ティックが最終Barsではないケース）では
+   ラベルがそのまま切れていた（v56 実操作テスト不合格の主因）。
+   ここでは LWC 内部のティック生成（fillWeightsForPoints の重み付け qn ＋ TickMarks.eu の間引き）を再現して
+   「実際に描かれる右端ティック」を特定し、そのラベル（アプリの tickFmt で生成し canvas で実測。太字化の
+   しきい値 maxTickMarkWeight も再現）がペイン右端に収まるよう、不足分だけ表示範囲を未来側へずらす
+   （範囲を未来側へ寄せるとバーは画面上で左へ寄り、右端ラベル分の余白ができる）。
+   バー間隔 8px 未満（通常表示・初期表示）では一切干渉しない。左端は本家でも切れるため対象外 */
+const TICK_DIVS=[[43200000,33],[21600000,32],[10800000,31],[3600000,30],[1800000,22],[300000,21],[60000,20],[1000,10]];
+function tickWeightBetween(prevTs,curTs){ const a=new Date(prevTs*1000),b=new Date(curTs*1000); // LWC qn の再現（UTC基準・区切りは $n テーブルどおり）
+ if(b.getUTCFullYear()!==a.getUTCFullYear())return 70;
+ if(b.getUTCMonth()!==a.getUTCMonth())return 60;
+ if(b.getUTCDate()!==a.getUTCDate())return 50;
+ const at=prevTs*1000,bt=curTs*1000;
+ for(const dv of TICK_DIVS){ if(Math.floor(at/dv[0])!==Math.floor(bt/dv[0]))return dv[1]; }
+ return 0; }
+function tickTypeFor(w,timeVisible,secondsVisible){ // LWC formatTickmark の weight→TickMarkType 対応
+ if(w===70)return 0; if(w===60)return 1; if(w===50)return 2;
+ if(w===0||w===10)return timeVisible?(secondsVisible?4:3):2;
+ return timeVisible?3:2; }
+let _tickMeasureCtx=null;
+function tickTextWidth(txt,bold,fontSize,fontFamily){ if(!_tickMeasureCtx)_tickMeasureCtx=document.createElement("canvas").getContext("2d");
+ _tickMeasureCtx.font=(bold?"bold ":"")+fontSize+"px "+fontFamily; return _tickMeasureCtx.measureText(txt).width; }
+/* LWC TickMarks.eu の再現（uniformDistribution=false 前提＝本アプリの既定）: 重みの大きい順に、
+   既に選ばれた隣接ティックと minDist Bars 以上離れたものだけを残す。貪欲選択の位相は先頭Barsの重み
+   （fillWeightsForPoints が平均間隔から推定する 1 本目の重みを含む）で決まり、周期データでは途中から
+   計算し直すと位相がずれて右端ティックを取り違えるため、必ず全Barsを対象に計算し、結果は
+   データ指紋＋minDist でキャッシュする（パン/ズーム中の範囲変更ではキャッシュが効く） */
+function buildTickMarks(ctx,full,minDist){
+ const key=full.length+"|"+full[0].time+"|"+full[full.length-1].time+"|"+minDist;
+ if(ctx._tickCache&&ctx._tickCache.key===key)return ctx._tickCache.marks;
+ const byW=new Map();
+ const push=(i,w)=>{ if(!w)return; let a=byW.get(w); if(!a){a=[];byW.set(w,a);} a.push(i); };
+ if(full.length>1){ const avg=Math.ceil((full[full.length-1].time-full[0].time)/(full.length-1)); push(0,tickWeightBetween(full[0].time-avg,full[0].time)); } // 1本目の推定重み（LWC と同じ式）
+ for(let i=1;i<full.length;i++)push(i,tickWeightBetween(full[i-1].time,full[i].time));
+ let result=[];
+ for(const w of [...byW.keys()].sort((x,y)=>y-x)){
+   const prev=result; result=[]; const group=byW.get(w);
+   let r=0,a=Infinity,o=-Infinity;
+   for(const idx of group){
+     while(r<prev.length){ const ni=prev[r]; if(ni>=idx){a=ni;break;} r++; result.push(ni); o=ni; a=Infinity; }
+     if(a-idx>=minDist&&idx-o>=minDist){ result.push(idx); o=idx; } }
+   while(r<prev.length){ result.push(prev[r]); r++; } }
+ ctx._tickCache={key,marks:result};
+ return result; }
+function clampRightEdge(ctx,r){ if(!ctx||ctx._edgeClamp||!r)return;
+ const full=ctx.full; if(!full||full.length<2)return;
+ let bs=6,W=0,fontSize=15,fontFamily="",timeVisible=true,secondsVisible=false;
+ try{ bs=ctx.chart.timeScale().options().barSpacing||6; W=ctx.chart.timeScale().width()||0; }catch(_){}
+ try{ const o=ctx.chart.options(); fontSize=o.layout.fontSize||15; fontFamily=o.layout.fontFamily||""; timeVisible=o.timeScale.timeVisible!==false; secondsVisible=o.timeScale.secondsVisible===true; }catch(_){}
+ if(bs<8||!W)return; // ズームイン時だけが対象（通常表示・初期表示には干渉しない）
+ const maxLabelW=5*(fontSize+4)/8*8; // LWC ja() のラベル幅見積もり（tickMarkMaxCharacterLength 既定8）
+ const minDist=Math.ceil(maxLabelW/bs); // TickMarks.nu の minIndexDistance
+ const toI=Math.ceil(r.to), fromI=Math.floor(r.from);
+ const marks=buildTickMarks(ctx,full,minDist); if(!marks.length)return;
+ const disp=marks.filter(m=>m>=fromI&&m<=toI); if(!disp.length)return;
+ const wOf=m=>{ if(m>=1)return tickWeightBetween(full[m-1].time,full[m].time); if(full.length<2)return 0; const avg=Math.ceil((full[full.length-1].time-full[0].time)/(full.length-1)); return tickWeightBetween(full[0].time-avg,full[0].time); }; // m=0 は buildTickMarks と同じ推定重み
+ let maxWgt=0; for(const m of disp){ const w=wOf(m); if(w>maxWgt)maxWgt=w; }
+ const boldThr=(maxWgt>30&&maxWgt<50)?30:maxWgt; // LWC maxTickMarkWeight: 太字になる重みの下限
+ for(let k=disp.length-1;k>=0;k--){ const m=disp[k]; if(m<1)continue;
+   const x=t2x(ctx,full[m].time); if(x==null)continue;
+   const w=wOf(m);
+   const label=tickFmt(full[m].time,tickTypeFor(w,timeVisible,secondsVisible));
+   const half=tickTextWidth(label,w>=boldThr,fontSize,fontFamily)/2;
+   if(x-half>=W)continue; // ラベル全体がペイン右端の外にあるティックは描かれないので対象外（次のティックを見る）
+   const deficit=(x+half+2)-W; if(deficit<=0)return; // 右端ティックのラベルは収まっている
+   const shift=Math.min(4,deficit/bs); if(!(shift>0))return;
+   /* ずらす方向に注意: from/to を増やす（範囲を未来側へ寄せる）とバーは画面上で左へ動き、右端との間に
+      余白ができる。減らすとバーは右へ寄って切れが悪化する（v56 版はこの向きが逆だったことも効かなかった一因） */
+   ctx._edgeClamp=true;
+   try{ ctx.chart.timeScale().setVisibleLogicalRange({from:r.from+shift,to:r.to+shift}); }catch(_){}
+   ctx._edgeClamp=false; return; } }
 function makePane(idx){
  const el=$("#chart"+idx); const chart=LWC.createChart(el,chartOpts());
  /* 初期Bars間隔は本家の実測に合わせる: ユーザーの実画面（2ペイン）では約665px幅に約107本 ≒ 6px/本。
@@ -1311,10 +1374,25 @@ function drawVisibleHere(d,ctx){ if(d.visible===false)return false; if(d.interva
  if(d.syncScope==="global")return true; // グローバル: 全ペイン・全レイアウト
  // layout（既定）: 同じレイアウト内でのみ表示する。layoutId の無い旧データは現在のレイアウト所属として扱う（互換）
  return d.layoutId==null||d.layoutId===App.layoutName; }
+/* ペイン寸法（価格軸・時間軸を除くチャート本体の大きさ）: LWC の座標（timeToCoordinate / priceToCoordinate）は
+   ペイン原点・ペイン寸法で返るが、従来の描画 SVG は chartBox 全体（軸込み）を覆っていたため、右端・下端付近の
+   描画が価格軸/時間軸の上に描かれてしまっていた。SVG 要素自体をペイン寸法に合わせると、外側 svg のビューポートで
+   全描画（線・矩形・Fib・矢印・ポジション・選択Rectangle・メジャー）がペイン内にクリップされ、軸の上では
+   ヒットテストも発生しない（本家と同じ）。幅は timeScale().width()（=ペイン幅の公開 API）、高さは v4.2 に
+   公開 API が無いためペイン canvas の実寸から取る */
+function paneW(ctx){ try{ const w=ctx.chart.timeScale().width(); if(w>0)return w; }catch(_){} return 0; }
+function paneSize(ctx,box){
+ let w=paneW(ctx),h=0;
+ try{ const cv=ctx.el.querySelector("canvas"); if(cv){ if(!w&&cv.clientWidth>0)w=cv.clientWidth; if(cv.clientHeight>10&&cv.clientHeight<box.height)h=cv.clientHeight; } }catch(_){}
+ if(!(w>0))w=Math.max(10,box.width-64);
+ if(!(h>0))h=Math.max(10,box.height-30);
+ return {w:Math.min(w,box.width),h:Math.min(h,box.height)}; }
 function renderDrawings(ctx){
  const svg=ctx.svg; if(!svg)return; svg.classList.toggle("peOff",svg.style.pointerEvents==="none"); // 透過状態の同期（svgPE を経由しない一時的な inline 変更もここで必ずクラスへ反映する）
  const box=ctx.el.parentElement.getBoundingClientRect();
- svg.setAttribute("viewBox",`0 0 ${box.width} ${box.height}`); svg.setAttribute("width",box.width); svg.setAttribute("height",box.height);
+ const ps=paneSize(ctx,box);
+ svg.setAttribute("viewBox",`0 0 ${ps.w} ${ps.h}`); svg.setAttribute("width",ps.w); svg.setAttribute("height",ps.h);
+ svg.style.width=ps.w+"px"; svg.style.height=ps.h+"px";
  while(svg.firstChild)svg.removeChild(svg.firstChild);
  const list=[...allDrawingsFor(ctx.symbol)];
  if(ctx.pending)list.push(ctx.pending);
@@ -1336,7 +1414,7 @@ function drawOne(ctx,svg,d,sel){
  const label=(x,y,txt,anchor)=>{if(!txt)return;const t=el("text",{x,y,"font-size":st.fontSize,fill:st.textColor,"text-anchor":anchor||"middle","font-weight":st.bold?"700":"400","font-style":st.italic?"italic":"normal"},g);t.textContent=txt;};
  if(d.type==="line"||d.type==="arrow"){
    let x1=t2x(ctx,d.p1.time),y1=p2y(ctx,d.p1.price),x2=t2x(ctx,d.p2.time),y2=p2y(ctx,d.p2.price); if([x1,y1,x2,y2].some(v=>v==null))return;
-   const W=ctx.el.clientWidth,H=ctx.el.clientHeight,dx=x2-x1,dy=y2-y1;
+   const W=paneW(ctx)||ctx.el.clientWidth,H=ctx.el.clientHeight,dx=x2-x1,dy=y2-y1; // 延長線の到達点はペイン右端まで（価格軸の上まで伸ばさない）
    let ax=x1,ay=y1,bx=x2,by=y2;
    if(st.extendL&&dx!==0){const k=(0-x1)/dx;ax=0;ay=y1+dy*k;} if(st.extendR&&dx!==0){const k=(W-x2)/dx;bx=W;by=y2+dy*k;}
    el("line",{x1:ax,y1:ay,x2:bx,y2:by,stroke:"rgba(0,0,0,0)","stroke-width":14},g);
