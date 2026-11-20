@@ -684,7 +684,8 @@ function validateSaveJSON(j){
      if(d.style!=null&&(typeof d.style!=="object"||Array.isArray(d.style))) return {ok:false,msg:"drawings: invalid style"}; } } }
  if(Array.isArray(j.indicators)){ const IT=["EMA","SMA","VWAP","RSI","MACD","ATR","VOLUME","CUSTOM"];
    for(const ind of j.indicators){ if(!ind||typeof ind!=="object"||!IT.includes(ind.type)) return {ok:false,msg:"indicators: invalid type"};
-    if(ind.params!=null&&(typeof ind.params!=="object"||Array.isArray(ind.params))) return {ok:false,msg:"indicators: invalid params"};
+    if(ind.pane!=null&&![0,1,2].includes(ind.pane)) return {ok:false,msg:"indicators: invalid pane"};
+   if(ind.params!=null&&(typeof ind.params!=="object"||Array.isArray(ind.params))) return {ok:false,msg:"indicators: invalid params"};
     if(ind.style!=null&&(typeof ind.style!=="object"||Array.isArray(ind.style))) return {ok:false,msg:"indicators: invalid style"}; } }
  if(Array.isArray(j.trades)){ for(const t of j.trades){ if(!t||typeof t!=="object"||Array.isArray(t)) return {ok:false,msg:"trades: invalid entry"}; } }
  if(Array.isArray(j.layouts)){ for(const l of j.layouts){ if(!l||typeof l!=="object"||typeof l.name!=="string") return {ok:false,msg:"layouts: invalid entry"}; } }
@@ -735,7 +736,8 @@ const StorageAdapter={
      if(d.type==="ote"&&(!Array.isArray(merged.fibLevels)||merged.fibLevels.length!==24))merged.fibLevels=def.fibLevels;
      if(d.group!=null&&typeof d.group!=="string")delete d.group; // Group名は文字列のみ許可（Object treeのGroup表示用）
      d.style=merged; } }
-   App.indicators=Array.isArray(c.indicators)?c.indicators:[]; App.layouts=Array.isArray(c.layouts)?c.layouts:[]; App.multi=[1,2,3].includes(c.multi)?c.multi:1; if(c.sync)App.sync={...App.sync,...c.sync};
+   App.indicators=Array.isArray(c.indicators)?c.indicators:[]; App.indicators.forEach(ind=>{ if(ind&&typeof ind==="object")ind.pane=indPane(ind); }); // 旧データ（pane無し）は左ペイン所属へ移行
+   App.layouts=Array.isArray(c.layouts)?c.layouts:[]; App.multi=[1,2,3].includes(c.multi)?c.multi:1; if(c.sync)App.sync={...App.sync,...c.sync};
    if(c.grid!=null)App.grid=c.grid!==false; if(c.multipliers&&typeof c.multipliers==="object")App.multipliers=c.multipliers;
    if(Array.isArray(c.trades)){replay.closed=c.trades; replay.cum=replay.closed.reduce((a,t)=>a+(+t.pnl||0),0); replay.seq=replay.closed.reduce((a,t)=>Math.max(a,+t.num||0),0);}
    if(c.templates&&typeof c.templates==="object")templates=c.templates;
@@ -952,7 +954,7 @@ function makePane(idx){
  chart.priceScale("vol").applyOptions({scaleMargins:{top:0.90,bottom:0},visible:false}); // Volumeはペイン下部10%以内・不透明度28%・ラベルは右軸に出さない
  const gs=chart.addCandlestickSeries({upColor:"rgba(235,235,235,0.42)",downColor:"rgba(25,25,25,0.42)",wickUpColor:"rgba(235,235,235,0.42)",wickDownColor:"rgba(25,25,25,0.42)",borderVisible:false,lastValueVisible:false,priceLineVisible:false}); // 互換のため残す空系列（未来足は表示しない）
  const gv=chart.addHistogramSeries({priceScaleId:"vol",priceFormat:{type:"volume"},lastValueVisible:false,priceLineVisible:false});
- try{ const _vo=App.indicators.some(i=>i.type==="VOLUME"&&i.visible!==false); vs.applyOptions({visible:_vo}); gv.applyOptions({visible:_vo}); }catch(e){} // 本家のユーザー画面にはVolumeが表示されていないため既定は非表示。"Volume"IndicatorsAdd時のみ表示する
+ try{ const _vo=App.indicators.some(i=>i.type==="VOLUME"&&i.visible!==false&&indPane(i)===idx); vs.applyOptions({visible:_vo}); gv.applyOptions({visible:_vo}); }catch(e){} // 本家のユーザー画面にはVolumeが表示されていないため既定は非表示。"Volume"IndicatorsAdd時のみ表示する（このペインにVolumeがある場合だけ）
  const ctx={idx,chart,cs,vs,gs,gv,el,svg:$("#svg"+idx),symbol:App.symbol,interval:App.interval,full:[],view:[],emaS:null,vwapS:null,customS:{},hoverBar:null,drawTemp:null,pending:null,selectedId:null,replayIdx:-1};
  /* 現在値ラベルは自前ピルで描く（LWC内蔵ラベルは目盛りと重なり目盛りが半分隠れるため）。
     ピルの背後にチャートBackground色の帯を置き、重なる目盛りラベル側を覆って非表示にする（本家と同じ見え方） */
@@ -1281,12 +1283,18 @@ function ensureSub1(name){return ensureSubFor(1,name);}
 function ensureSub2(name){return ensureSubFor(2,name);}
 function lineStyleOf(ind){return {color:ind.style.color,lineWidth:ind.style.width||1,lineStyle:ind.style.style==="Dashed"?LWC.LineStyle.Dashed:ind.style.style==="Dotted"?LWC.LineStyle.Dotted:LWC.LineStyle.Solid};}
 function indVisibleHere(ind,ctx){ if(ind.visible===false)return false; const v=ind.visibility; if(!v)return true; const iv=ctx?ctx.interval:P[0].interval; return v[iv]!==false; }
+/* Indicatorsはペイン（チャート）ごとに独立（本家と同じ）。各Indicatorsは所有ペイン番号 pane を持ち、
+   そのペインにだけ描画される。pane 未設定の旧保存データは左ペイン（0）の所属として扱う */
+function indPane(ind){ return ind&&[0,1,2].includes(ind.pane)?ind.pane:0; }
+function indsOf(idx){ return App.indicators.filter(i=>indPane(i)===idx); }
+function indHere(ind,ctx){ return indPane(ind)===(ctx?ctx.idx:0); }
 function renderIndicators(ctx){
  const data=ctx.view; ctx.indVals=new Map(); if(!data.length)return;
  (ctx._ovl||[]).forEach(sx=>{try{ctx.chart.removeSeries(sx);}catch(e){}}); ctx._ovl=[]; ctx.customS={};
  const pushVals=arr=>{ if(!arr)return; for(const p of arr){ if(!ctx.indVals.has(p.time))ctx.indVals.set(p.time,[]); ctx.indVals.get(p.time).push(p.value); } }; // マグネットの Snap to indicators 用にオーBarsレイ値を保持
  const subs = {RSI:()=>ensureSubFor(ctx.idx,"RSI"),MACD:()=>ensureSubFor(ctx.idx,"MACD"),ATR:()=>ensureSubFor(ctx.idx,"ATR"),pre:ctx.idx===0?"sub":"sub"+ctx.idx};
  for(const ind of App.indicators){
+  if(!indHere(ind,ctx))continue; // このペイン所属のIndicatorsだけ描画（左右で別々のIndicatorsを持てる）
   if(!indVisibleHere(ind,ctx))continue;
   try{
    const src=ind.params.source||"close";
@@ -1303,9 +1311,9 @@ function renderIndicators(ctx){
   }catch(e){console.warn("indicator",ind.type,e);}
  }
  if(subs){
-  for(const t of ["RSI","MACD","ATR"]){ if(!App.indicators.some(i=>i.type===t&&indVisibleHere(i,ctx))){const pn=document.querySelector("#"+subs.pre+t); if(pn)pn.classList.remove("show");} }
+  for(const t of ["RSI","MACD","ATR"]){ if(!App.indicators.some(i=>i.type===t&&indHere(i,ctx)&&indVisibleHere(i,ctx))){const pn=document.querySelector("#"+subs.pre+t); if(pn)pn.classList.remove("show");} }
  }
- const _vo=App.indicators.some(i=>i.type==="VOLUME"&&indVisibleHere(i,ctx)); // Volumeの表示は VOLUME Indicatorsの有無・表示Settingsに連動（本家のユーザー画面では非表示が既定）
+ const _vo=App.indicators.some(i=>i.type==="VOLUME"&&indHere(i,ctx)&&indVisibleHere(i,ctx)); // Volumeの表示は このペインの VOLUME Indicatorsの有無・表示Settingsに連動（本家のユーザー画面では非表示が既定）
  try{ ctx.vs.applyOptions({visible:_vo}); if(ctx.gv)ctx.gv.applyOptions({visible:_vo}); }catch(e){}
  renderLegend(ctx);
  renderObjTree();
@@ -1318,6 +1326,7 @@ function renderLegend(ctx){
  const fmt=v=>v==null?"—":Math.abs(v)>=1000?v.toFixed(1):Math.abs(v)>=10?v.toFixed(2):v.toFixed(3);
  let h="";
  for(const ind of App.indicators){
+  if(!indHere(ind,ctx))continue; // 凡例はそのペインのIndicatorsだけ
   if(ind.visible===false)continue; if(!indVisibleHere(ind,ctx))continue;
   let val=null;
   try{ const src=ind.params.source||"close";
@@ -1867,7 +1876,7 @@ function createGroup(ctx,ids){ if(!ids||ids.length<2)return;
   afterDrawChange(ctx); toast("Group \u201c"+name+"\u201d created"); }); }
 function removeAllDrawings(ctx){ if(curDrawings().some(d=>d.locked)&&!App.deleteLocked)return toast("Some drawings are locked. Unlock them first, or turn on \"Delete locked drawings\" in the right-click menu");
  snapshotDrawings(); drawingsBySymbol[ctx.symbol]=[]; ctx.selectedId=null; ctx.selectedIds=new Set(); hideFloatBar(); afterDrawChange(ctx); }
-function removeAllIndicators(){ App.indicators=[]; markDirty(); P.forEach(c=>c&&renderIndicators(c)); renderObjTree(); }
+function removeAllIndicators(ctx){ const idx=ctx?ctx.idx:(P[activePane]?activePane:0); App.indicators=App.indicators.filter(i=>indPane(i)!==idx); markDirty(); P.forEach(c=>c&&renderIndicators(c)); renderObjTree(); } // そのペインのIndicatorsだけRemove（他ペインには触らない）
 /* Go to 後の時刻吹き出し（本家準拠・2026-11-20 実操作でConfirm）: Go to で移動すると、対象バーの上に
    黒い吹き出し「Fri 20 Nov '26 00:00」だけが残り、マウスを下部バーへ移しても消えない。破線の縦線は
    残らない（クロスヘアの破線はホバー中のみ）。吹き出しは次の操作（パン／ズーム開始のポインタ操作・
@@ -1978,7 +1987,7 @@ function openGotoModal(ctx){ ctx=ctx||P[activePane]; if(!ctx)return;
   closeModal(); ctx.chart.timeScale().setVisibleRange({from,to}); }; }
 function flashObjRow(id){ setTimeout(()=>{ const w=$("#objTree"); if(!w)return; const row=w.querySelector(`[data-did="${id}"]`);
  if(row){ row.scrollIntoView({block:"center"}); row.classList.add("flash"); setTimeout(()=>row.classList.remove("flash"),1300); } },40); }
-function chartMenu(ctx,x,y,price,time){ const list=curDrawings(); const hasD=list.length>0, hasI=App.indicators.length>0;
+function chartMenu(ctx,x,y,price,time){ const list=curDrawings(); const indsHere=indsOf(ctx.idx); const hasD=list.length>0, hasI=indsHere.length>0;
  if(replay.active)return replayChartMenu(ctx,x,y,price,time); // リプレイ中の注文Menuは全ペインで出す（左ペイン限定にしない）
  /* 【(7) 文脈別Menu】空き領域は本家と同じ構成にする: Reset chart view / Copy price / Paste /
     Lock vertical cursor line by time / Table view / Object tree / 件数付き Remove / Settings…
@@ -1996,7 +2005,7 @@ function chartMenu(ctx,x,y,price,time){ const list=curDrawings(); const hasD=lis
   {label:"Object tree",act:()=>setObjPanel(true)});
  if(hasD)items.push({label:allHidden?"Show all drawings":"Hide all drawings",shortcut:"Ctrl+Alt+H",act:()=>toggleHideAll()});
  if(hasD)items.push({label:`Remove ${list.length} drawings`,act:()=>removeAllDrawings(ctx)});
- if(hasI)items.push({label:`Remove ${App.indicators.length} indicators`,act:()=>removeAllIndicators()});
+ if(hasI)items.push({label:`Remove ${indsHere.length} indicators`,act:()=>removeAllIndicators(ctx)});
  items.push({sep:1},
   {label:"Delete locked drawings",checkable:true,checked:!!App.deleteLocked,act:()=>{App.deleteLocked=!App.deleteLocked; markDirty(); toast("Delete locked drawings: "+(App.deleteLocked?"On":"Off"));}},
   {label:"Settings...",act:()=>openTheme()});
@@ -2190,7 +2199,7 @@ const DRAW_NAMES={line:"Trend Line",rect:"Rectangle",arrow:"Arrow",text:"Text",o
 const CHEV_UP='<svg class="ic" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M6 15l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2"/></svg>';
 const CHEV_DN='<svg class="ic" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2"/></svg>';
 function renderObjTree(){ const w=$("#objTree"); if(!w)return; const ctx=P[activePane]||P[0]; if(!ctx)return;
- const list=allDrawingsFor(ctx.symbol); const inds=App.indicators; const sel=ctx.selectedIds||new Set();
+ const list=allDrawingsFor(ctx.symbol); const inds=indsOf(ctx.idx); const sel=ctx.selectedIds||new Set(); // Object treeはアクティブペインのIndicatorsだけ表示
  let h=`<div class="objRow objSym"><span class="nm"><b style="color:#fff">${esc(ctx.symbol)}</b> · ${esc(ctx.interval)}</span></div>`;
  if(sel.size>1)h+=`<div class="objTools"><span>${sel.size} selected</span><button class="btn" id="otGroup">Group</button><button class="btn" id="otClearSel">Clear selection</button></div>`;
  for(const ind of inds)h+=`<div class="objRow" data-ind="${ind.id}"><span class="nm">${ind.type}${ind.type==="CUSTOM"?" ("+esc(ind.name||"Custom")+")":""} ${ind.params.length?"("+Object.values(ind.params).join(", ")+")":""}</span>
@@ -2236,7 +2245,7 @@ function renderObjTree(){ const w=$("#objTree"); if(!w)return; const ctx=P[activ
  w.querySelectorAll("[data-ind]").forEach(r=>{ const ind=inds.find(x=>x.id===r.dataset.ind); if(!ind)return;
    r.addEventListener("contextmenu",e=>{ e.preventDefault(); indicatorMenu(ind,e.clientX,e.clientY); });
    r.querySelectorAll("button").forEach(b=>b.onclick=()=>{ const a=b.dataset.a;
-     if(a==="del"){App.indicators=inds.filter(x=>x.id!==ind.id);markDirty();P.forEach(c=>c&&renderIndicators(c));renderObjTree();}
+     if(a==="del"){App.indicators=App.indicators.filter(x=>x.id!==ind.id);markDirty();P.forEach(c=>c&&renderIndicators(c));renderObjTree();}
      if(a==="vis"){ind.visible=ind.visible===false?true:false;markDirty();P.forEach(c=>c&&renderIndicators(c));renderObjTree();}
      if(a==="set")openIndSettings(ind); }); });
 }
@@ -2566,16 +2575,17 @@ const IND_DEFS={
  CUSTOM:{label:"Custom (JS injection)",params:{},color:"#089981"},
 };
 function addIndicator(type){
- if(type==="VOLUME"&&App.indicators.some(i=>i.type==="VOLUME")){toast("Volume is already shown");return;}
+ const paneIdx=P[activePane]?activePane:0; // Add先はアクティブなペイン（クリックで選択したチャート）。左右で別々のIndicatorsを持てる（本家と同じ）
+ if(type==="VOLUME"&&App.indicators.some(i=>i.type==="VOLUME"&&indPane(i)===paneIdx)){toast("Volume is already shown on this chart");return;}
  const def=IND_DEFS[type];
- const ind={id:"i"+(++indSeq)+Date.now().toString(36),type,params:{...def.params},style:{color:def.color,width:1,style:"Line"},visible:true,visibility:null,code:type==="CUSTOM"?"// calculate(candles, params) => [{time, value}]\nfunction calculate(candles, params){\n  var len = params.length || 20;\n  var out = [];\n  for (var i = 0; i < candles.length; i++){\n    if (i < len - 1) continue;\n    var s = 0; for (var j = 0; j < len; j++) s += candles[i-j].close;\n    out.push({time: candles[i].time, value: s/len});\n  }\n  return out;\n}":"",name:type==="CUSTOM"?"My Indicator":""};
+ const ind={id:"i"+(++indSeq)+Date.now().toString(36),type,pane:paneIdx,params:{...def.params},style:{color:def.color,width:1,style:"Line"},visible:true,visibility:null,code:type==="CUSTOM"?"// calculate(candles, params) => [{time, value}]\nfunction calculate(candles, params){\n  var len = params.length || 20;\n  var out = [];\n  for (var i = 0; i < candles.length; i++){\n    if (i < len - 1) continue;\n    var s = 0; for (var j = 0; j < len; j++) s += candles[i-j].close;\n    out.push({time: candles[i].time, value: s/len});\n  }\n  return out;\n}":"",name:type==="CUSTOM"?"My Indicator":""};
  if(type==="CUSTOM")ind.params={length:20};
  App.indicators.push(ind); markDirty(); P.forEach(c=>c&&renderIndicators(c));
- if(type==="CUSTOM")openIndSettings(ind); else toast(def.label+" added");
+ if(type==="CUSTOM")openIndSettings(ind); else toast(def.label+" added to chart "+(paneIdx+1));
 }
 function openIndMenu(){
  const m=openModal("Add indicator", Object.entries(IND_DEFS).map(([k,v])=>`<div class="listRow"><span class="grow"><b style="color:#fff">${k}</b> — ${v.label}</span><button class="btn primary" data-add="${k}">Add</button></div>`).join("")+
-  `<p class="hint">Custom indicators run the pasted JavaScript  <span class="kbd">calculate(candles, params) =&gt; [{time, value}]</span> in a sandbox. Settings for an added indicator can be opened from the settings button in the object tree on the right (Inputs / Style / Visibility tabs).</p>`);
+  `<p class="hint">Indicators are added to the active chart only (chart ${(P[activePane]?activePane:0)+1}) — each chart in a multi-chart layout keeps its own indicators, like the original. Click the other chart first to add indicators there. Custom indicators run the pasted JavaScript  <span class="kbd">calculate(candles, params) =&gt; [{time, value}]</span> in a sandbox. Settings for an added indicator can be opened from the settings button in the object tree on the right (Inputs / Style / Visibility tabs).</p>`);
  m.querySelectorAll("[data-add]").forEach(b=>b.onclick=()=>{addIndicator(b.dataset.add); if(b.dataset.add!=="CUSTOM")closeModal();});
 }
 function openIndSettings(ind){
@@ -3210,10 +3220,10 @@ function buildLeftBar(){ const w=$("#leftbar"); let h="";
  $("#eraBtn").onclick=()=>{eraserOn=!eraserOn; $("#eraBtn").classList.toggle("on",eraserOn); P.forEach(c=>{if(c)svgPE(c.svg,eraserOn?"auto":(tool==="cursor"?"none":"auto"));}); toast(eraserOn?"Eraser mode: click a drawing to remove it":"Eraser mode off");};
  $("#lockAllBtn").onclick=()=>toggleLockAll();
  $("#hideBtn").onclick=e=>{ const r=e.currentTarget.getBoundingClientRect(); const list=curDrawings(); const allH=list.length&&list.every(d=>d.visible===false);
-  const indsAllH=App.indicators.length&&App.indicators.every(i=>i.visible===false);
+  const myInds=indsOf(activePane); const indsAllH=myInds.length&&myInds.every(i=>i.visible===false);
   showMenu(r.right+4,Math.max(4,r.top),[
    {label:allH?"Show all drawings":"Hide all drawings",shortcut:"Ctrl+Alt+H",act:()=>toggleHideAll()},
-   {label:indsAllH?"Show all indicators":"Hide all indicators",act:()=>{ const toHide=!App.indicators.every(i=>i.visible===false); App.indicators.forEach(i=>i.visible=!toHide); markDirty(); P.forEach(c=>c&&renderIndicators(c)); renderObjTree(); }} ]); };
+   {label:indsAllH?"Show all indicators":"Hide all indicators",act:()=>{ const list=indsOf(activePane); const toHide=!list.every(i=>i.visible===false); list.forEach(i=>i.visible=!toHide); markDirty(); P.forEach(c=>c&&renderIndicators(c)); renderObjTree(); }} ]); };
  $("#syncDrawBtn").onclick=e=>{ const r=e.currentTarget.getBoundingClientRect();
   showMenu(r.right+4,Math.max(4,r.top),[
    {label:"Sync in layout (default)",checkable:true,checked:(App.drawSyncDefault||"layout")==="layout",act:()=>{ App.drawSyncDefault="layout"; markDirty(); toast("New drawing sync: In layout"); }},
@@ -3222,8 +3232,8 @@ function buildLeftBar(){ const w=$("#leftbar"); let h="";
  $("#removeBtn").onclick=e=>{ const r=e.currentTarget.getBoundingClientRect();
   showMenu(r.right+4,Math.max(4,r.top),[
    {label:"Remove all drawings",act:()=>confirmRemoveAllDrawings(P[activePane])},
-   {label:"Remove all indicators",act:()=>removeAllIndicators()},
-   {label:"Remove drawings & indicators",act:()=>{ if(curDrawings().some(d=>d.locked)&&!App.deleteLocked)return toast("Some drawings are locked"); confirmRemoveAllDrawings(P[activePane]); removeAllIndicators(); }} ]); };
+   {label:"Remove all indicators",act:()=>removeAllIndicators(P[activePane])},
+   {label:"Remove drawings & indicators",act:()=>{ if(curDrawings().some(d=>d.locked)&&!App.deleteLocked)return toast("Some drawings are locked"); confirmRemoveAllDrawings(P[activePane]); removeAllIndicators(P[activePane]); }} ]); };
  $("#undoBtn").onclick=doUndo;
  $("#helpBtn").onclick=openShortcuts;
  applyCursorVariant();
@@ -3344,7 +3354,7 @@ function wire(){
  /* チャート領域ではブラウザ標準の右クリックMenuを出さない（場所ごとのMenuは各ハンドラが出す） */
  const _cw=$("#chartsWrap"); if(_cw)_cw.addEventListener("contextmenu",e=>e.preventDefault());
  /* Indicatorsのサブペイン上はIndicators用Menu */
- $$(".subPane").forEach(sp=>sp.addEventListener("contextmenu",e=>{ e.preventDefault(); const type=sp.id.replace(/^sub\d?/,""); const ind=App.indicators.find(i=>i.type===type); if(ind)indicatorMenu(ind,e.clientX,e.clientY); }));
+ $$(".subPane").forEach(sp=>sp.addEventListener("contextmenu",e=>{ e.preventDefault(); const type=sp.id.replace(/^sub\d?/,""); const mId=sp.id.match(/^sub(\d*)/); const pIdx=mId&&mId[1]?+mId[1]:0; const ind=App.indicators.find(i=>i.type===type&&indPane(i)===pIdx); if(ind)indicatorMenu(ind,e.clientX,e.clientY); }));
  $("#gridBtn").onclick=()=>{ App.grid=!(App.grid!==false); $("#gridBtn").classList.toggle("on",App.grid); applyTheme(); markDirty(); toast("Grid: "+(App.grid?"On (#878787)":"Off")); };
  $("#expBtn").onclick=exportJSON;
  $("#topImport").onchange=e=>{const f=e.target.files[0]; if(!f)return; const r=new FileReader();
