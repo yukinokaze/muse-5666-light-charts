@@ -30,7 +30,7 @@ svg.ic{width:17px;height:17px;flex:none}
 /* 本家のアイコンは細線（実測ストローク約1.5px）。現行SVGは各パスが stroke-width 1.8〜2.2 で描かれ、バー類のアイコンが一様に太く見えることが画面全体の印象の最大の残差異だった。表示属性はCSSに負けるため、クローム（トップバー/左レール/右レール/下部バー/フローティングバー/軸ギア）のアイコンに限り CSS で 1.5 に統一する。塗りのみのアイコン（リプレイ等）には影響しない */
 #topbar svg.ic *,#leftbar svg.ic *,#rightRail svg.ic *,#rangeBar svg.ic *,#floatBar svg.ic *, .axisGear svg.ic *{stroke-width:1.5}
 /* top bar */
-#topbar{display:flex;align-items:center;gap:1px;padding:2px 8px;height:38px;flex:none;background:var(--bg);border-bottom:1px solid var(--line);flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;z-index:30;font-size:14px}
+#topbar{display:flex;align-items:center;gap:1px;padding:2px 8px;height:42px;flex:none;background:var(--bg);border-bottom:1px solid var(--line);flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;z-index:30;font-size:13px} /* 帯の高さと文字サイズは本家実画面（2880×1800）のピクセル実測: 本家のツールバー帯は約42pxで、現行38pxではボタンが窮屈だった。時間足文字のグリフ高は本家約10px vs 現行約11px（14px指定）→ 13pxで一致させる */
 #topbar::-webkit-scrollbar{display:none}
 #topbar>*{flex:none}
 #topbar button{min-height:28px;padding:2px 7px;color:#b8b8b8} /* バー前景色は本家実画面のネイティブ実測で文字・アイコンとも #b8b8b8（従来 #c9ccd4 は青みが強く明るすぎた） */
@@ -46,7 +46,7 @@ svg.ic{width:17px;height:17px;flex:none}
 #expBtn{background:transparent;border-color:transparent}
 #expBtn:hover{background:var(--panel2)}
 .saveDot{width:7px;height:7px;border-radius:50%;background:var(--gold);display:inline-block;flex:none}
-#symBtn{font-weight:600;font-size:15px;color:#b8b8b8;background:#303030;border-radius:16px;padding:2px 14px;min-height:30px} /* 銘柄ピル: 本家実画面ではバーの高さの大半を占める大きめのピル（高さ約30px・文字約15px）。文字色は本家実測 #b8b8b8 で太字にしない（従来 #fff・700 は白く太く浮いていた） */
+#symBtn{font-weight:600;font-size:14px;color:#b8b8b8;background:#303030;border-radius:16px;padding:2px 14px;min-height:30px} /* 銘柄ピル: 本家実画面ではバーの高さの大半を占める大きめのピル（高さ約30px）。文字グリフ高は本家実測約10px vs 現行15px指定で約12px → 14pxに下げる。文字色は本家実測 #b8b8b8 で太字にしない（従来 #fff・700 は白く太く浮いていた） */
 #symBtn:hover{background:#3a3a3a}
 #symBtn small{color:var(--dim);font-weight:400;font-size:11px}
 .ivl{display:flex;gap:2px}
@@ -104,8 +104,8 @@ svg.ic{width:17px;height:17px;flex:none}
 #leftbar button.whiteOn:hover{background:#f2f2f2;color:#000}
 #leftbar .sep{width:28px;height:1px;margin:4px 0}
 #center{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0}
-#chartsWrap{flex:1 1 auto;display:flex;min-height:280px;position:relative;gap:2px;padding:4px 1px 1px 6px;background:var(--bg)} /* 余白は本家実画面のピクセル実測: 上4px（ペイン上端=画面上端から76px）・左は左レール52px+境界1px+6pxでペイン左端58px（従来56px）・右はペイン右端1390pxで右端の黒帯49.5px（従来52px）・ペイン間2px（従来4px）。下の溝は約1.5px（ペイン直下に下部バーが接し、下部までの黒帯は本家約39.5px） */
-.paneWrap{flex:1;position:relative;min-width:0;display:flex;flex-direction:column;min-height:0;border-radius:3px;overflow:hidden} /* 角丸は本家実測で約2-3px。従来の8pxは本家より明らかに丸かった */
+#chartsWrap{flex:1 1 auto;display:flex;min-height:280px;position:relative;gap:2px;padding:2px 1px 1px 6px;background:var(--bg)} /* 余白は本家実画面のピクセル実測: ツールバー帯を本家と同じ42pxに広げた分、上余白を2pxに詰めてペイン上端=画面上端から約78px（本家実測78px）を維持・左は左レール52px+境界1px+6pxでペイン左端58px（従来56px）・右はペイン右端1390pxで右端の黒帯49.5px（従来52px）・ペイン間2px（従来4px）。下の溝は約1.5px（ペイン直下に下部バーが接し、下部までの黒帯は本家約39.5px） */
+.paneWrap{flex:1;position:relative;min-width:0;display:flex;flex-direction:column;min-height:0;border-radius:3px;overflow:hidden;border:1px solid #8c8c8c} /* 角丸は本家実測で約2-3px。従来の8pxは本家より明らかに丸かった。枠線: 本家実画面ではペイン全周に #8c8c8c の約1px枠があり（上端・左端・下端で実測確認）、現行は無枠でグレーの塊が黒帯に溶けて見えたため追加 */
 .chartBox{flex:1;position:relative;min-height:0}
 .chartEl{position:absolute;inset:0}
 .drawSvg{position:absolute;inset:0;z-index:4}
@@ -120,7 +120,7 @@ svg.ic{width:17px;height:17px;flex:none}
 #rightbar h3{margin:0;padding:8px 10px 4px;font-size:12px;color:var(--dim);display:flex;justify-content:space-between;align-items:center}
 #rightbar h3 button{min-height:28px;padding:2px 7px;font-size:12px}
 #rightbar h3 .hbtns{display:flex;gap:4px;align-items:center}
-#rightRail{width:48px;background:var(--bg);border-left:1px solid var(--line);display:flex;flex-direction:column;align-items:center;padding:8px 0;gap:12px;flex:none} /* 本家右レールはアイコンが約54pxピッチで並ぶ。従来は2個だけでレールの大半が空白の黒帯だったため、既存機能（テーマ/データ/売買記録/JSON入出力/ヘルプ/設定）を実ボタンとして並べる（全て既存ハンドラへ委譲する実機能のみ） */
+#rightRail{width:48px;background:var(--bg);border-left:1px solid var(--line);display:flex;flex-direction:column;align-items:center;padding:8px 0;gap:8px;flex:none} /* 本家右レールのアイコンピッチは実測約46-48px（密なグループ部）。現行はボタン40px+gap12px=52pxピッチで間延びしていたため gap を8pxに詰めて48pxピッチにする。従来は2個だけでレールの大半が空白の黒帯だったため、既存機能（テーマ/データ/売買記録/JSON入出力/ヘルプ/設定）を実ボタンとして並べる（全て既存ハンドラへ委譲する実機能のみ） */
 #rightRail button{width:40px;height:40px;padding:4px;color:#b8b8b8}
 #rightRail button svg.ic{width:26px;height:26px}
 #rightRail button.on{background:#2e2e2e;color:#fff;border-radius:8px}
@@ -262,7 +262,7 @@ svg.ic{width:17px;height:17px;flex:none}
 #leftbar button.blue{color:#2962ff}
 #leftbar .gchev{position:absolute;right:1px;bottom:1px;width:0;height:0;border-left:3px solid transparent;border-top:3px solid #787b86;cursor:pointer;padding:2px} /* 本家のグループシェブロンは約6pxの小三角形。従来は約10pxありアイコン右下の灰色の染みに見えた */
 /* ペイン内凡例（マルチチャート時に各ペインのOHLCを表示） */
-.paneLegend{position:absolute;top:4px;left:8px;z-index:6;display:flex;gap:6px;align-items:center;background:transparent;color:var(--chart-text,#000);font-size:16px;line-height:1.5;padding:0;max-width:calc(100% - 74px);white-space:nowrap;overflow:hidden;pointer-events:none} /* 凡例: 本家実画面（2026-11-20_2.40.27）を同スケールで並べると文字の縦幅は約12.5 CSS px。16px＋通常字で一致させる（15pxでは約11pxで一回り小さい） */
+.paneLegend{position:absolute;top:2px;left:8px;z-index:6; /* 凡例グリフのペイン上端からの距離は本家実測約8.5px vs 現行約11px → top を 4px から 2px に詰める */display:flex;gap:6px;align-items:center;background:transparent;color:var(--chart-text,#000);font-size:16px;line-height:1.5;padding:0;max-width:calc(100% - 74px);white-space:nowrap;overflow:hidden;pointer-events:none} /* 凡例: 本家実画面（2026-11-20_2.40.27）を同スケールで並べると文字の縦幅は約12.5 CSS px。16px＋通常字で一致させる（15pxでは約11pxで一回り小さい） */
 .paneLegend b{white-space:nowrap;font-weight:400} /* 本家実画面の凡例は通常字（同スケール比較でストロークが細い）。従来の600では本家より明らかに太く見えたため通常字に */
 .paneLegend span{font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .paneLegend .pos{color:var(--chart-text,#000)}.paneLegend .neg{color:var(--chart-text,#000)}
