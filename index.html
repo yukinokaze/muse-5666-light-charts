@@ -814,7 +814,7 @@ function chartOpts(){const t=App.theme;return{
  layout:{background:{type:"solid",color:t.background},textColor:t.text,fontSize:15,fontFamily:"'Trebuchet MS',Roboto,Ubuntu,-apple-system,BlinkMacSystemFont,'Hiragino Kaku Gothic ProN','Yu Gothic UI','Noto Sans JP',sans-serif",attributionLogo:false}, // 軸フォント: 本家実画面（2026-11-20_2.40.27）のPrice軸ラベル数字高を再実測すると 23px@DPR2 = 11.5 CSS px（9ラベル連続で一致）。従来の 13px Settingsではクローン側の数字高が 10px しかなく約13%小さいため 15px に上げる（数字高≒11.5px）。狭いペインでは makePane 側で 13px に戻す
  grid:{vertLines:{color:t.grid,visible:App.grid!==false,style:0},horzLines:{color:t.grid,visible:App.grid!==false,style:0}},
  crosshair:{mode:0,vertLine:{color:t.crosshair,labelBackgroundColor:"#353434",style:2,visible:window.__cursorVariant==null||window.__cursorVariant==="cross"},horzLine:{color:t.crosshair,labelBackgroundColor:"#353434",style:2,visible:window.__cursorVariant==null||window.__cursorVariant==="cross"}}, // CrosshairMode は LWC 4.2.0 の定義で Normal=0 / Magnet=1 / Hidden=2（バンドル内 enum でConfirm）。mode:0 = Normal: 横線はマウスYのPriceを示す（Magnet はホBars中のBarsの終値へ吸着する。本家はマウスY）。以前 mode:1 と書いたため Magnet そのものになっていた。線は破線（style:2 = Dashed）。Dot/Arrow バリアントでは十字線を出さない
- handleScale:{axisDoubleClickReset:true,axisPressedMouseMove:{time:false,price:true}}, // 時間軸ドラッグは本家ではパン（表示範囲の平行移動）でありズームではないため、ネイティブの時間軸スケールは無効化し、makePane 側の自前ハンドラでパンに置き換える。Price軸ドラッグのスケールと軸ダブルクリックリセットは従来どおり
+ handleScale:{axisDoubleClickReset:true,axisPressedMouseMove:{time:false,price:true}}, // 時間軸ドラッグはスケール変更（ズーム）が正しいが、ネイティブの倍率は急激すぎる（400pxで期間2〜4倍）ため無効化し、makePane 側の自前ハンドラで穏やかな倍率のズームに置き換える。Price軸ドラッグのスケールと軸ダブルクリックリセットは従来どおり
  rightPriceScale:{borderColor:t.grid,entireTextOnly:true}, timeScale:{borderColor:t.grid,timeVisible:App.interval!=="1D",secondsVisible:false,barSpacing:6,minBarSpacing:0.5, // 初期表示の足密度は本家の実測に合わせる（ユーザーの実画面: 約665px幅のペインに約107本 ≒ 6px/本。FFT＋時間軸ラベル間隔で実測）
   tickMarkFormatter:tickFmt}, localization:{locale:"en-US",timeFormatter:timeFmt} };}
 function seriesStyleFor(){ const t=App.theme; const type=App.chartType||"candles";
@@ -896,12 +896,15 @@ function makePane(idx){
    const zone=timeAxisHit(e)?"time":(axisHit(e)?"price":""); if(!zone)return;
    const now=Date.now(); if(_lastTapZone===zone&&now-_lastTap<350&&Math.hypot(e.clientX-_lastTapX,e.clientY-_lastTapY)<44){ _lastTap=0; _lastTapZone=""; if(zone==="time")resetTimeScale(ctx); else resetPriceScale(ctx); }
    else { _lastTap=now; _lastTapX=e.clientX; _lastTapY=e.clientY; _lastTapZone=zone; } });
- /* 【修正: 時間軸ドラッグ＝パン】本家では時間軸のドラッグは表示範囲の平行移動（バー間隔・表示期間は不変）。
-    ネイティブの時間軸スケールは chartOpts で無効化済み（axisPressedMouseMove.time:false）。ここではキャプチャ段階で
-    時間軸帯域の pointerdown を受け、ドラッグ量÷バー間隔だけ論理範囲をずらす（チャート本体のパンと同じ向き:
-    右へ引けば内容が右へ動き古い足側へ進む）。範囲変更は既存の購読経由で描画再描画・現在値ピル・過去データ追加読み込み
-    （maybeLoadOlder）にそのまま流れるため、追加読み込み時に範囲がジャンプすることもない。
-    ダブルクリック（リセット）は pointerdown を止めても dblclick イベント自体は発火するため従来どおり動く */
+ /* 【修正: 時間軸ドラッグ＝ズーム（スケール変更）】本家でも LWC でも時間軸は「スケール」であり、ドラッグで
+    バー間隔が変わる（右へ引く＝ズームアウトで表示期間が広がる、左へ引く＝ズームイン）。横スクロール（パン）は
+    チャート本体のドラッグの役割。ただし LWC ネイティブの時間軸ズームは右端までの距離に比例する式で倍率が
+    跳ね上がり、400px のドラッグで表示期間が約2〜4倍に飛ぶことが実操作で確認済み（ユーザーの「スケールが
+    おかしくなる」の正体）。そのためネイティブは chartOpts で無効化したまま（axisPressedMouseMove.time:false）、
+    ここではキャプチャ段階で時間軸帯域の pointerdown を受け、右端を固定したままドラッグ量に対して指数的に
+    穏やかな倍率でバー間隔を変える自前ズームに置き換える（400px で約1.75倍、200px で約1.32倍、連続的に変化）。
+    範囲変更は既存の購読経由で描画再描画・現在値ピル・ペイン間同期・過去データ追加読み込み（maybeLoadOlder）に
+    そのまま流れる。ダブルクリック（リセット）は pointerdown を止めても dblclick イベント自体は発火するため従来どおり動く */
  el.parentElement.addEventListener("pointerdown",e=>{
    if(e.button!==0||e.ctrlKey||e.metaKey||eraserOn||barPick||ctx.clickPlace)return;
    if(e.target.closest&&e.target.closest("button,input,select,textarea,.indLegend,.paneLegend"))return;
@@ -910,10 +913,13 @@ function makePane(idx){
    if(!vr)return;
    e.preventDefault(); e.stopPropagation();
    activePane=idx;
-   const sx=e.clientX, from0=vr.from, to0=vr.to;
-   const mv=ev=>{ let bs=6; try{ bs=chart.timeScale().options().barSpacing||6; }catch(_){}
-     const shift=(ev.clientX-sx)/bs;
-     try{ chart.timeScale().setVisibleLogicalRange({from:from0-shift,to:to0-shift}); }catch(_){} };
+   const sx=e.clientX, to0=vr.to, span0=vr.to-vr.from;
+   let bs0=6; try{ bs0=chart.timeScale().options().barSpacing||6; }catch(_){}
+   const mv=ev=>{ const dx=ev.clientX-sx;
+     let bs=bs0*Math.exp(-dx*0.0014); // 右ドラッグで間隔を縮める（ズームアウト）、左ドラッグで広げる（ズームイン）
+     bs=Math.max(0.5,Math.min(100,bs)); // 下限は timeScale の minBarSpacing と同じ 0.5、上限は暴走防止
+     const span=span0*bs0/bs;
+     try{ chart.timeScale().setVisibleLogicalRange({from:to0-span,to:to0}); }catch(_){} };
    const up=()=>{ removeEventListener("pointermove",mv); removeEventListener("pointerup",up); removeEventListener("pointercancel",up); };
    addEventListener("pointermove",mv); addEventListener("pointerup",up); addEventListener("pointercancel",up);
  },true);
@@ -1637,7 +1643,7 @@ function bindDrawing(ctx){
    try{ctx.chart.applyOptions({handleScroll:false,handleScale:false});}catch(_){}
    const r=svg.getBoundingClientRect(); const x1=e.clientX-r.left,y1=e.clientY-r.top; ctx.selRect={x1,y1,x2:x1,y2:y1}; renderDrawings(ctx);
    const mv=ev=>{ if(ctx.selRect)ctx.selRect={x1,y1,x2:ev.clientX-r.left,y2:ev.clientY-r.top}; renderDrawings(ctx); };
-   const up2=()=>{ removeEventListener("pointermove",mv); removeEventListener("pointerup",up2); removeEventListener("pointercancel",up2); try{ctx.chart.applyOptions({handleScroll:true,handleScale:{axisDoubleClickReset:true,axisPressedMouseMove:{time:false,price:true}}});}catch(_){} // 復帰は chartOpts と同じ形で（boolean true に戻すと時間軸ドラッグの自前パン前提が崩れる）
+   const up2=()=>{ removeEventListener("pointermove",mv); removeEventListener("pointerup",up2); removeEventListener("pointercancel",up2); try{ctx.chart.applyOptions({handleScroll:true,handleScale:{axisDoubleClickReset:true,axisPressedMouseMove:{time:false,price:true}}});}catch(_){} // 復帰は chartOpts と同じ形で（boolean true に戻すと時間軸ドラッグの自前ズーム前提が崩れる）
      const rr=ctx.selRect; ctx.selRect=null; finishRangeSelect(ctx,rr);
      renderDrawings(ctx); renderObjTree(); };
    addEventListener("pointermove",mv); addEventListener("pointerup",up2); addEventListener("pointercancel",up2); });
