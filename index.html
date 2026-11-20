@@ -328,7 +328,7 @@ textarea{width:100%;min-height:110px;font-family:ui-monospace,Menlo,monospace;fo
   #topbar{flex-wrap:nowrap;gap:2px;padding:2px 6px;height:38px;font-size:13px;overflow-x:auto;scrollbar-width:none}
   #topbar::-webkit-scrollbar{display:none}
   #topbar button{min-height:30px;flex:none}
-  #demoBanner{top:auto;bottom:48px} /* モバイルは上部中央だと2段折り返しの凡例に重なるため、下部バー（約38px）の少し上にチップを置く */
+  #demoBanner{top:auto;bottom:76px} /* モバイルは上部中央だと2段折り返しの凡例に重なるため下部に置く。bottom:48px だとチップ下端が時間軸帯（ペイン下端から約28px）へ約21px重なり日付ラベルを隠したため、時間軸の上端より上に逃がす（実測: チップ高約36px → 76px で時間軸と非重複） */
   #demoBanner span{font-size:10.5px}
   #tabs{height:23px;align-items:stretch}
   .tab{min-height:20px;font-size:11.5px;border-radius:5px;padding:0 8px}
@@ -1977,9 +1977,22 @@ function renderTabs(){ const w=$("#tabs"); w.innerHTML=App.tabs.map(s=>`<div cla
  w.querySelectorAll(".tab").forEach(t=>t.onclick=e=>{if(e.target.dataset.x)return; switchSymbol(t.dataset.s,0);});
  w.querySelectorAll("[data-x]").forEach(x=>x.onclick=()=>{App.tabs=App.tabs.filter(s=>s!==x.dataset.x); if(!App.tabs.length)App.tabs=[App.symbol]; markDirty(); renderTabs();});
  $("#tabAdd").onclick=()=>openSymbolSearch(0); updateTabPrices(); }
-/* 本家の上部タブは「アイコン 銘柄名 ▼ 現在値 変動（ポイント数）」の形（実画面 2026-11-20_3.17.10 で "GC1! ▼ 3,677.8 −1.7" と実測。%ではない）。読み込み済みペインのデータがある銘柄だけ価格・変動を付け、ライブ更新に追従させる（未読込の銘柄は名前のみ） */
-function updateTabPrices(){ $$("#tabs .tabPx").forEach(sp=>{ const s=sp.dataset.px; const ctx=P.find(c=>c&&c.symbol===s&&c.view&&c.view.length); if(!ctx){ if(sp.dataset.v){sp.dataset.v=""; sp.innerHTML="";} return; }
- const d=ctx.view, b=d[d.length-1], p=d[d.length-2]; const dec=(symInfo(s).dec!=null?symInfo(s).dec:2);
+/* 本家の上部タブは「アイコン 銘柄名 ▼ 現在値 変動（ポイント数）」の形（実画面 2026-11-20_3.17.10 で "GC1! ▼ 3,677.8 −1.7" と実測。%ではない）。ペインに読み込み済みの銘柄はライブ更新に追従させ、未読込の銘柄も本家同様に価格・変動を出すため、クォートを別途取得してキャッシュする（Hub接続時は get_candles の最新2本、未接続時は決定的デモ生成の最新2本。モードが切り替わったら古いクォートは使わない） */
+const tabQuotes={}, tabQuotePend={};
+function tabQuote(s){ const iv=App.interval, key=s+"|"+iv+"|"+(hubLive?"L":"D");
+ if(tabQuotes[key])return tabQuotes[key];
+ if(hubLive){ const pendAt=tabQuotePend[key];
+   if(!pendAt||Date.now()-pendAt>30000){ tabQuotePend[key]=Date.now(); // 取得中と失敗直後は再試行しない（ティックごとの再送防止に30秒あける）
+    getCandlesHTTP(s,iv,(ok,data)=>{ if(ok&&data&&data.length>1){ tabQuotes[key]={close:data[data.length-1].close,prev:data[data.length-2].close}; delete tabQuotePend[key]; updateTabPrices(); } }); }
+  return null; }
+ const d=genData(s,iv); if(d&&d.length>1){ tabQuotes[key]={close:d[d.length-1].close,prev:d[d.length-2].close}; return tabQuotes[key]; }
+ return null; }
+function updateTabPrices(){ $$("#tabs .tabPx").forEach(sp=>{ const s=sp.dataset.px; const ctx=P.find(c=>c&&c.symbol===s&&c.view&&c.view.length);
+ let b=null,p=null;
+ if(ctx){ const d=ctx.view; b=d[d.length-1]; p=d[d.length-2]; }
+ else { const q=tabQuote(s); if(q){ b={close:q.close}; p={close:q.prev}; } }
+ if(!b){ if(sp.dataset.v){sp.dataset.v=""; sp.innerHTML="";} return; }
+ const dec=(symInfo(s).dec!=null?symInfo(s).dec:2);
  const pr=(+b.close).toLocaleString("en-US",{minimumFractionDigits:dec,maximumFractionDigits:dec});
  let html=" "+pr;
  if(p){ const chP=b.close-p.close, up=chP>=0; const chF=(+chP).toLocaleString("en-US",{minimumFractionDigits:dec,maximumFractionDigits:dec}); html=` <span class="${up?"tUp":"tDn"}">${up?"▲":"▼"}</span> ${pr} <span class="${up?"tUp":"tDn"}">${up?"+":""}${chF}</span>`; }
