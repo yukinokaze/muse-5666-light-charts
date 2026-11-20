@@ -950,7 +950,7 @@ function makePane(idx){
  try{chart.timeScale().applyOptions({rightOffset:10});}catch(e){} // Canvas余白: Right 10 bars（本家と同じ）
  const vs=chart.addHistogramSeries({priceScaleId:"vol",priceFormat:{type:"volume"},color:hexRgba(App.theme.up,.28),lastValueVisible:false,priceLineVisible:false});
  chart.priceScale("vol").applyOptions({scaleMargins:{top:0.90,bottom:0},visible:false}); // Volumeはペイン下部10%以内・不透明度28%・ラベルは右軸に出さない
- const gs=chart.addCandlestickSeries({upColor:"rgba(235,235,235,0.42)",downColor:"rgba(25,25,25,0.42)",wickUpColor:"rgba(235,235,235,0.42)",wickDownColor:"rgba(25,25,25,0.42)",borderVisible:false,lastValueVisible:false,priceLineVisible:false}); // リプレイ中の未来足（グレー表示専用）
+ const gs=chart.addCandlestickSeries({upColor:"rgba(235,235,235,0.42)",downColor:"rgba(25,25,25,0.42)",wickUpColor:"rgba(235,235,235,0.42)",wickDownColor:"rgba(25,25,25,0.42)",borderVisible:false,lastValueVisible:false,priceLineVisible:false}); // 互換のため残す空系列（未来足は表示しない）
  const gv=chart.addHistogramSeries({priceScaleId:"vol",priceFormat:{type:"volume"},lastValueVisible:false,priceLineVisible:false});
  try{ const _vo=App.indicators.some(i=>i.type==="VOLUME"&&i.visible!==false); vs.applyOptions({visible:_vo}); gv.applyOptions({visible:_vo}); }catch(e){} // 本家のユーザー画面にはVolumeが表示されていないため既定は非表示。"Volume"IndicatorsAdd時のみ表示する
  const ctx={idx,chart,cs,vs,gs,gv,el,svg:$("#svg"+idx),symbol:App.symbol,interval:App.interval,full:[],view:[],emaS:null,vwapS:null,customS:{},hoverBar:null,drawTemp:null,pending:null,selectedId:null,replayIdx:-1};
@@ -1101,7 +1101,7 @@ function fmtCountdown(remSec){ const d=Math.max(0,Math.floor(remSec)); const p2=
  if(d>=3600)return Math.floor(d/3600)+":"+p2(Math.floor(d%3600/60))+":"+p2(d%60); // 1h以上は H:MM:SS
  return p2(Math.floor(d/60))+":"+p2(d%60); } // 15mなどは MM:SS
 function cdRemaining(ctx){ const sec=IVL_SEC[ctx.interval]; if(!sec)return null;
- if(typeof replay!=="undefined"&&replay.active&&ctx.idx===0){ // リプレイ中はリプレイの時計に合わせる（表示中のBarsが現在の足。再生中はそのBarsの表示経過分だけ進む）
+ if(typeof replay!=="undefined"&&replay.active){ // リプレイ中はリプレイの時計に合わせる（全ペイン共通）（表示中のBarsが現在の足。再生中はそのBarsの表示経過分だけ進む）
   if(replay.timer&&replay.barRealStart){ const barMs=1000/(replay.speed||3); const frac=Math.min(1,Math.max(0,(Date.now()-replay.barRealStart)/barMs)); return sec*(1-frac); }
   return sec; }
  const now=Date.now()/1000;
@@ -1113,13 +1113,14 @@ function updateCountdown(ctx,pillTop,w){ const cd=ctx&&ctx.cdEl; if(!cd)return;
  if(ctx.pill)ctx.pill.classList.add("withCd");
  cd.style.display="block"; cd.style.width=w+"px"; cd.style.top=(pillTop+17)+"px"; cd.style.background="#353434"; cd.style.color="#fff"; cd.textContent=fmtCountdown(rem); } // 本家では残り時間は現在値ピルと同じ暗色ラベルの2段目として表示される
 function setPaneData(ctx){
+ if(typeof replay!=="undefined"&&replay.active&&replay.time!=null&&ctx.replayIdx<0&&ctx.full&&ctx.full.length)ctx.replayIdx=alignReplayIdx(ctx,replay.time); // リプレイ中に銘柄切替・ペイン追加された場合も、そのペインをリプレイ時刻に揃える
  const slice = ctx.replayIdx>=0 ? ctx.full.slice(0,ctx.replayIdx+1) : ctx.full;
  ctx.view=slice;
  const isLC=(App.chartType==="line"||App.chartType==="area");
  ctx.cs.setData(isLC?slice.map(c=>({time:c.time,value:c.close})):slice.map(c=>({time:c.time,open:c.open,high:c.high,low:c.low,close:c.close})));
  ctx.vs.setData(slice.map(c=>({time:c.time,value:c.volume||0,color:c.close>=c.open?hexRgba(App.theme.up,.28):hexRgba(App.theme.down,.28)}))); // テーマ連動: 上昇=テーマup色/下降=down色・透明度28%（本家のユーザ画面ではVolumeが目立たないため抑制）
- if(ctx.gs)ctx.gs.setData(ctx.replayIdx>=0&&(App.chartType||"candles")==="candles"?ctx.full.slice(ctx.replayIdx+1).map(c=>({time:c.time,open:c.open,high:c.high,low:c.low,close:c.close})):[]); // リプレイ中は未来足をグレー表示
- if(ctx.gv)ctx.gv.setData(ctx.replayIdx>=0?ctx.full.slice(ctx.replayIdx+1).map(c=>({time:c.time,value:c.volume||0,color:"rgba(170,170,170,0.35)"})):[]);
+ if(ctx.gs)ctx.gs.setData([]); // 未来足は一切表示しない（ユーザーの指示 2026-11-20: バックテスト中にうっすらでも見えてはいけない）。ゴースト系列は互換のため残すが常に空にする
+ if(ctx.gv)ctx.gv.setData([]);
  if(ctx.wm)ctx.wm.style.display=ctx.replayIdx>=0?"flex":"none";
  if(typeof renderOrders==="function")renderOrders(ctx);
  renderIndicators(ctx); renderDrawings(ctx); updatePricePill(ctx); updatePaneHead(ctx); if(ctx.idx===0)updateOhlcLine(ctx);
@@ -1623,7 +1624,7 @@ function startDrawDrag(ctx,d,e,applyDelta){
    renderDrawings(ctx); };
  a.up=()=>{ if(activeDrawDrag!==a)return; const wasMoved=a.moved; cancelDrawDrag();
    if(wasMoved){ afterDrawChange(ctx);
-     if(replay.active&&replay.open&&(d.type==="long"||d.type==="short")){ replay.open.tp=d.target; replay.open.sl=d.stop; renderTrades(); } }
+     if(replay.active&&replay.open&&(d.type==="long"||d.type==="short")&&(replay.open.paneIdx||0)===ctx.idx){ replay.open.tp=d.target; replay.open.sl=d.stop; renderTrades(); } }
    if(ctx.selectedId===d.id)showFloatBar(ctx,d); }; // ドラッグ後も選択とフローティングツールBarsを維持する（本家と同じ）
  activeDrawDrag=a;
  addEventListener("pointermove",a.mv); addEventListener("mousemove",a.mv);
@@ -1712,7 +1713,7 @@ function bindDrawing(ctx){
  /* 2点ツールの確定（ドラッグ確定と Click-click 確定で共通）。ゼロサイズは作らない */
  const commitPending=()=>{ const d=ctx.pending; if(!d)return; ctx.pending=null; ctx.clickPlace=false;
    if(Math.abs(d.p2.time-d.p1.time)>0||Math.abs(d.p2.price-d.p1.price)>0){ curDrawings().push(d); ctx.selectedId=d.id; ctx.selectedIds=new Set([d.id]); showFloatBar(ctx,d); afterDrawChange(ctx);
-     if((d.type==="long"||d.type==="short")&&replay.active) registerTradeFromDrawing(d); }
+     if((d.type==="long"||d.type==="short")&&replay.active) registerTradeFromDrawing(d,ctx); }
    else renderDrawings(ctx); };
  svg.addEventListener("pointermove",e=>{ const p=pos(e);
    if(!drag){ if(ctx.clickPlace&&ctx.pending){ const s2=snap(ctx,p.x,p.y); if(s2)updPending(e,p,s2); renderDrawings(ctx); } return; } // Click-click の1点目配置後: ボタンを押さなくてもプレビューがマウスに追従する（本家と同じ）
@@ -1746,7 +1747,7 @@ function bindDrawing(ctx){
     const wasClick=!drag.moved&&Math.hypot(p.x-drag.x0,p.y-drag.y0)<4;
     if(wasClick){ ctx.clickPlace=true; drag=null; svg.style.pointerEvents="auto"; renderDrawings(ctx); return; } // Click-click の1点目: アンカーとプレビューを残して2点目を待つ（ツールは継続）
     commitPending(); if(!keepDrawing)setTool("cursor"); } // 描画完了で Cursor へ戻る（既定 Off = 本家どおり）。Keep drawing On のときだけツール継続
-   if(drag&&drag.d){ afterDrawChange(ctx); const d=drag.d; if(replay.active&&replay.open&&(d.type==="long"||d.type==="short")){ replay.open.tp=d.target; replay.open.sl=d.stop; toast("Bracket order updated: TP "+d.target+" / SL "+d.stop); renderTrades(); } }
+   if(drag&&drag.d){ afterDrawChange(ctx); const d=drag.d; if(replay.active&&replay.open&&(d.type==="long"||d.type==="short")&&(replay.open.paneIdx||0)===ctx.idx){ replay.open.tp=d.target; replay.open.sl=d.stop; toast("Bracket order updated: TP "+d.target+" / SL "+d.stop); renderTrades(); } }
    drag=null; svgPE(svg,(tool==="cursor"&&!eraserOn)?"none":"auto"); };
  svg.addEventListener("pointerup",up); svg.addEventListener("pointercancel",()=>{ if(drag&&drag.rangeSel){ctx.selRect=null; drag=null; renderDrawings(ctx);} if(drag&&drag.ctrlPending){drag=null;renderDrawings(ctx);} if(drag&&drag.pending){ctx.pending=null;ctx.clickPlace=false;drag=null;renderDrawings(ctx);} });
  svg.addEventListener("pointerleave",()=>{if(drag&&drag.pending){ctx.pending=null;ctx.clickPlace=false;drag=null;renderDrawings(ctx);}});
@@ -1978,7 +1979,7 @@ function openGotoModal(ctx){ ctx=ctx||P[activePane]; if(!ctx)return;
 function flashObjRow(id){ setTimeout(()=>{ const w=$("#objTree"); if(!w)return; const row=w.querySelector(`[data-did="${id}"]`);
  if(row){ row.scrollIntoView({block:"center"}); row.classList.add("flash"); setTimeout(()=>row.classList.remove("flash"),1300); } },40); }
 function chartMenu(ctx,x,y,price,time){ const list=curDrawings(); const hasD=list.length>0, hasI=App.indicators.length>0;
- if(replay.active&&ctx.idx===0)return replayChartMenu(ctx,x,y,price,time);
+ if(replay.active)return replayChartMenu(ctx,x,y,price,time); // リプレイ中の注文Menuは全ペインで出す（左ペイン限定にしない）
  /* 【(7) 文脈別Menu】空き領域は本家と同じ構成にする: Reset chart view / Copy price / Paste /
     Lock vertical cursor line by time / Table view / Object tree / 件数付き Remove / Settings…
     注文項目（Sell/Buy limit 等）はリプレイ時のみ（replayChartMenu 側）。アラート項目は作らない
@@ -2124,7 +2125,7 @@ function floatAction(ctx,d,act,btn){
  const applyAll=fn=>{ snapshotDrawings(); fbTargets.forEach(fn); saveLastStyle(d); afterDrawChange(ctx); showFloatBar(ctx,d); };
  if(act==="del"){ if(fbTargets.length>1)deleteSelectedDrawings(ctx); else deleteDrawing(ctx,d.id); }
  else if(act==="anchor")toast("Anchor drawing: the text anchor is fixed at the drawing position");
- else if(act==="limit"){ if(replay.active){ const side=d.type==="long"?"Long":"Short"; replay.pending={side,ordType:"limit",price:d.entry,qty:d.style.qty||1,tp:d.target,sl:d.stop,oid:"order_"+uuid4()}; toast("Create limit order: limit "+d.entry+"  — limit order placed"); renderOrders(ctx); renderTrades(); } else toast("Create limit order is available during replay"); }
+ else if(act==="limit"){ if(replay.active){ const side=d.type==="long"?"Long":"Short"; replay.pending={side,ordType:"limit",price:d.entry,qty:d.style.qty||1,tp:d.target,sl:d.stop,paneIdx:ctx.idx,symbol:ctx.symbol,oid:"order_"+uuid4()}; toast("Create limit order: limit "+d.entry+"  — limit order placed"); renderOrders(ctx); renderTrades(); } else toast("Create limit order is available during replay"); }
  else if(act==="width"){ const cur=d.type==="ote"?(st.fibLineWidth||1):st.width;
   fbMenu(btn,[1,2,3,4].map(w=>({label:w+"px",checkable:true,checked:cur===w,act:()=>applyAll(t=>{ if(t.type==="ote")t.style.fibLineWidth=w; else t.style.width=w; })}))); }
  else if(act==="style"){ const cur=d.type==="ote"?(st.fibLineStyle||"Line"):st.lineStyle;
@@ -2719,10 +2720,10 @@ function setMulti(n){ App.multi=n; const _mc=$("#multiCnt"); if(_mc)_mc.textCont
 </script>
 <script>
 /* ============ リプレイ & 手動バックテスト ============ */
-const replay={active:false,timer:null,open:null,closed:[],seq:0,cum:0,capital:1000000,currency:"USD",commission:null,pending:null,analysisTab:"positions",speed:3,barRealStart:0}; // 初期資金デフォルトは 1,000,000 USD（本家録画でConfirm済み） // 初期資金・手数料の既定は未決定のため null（未入力）。Backtest settingsで入力する（リプレイ開始には不要）
+const replay={active:false,timer:null,open:null,closed:[],seq:0,cum:0,capital:1000000,currency:"USD",commission:null,pending:null,analysisTab:"positions",speed:3,barRealStart:0,paneIdx:0,time:null}; // 初期資金デフォルトは 1,000,000 USD（本家録画でConfirm済み）。paneIdx/time はマルチペイン同期リプレイ用（開始ペインと現在のリプレイ時刻） // 初期資金・手数料の既定は未決定のため null（未入力）。Backtest settingsで入力する（リプレイ開始には不要）
 /* Bar Replayの開始点選択（本家と同じ4択Menu）。セッション保存はしないため（ユーザーの決定）、毎回この選択から新しく始める */
 function openReplayMenu(inReplay,anchor){
- const ctx=P[0]; const d=ctx.full; if(!d.length)return toast("Data is loading");
+ const ctx=P[activePane]||P[0]; const d=ctx.full; if(!d.length)return toast("Data is loading");
  let x=12,y=52;
  if(anchor&&anchor.getBoundingClientRect){ const r=anchor.getBoundingClientRect(); x=r.left; y=(r.bottom+190>innerHeight)?Math.max(4,r.top-186):r.bottom+4; }
  showMenu(x,y,[
@@ -2733,7 +2734,7 @@ function openReplayMenu(inReplay,anchor){
  ]);
 }
 function openReplayDate(){
- const ctx=P[0]; const d=ctx.full; if(!d.length)return;
+ const ctx=P[activePane]||P[0]; const d=ctx.full; if(!d.length)return;
  const first=d[0], last=d[d.length-1];
  const defBar=d[Math.floor(d.length*0.55)];
  const p0=fmtParts(defBar.time);
@@ -2744,7 +2745,7 @@ function openReplayDate(){
   <div class="calGrid" id="calGrid"></div>
   <div class="frow" style="margin-top:10px"><label>Date and time</label><input type="text" id="rpTime" value="${fmtDT(defBar.time)}" placeholder="YYYY-MM-DD HH:MM"></div>
   <a class="calFirst" id="calFirst">Select the first available day</a>
-  <p class="hint">Starts the replay from the selected date and time. Bars after the start point are shown in gray. Trade recording (backtest) is done separately in the Replay Trading panel.</p>`,
+  <p class="hint">Starts the replay from the selected date and time. Bars after the start point stay hidden until the replay reaches them. Trade recording (backtest) is done separately in the Replay Trading panel.</p>`,
   `<button class="btn" id="rpCancel">Cancel</button><button class="btn primary" id="rpSel">Select</button>`);
  const grid=$("#calGrid"), title=$("#calTitle"), inp=$("#rpTime");
  const render=()=>{ title.textContent=MONTHS[vm-1]+" "+vy;
@@ -2768,12 +2769,12 @@ function openReplayDate(){
  $("#rpCancel").onclick=closeModal;
  $("#rpSel").onclick=()=>{ const ts=wallToUtc(inp.value); if(isNaN(ts))return toast("Enter the date and time in YYYY-MM-DD HH:MM format");
   let idx=ts<=first.time?0:d.findIndex(c=>c.time>=ts); if(idx<0)idx=d.length-1;
-  closeModal(); startReplay(idx); };
+  closeModal(); startReplay(idx,ctx); };
 }
 /* Barsを選択: チャート上にハサミ付きの青い縦線を表示し、クリックした日時を開始点にする（本家と同じ） */
 let barPick=null;
 function startBarPick(){
- const ctx=P[0]; if(!ctx||!ctx.full.length)return toast("Data is loading");
+ const ctx=P[activePane]||P[0]; if(!ctx||!ctx.full.length)return toast("Data is loading");
  cancelBarPick(); setTool("cursor");
  const box=ctx.el.parentElement; box.style.cursor="crosshair";
  const line=document.createElement("div");
@@ -2788,7 +2789,7 @@ function startBarPick(){
  const ck=e=>{ e.preventDefault(); e.stopPropagation(); const r=ctx.el.getBoundingClientRect(); const x=e.clientX-r.left;
    let t=null; try{ t=ctx.chart.timeScale().coordinateToTime(x); }catch(_){}
    cancelBarPick(); if(t==null)return;
-   const d=ctx.full; let idx=d.findIndex(c=>c.time>=t); if(idx<0)idx=d.length-1; startReplay(idx); };
+   const d=ctx.full; let idx=d.findIndex(c=>c.time>=t); if(idx<0)idx=d.length-1; startReplay(idx,ctx); };
  const kh=e=>{ if(e.key==="Escape"){ cancelBarPick(); } };
  barPick={box,line,mv,ck,kh};
  box.addEventListener("pointermove",mv); box.addEventListener("pointerdown",ck,true); document.addEventListener("keydown",kh);
@@ -2799,7 +2800,7 @@ function cancelBarPick(){ if(!barPick)return; const b=barPick; barPick=null;
 /* Backtest settings（初期資金・手数料・契約倍率）: リプレイとは別の機能としてTrade historyパネルから開く */
 function refreshBtCapInfo(){ const ci=$("#rpCapInfo"); if(ci)ci.textContent=(replay.capital>0)?`Capital ${replay.capital} ${replay.currency} / Commission ${replay.commission!=null?replay.commission:"— (blank in CSV)"}`:"Initial capital (default 1,000,000 USD)"; }
 function openBacktestSettings(){
- const ctx=P[0]; const mult=effMult(ctx.symbol);
+ const ctx=P[activePane]||P[0]; const mult=effMult(ctx.symbol);
  const m=openModal("Backtest settings",`
   <div class="frow"><label>Initial capital (required)</label><input type="number" id="rpCap" value="${replay.capital!=null?replay.capital:""}" placeholder="Empty (required)" min="1" step="any"><label style="width:auto">Base currency</label><select id="rpCur"><option ${replay.currency==="USD"?"selected":""}>USD</option><option ${replay.currency==="JPY"?"selected":""}>JPY</option><option ${replay.currency==="EUR"?"selected":""}>EUR</option></select></div>
   <div class="frow"><label>Commission (one-way, required)</label><input type="number" id="rpComm" value="${replay.commission!=null?replay.commission:""}" placeholder="Empty (required; 0 allowed)" min="0" step="any"><label style="width:auto">Contract multiplier</label><input type="number" id="rpMult" value="${mult!=null?mult:""}" placeholder="${mult!=null?"":"Not set (specify it in the symbol settings)"}" step="any"></div>
@@ -2819,35 +2820,43 @@ function wallToUtc(v){ const nv=String(v).trim().replace("T"," "); const [dp,tp]
  return guess; }
 /* 新しいリプレイ = 新しいバックテストセッション（前回のポジション・注文・残高・損益は引き継がない。初期資金は 1,000,000 USD） */
 function resetBacktestSession(){ replay.open=null; replay.pending=null; replay.closed=[]; replay.seq=0; replay.cum=0; replay.capital=1000000; App.trades=[]; }
-function startReplay(idx){ const ctx=P[0]; resetBacktestSession(); P.forEach(c=>{if(c)hideGotoTip(c);}); replay.active=true; replay.barRealStart=Date.now(); ctx.replayIdx=idx; setPaneData(ctx);
- $("#replayBar").classList.add("show"); $("#replayBtn").classList.add("on"); $("#tradesPanel").classList.add("show"); refreshBtCapInfo(); updateReplayInfo(); renderTrades(); markDirty(); toast("Replay started (future bars are shown in gray). The backtest is a new session"); }
+/* リプレイは全ペイン時刻同期（マルチペイン対応）: 開始点は操作したペイン基準で決め、同じ時刻で全ペインを切り取る。
+   トレードは約定したペイン（paneIdx・symbol）を保持し、そのペインの足で判定する。パネルの注文はアクティブペインが対象 */
+function rpCtx(){ const c=P[activePane]; if(c&&c.full&&c.full.length)return c; return P[replay.paneIdx]||P[0]; }
+function rpPaneOf(t){ return (t&&P[t.paneIdx||0])||rpCtx(); }
+function alignReplayIdx(ctx,time){ const d=ctx.full; if(!d||!d.length)return -1; const i=d.findIndex(c=>c.time>time); return i<0?d.length-1:Math.max(0,i-1); }
+function applyReplayTime(time){ replay.time=time; for(const c of P){ if(!c||!c.full.length)continue; c.replayIdx=alignReplayIdx(c,time); setPaneData(c); } }
+function startReplay(idx,srcCtx){ const ctx=srcCtx||rpCtx(); if(!ctx||!ctx.full.length)return toast("Data is loading"); idx=Math.max(0,Math.min(ctx.full.length-1,idx)); resetBacktestSession(); P.forEach(c=>{if(c)hideGotoTip(c);}); replay.active=true; replay.paneIdx=ctx.idx; replay.barRealStart=Date.now(); applyReplayTime(ctx.full[idx].time);
+ $("#replayBar").classList.add("show"); $("#replayBtn").classList.add("on"); $("#tradesPanel").classList.add("show"); refreshBtCapInfo(); updateReplayInfo(); renderTrades(); markDirty(); toast("Replay started. Future bars are hidden until the replay reaches them. The backtest is a new session"); }
 function stopReplay(){ // End replayでバックテストも終了する（ユーザーの決定）。未決済ポジションは最後に表示されたBarsの終値で決済、未約定注文は取消。パネルは閉じ、CSVも出せなくなる
- const ctx=P[0]; const lastB=ctx.view[ctx.view.length-1];
+ const tCtx=rpPaneOf(replay.open); const lastB=tCtx&&tCtx.view.length?tCtx.view[tCtx.view.length-1]:null;
  replay.active=false; stopPlay(); if(replay.open&&lastB)closeTrade(lastB.close,lastB.time,"End replay");
  if(replay.pending){ replay.pending=null; toast("Pending order cancelled"); }
- ctx.replayIdx=-1; setPaneData(ctx); $("#replayBar").classList.remove("show"); $("#replayBtn").classList.remove("on"); $("#tradesPanel").classList.remove("show"); renderOrders(ctx); markDirty(); }
-function updateReplayInfo(){ const ctx=P[0]; const b=ctx.view[ctx.view.length-1];
+ replay.time=null; for(const c of P){ if(!c)continue; c.replayIdx=-1; setPaneData(c); renderOrders(c); }
+ $("#replayBar").classList.remove("show"); $("#replayBtn").classList.remove("on"); $("#tradesPanel").classList.remove("show"); markDirty(); }
+function updateReplayInfo(){ const ctx=rpCtx(); if(!ctx)return; const b=ctx.view[ctx.view.length-1];
  $("#rpInfo").textContent=b?`${fmtDTs(b.time)} / ${ctx.view.length} of ${ctx.full.length} bars total)`:"";
- updateSpeedBtn(); renderOrders(ctx);
+ updateSpeedBtn(); for(const c of P){ if(c)renderOrders(c); }
  $("#rpLong").disabled=!!replay.open; $("#rpShort").disabled=!!replay.open; $("#rpClose").disabled=!replay.open; }
-function stepReplay(dir){ const ctx=P[0]; if(!replay.active)return; replay.barRealStart=Date.now();
- const ni=Math.max(0,Math.min(ctx.full.length-1,ctx.replayIdx+dir)); ctx.replayIdx=ni; setPaneData(ctx);
- const bar=ctx.full[ni]; checkPending(bar); updateFavAdv(bar); if(dir>0)checkTradeHit(bar,ni); updateReplayInfo(); }
-function updateFavAdv(bar){ const t=replay.open; if(!t)return; const long=t.side==="Long"; const m=effMult(P[0].symbol)||1;
+function stepReplay(dir){ if(!replay.active)return; const ctx=rpCtx(); if(!ctx||!ctx.full.length)return; replay.barRealStart=Date.now();
+ const ni=Math.max(0,Math.min(ctx.full.length-1,ctx.replayIdx+dir)); applyReplayTime(ctx.full[ni].time); // 全ペインを同じ時刻へ進める
+ const tCtx=rpPaneOf(replay.open||replay.pending); const bar=tCtx&&tCtx.view.length?tCtx.view[tCtx.view.length-1]:ctx.full[ni]; // 約定判定はトレードのペインの足で
+ if(bar){ checkPending(bar); updateFavAdv(bar); if(dir>0)checkTradeHit(bar,tCtx?tCtx.replayIdx:ni); } updateReplayInfo(); }
+function updateFavAdv(bar){ const t=replay.open; if(!t)return; const long=t.side==="Long"; const m=(t.mult!=null?t.mult:effMult(t.symbol||""))||1;
  const favP=long?bar.high-t.entryPrice:t.entryPrice-bar.low; const advP=long?t.entryPrice-bar.low:bar.high-t.entryPrice;
  t.fav=Math.max(t.fav,favP*t.qty*m); t.adv=Math.max(t.adv,advP*t.qty*m); }
 function checkPending(bar){ const pd=replay.pending; if(!pd||replay.open)return; const long=pd.side==="Long"; let hit=false;
  if(pd.ordType==="limit")hit=long?bar.low<=pd.price:bar.high>=pd.price;
  else if(pd.ordType==="stop")hit=long?bar.high>=pd.price:bar.low<=pd.price;
  else if(pd.ordType==="stoplimit"){ if(long?bar.high>=pd.price:bar.low<=pd.price){pd.ordType="limit"; pd.price=pd.limitPrice||pd.price;} }
- if(hit){ replay.pending=null; const ctx=P[0]; const isFx=/XAU|XAG|USD/.test(ctx.symbol)&&symInfo(ctx.symbol).t.includes("FX");
+ if(hit){ replay.pending=null; const ctx=P[pd.paneIdx||0]||rpCtx(); const isFx=/XAU|XAG|USD/.test(ctx.symbol)&&symInfo(ctx.symbol).t.includes("FX");
   const pctD=(parseFloat(($("#rpDist")||{}).value)||0.8)/100, distD=pd.price*pctD, longD=pd.side==="Long"; // 右クリック注文などTP/SL未指定の約定には既定距離でブラケットを付ける
-  replay.open={num:++replay.seq,side:pd.side,entryTime:bar.time,entryPrice:pd.price,qty:pd.qty||(isFx?1000:1),tp:pd.tp!=null?pd.tp:(longD?pd.price+distD:pd.price-distD),sl:pd.sl!=null?pd.sl:(longD?pd.price-distD:pd.price+distD),fav:0,adv:0,entryIdx:ctx.replayIdx,commission:replay.commission,ordType:pd.ordType,mult:effMult(ctx.symbol),oid:pd.oid||("order_"+uuid4())};
+  replay.open={num:++replay.seq,side:pd.side,paneIdx:ctx.idx,symbol:ctx.symbol,entryTime:bar.time,entryPrice:pd.price,qty:pd.qty||(isFx?1000:1),tp:pd.tp!=null?pd.tp:(longD?pd.price+distD:pd.price-distD),sl:pd.sl!=null?pd.sl:(longD?pd.price-distD:pd.price+distD),fav:0,adv:0,entryIdx:ctx.replayIdx,commission:replay.commission,ordType:pd.ordType,mult:effMult(ctx.symbol),oid:pd.oid||("order_"+uuid4())};
   updateFavAdv(bar); toast(`${pd.side} limit order filled @ ${pd.price}`); updateReplayInfo(); renderTrades(); } }
 function stopPlay(){ if(replay.timer){clearInterval(replay.timer);replay.timer=null; $("#rpPlay").innerHTML=uiIc("play");} }
 function togglePlay(){ if(replay.timer){stopPlay();return;} const sp=replay.speed||3; replay.barRealStart=Date.now();
- replay.timer=setInterval(()=>{ const ctx=P[0]; if(ctx.replayIdx>=ctx.full.length-1){stopPlay();return;} stepReplay(1); },Math.max(50,Math.round(1000/sp))); $("#rpPlay").innerHTML=uiIc("pause"); }
-function updateSpeedBtn(){ const b=$("#rpSpeedBtn"); if(b)b.textContent=(replay.speed||3)+"x "+P[0].interval; }
+ replay.timer=setInterval(()=>{ const ctx=rpCtx(); if(!ctx||ctx.replayIdx>=ctx.full.length-1){stopPlay();return;} stepReplay(1); },Math.max(50,Math.round(1000/sp))); $("#rpPlay").innerHTML=uiIc("pause"); }
+function updateSpeedBtn(){ const b=$("#rpSpeedBtn"); if(b)b.textContent=(replay.speed||3)+"x "+(rpCtx()||P[0]).interval; }
 function openSpeedMenu(anchor){ const speeds=[10,5,3,2,1,0.5,0.3,0.2,0.1]; let x=12,y=52;
  if(anchor&&anchor.getBoundingClientRect){ const r=anchor.getBoundingClientRect(); x=r.left; y=Math.max(4,r.top-330); }
  showMenu(x,y,speeds.map(v=>({label:v+"x",checkable:true,checked:(replay.speed||3)===v,shortcut:v+" upd per 1 sec",act:()=>{ replay.speed=v; updateSpeedBtn(); if(replay.timer){stopPlay(); togglePlay();} }}))); }
@@ -2910,7 +2919,7 @@ function orderMenuItems(ctx,price){
 function placeOrder(ctx,o){
  if(!replay.active)return toast("Orders can be placed during bar replay");
  if(replay.open)return toast("A position is open. Close it before placing a new order");
- replay.pending={side:o.side,ordType:o.ordType,price:o.price,limitPrice:o.limitPrice||o.price,qty:o.qty||defaultQty(ctx.symbol),tp:null,sl:null,oid:"order_"+uuid4()};
+ replay.pending={side:o.side,ordType:o.ordType,price:o.price,limitPrice:o.limitPrice||o.price,qty:o.qty||defaultQty(ctx.symbol),tp:null,sl:null,paneIdx:ctx.idx,symbol:ctx.symbol,oid:"order_"+uuid4()};
  const tick=ctx.symbol.split(":")[1]||ctx.symbol;
  toast(`${orderTypeName(o.ordType)} order placed on ${exchDisp(ctx.symbol)}:${tick} ${o.side==="Long"?"Buy":"Sell"} ${replay.pending.qty} at ${fmtPx(o.price)}`);
  renderOrders(ctx); renderTrades();
@@ -2931,7 +2940,7 @@ function openOrderDialog(ctx,price){
   closeModal(); placeOrder(ctx,{side,ordType:type,price:p,limitPrice:isFinite(lp)?lp:p,qty:q}); };
 }
 function renderOrders(ctx){ const w=ctx&&ctx.ordEl; if(!w)return;
- if(ctx.idx!==0){ if(w.innerHTML)w.innerHTML=""; return; }
+ /* 注文・ブラケット・約定Arrowは、そのトレードのペインにだけ描く（全ペイン対応） */
  if(tableViewOn)renderTableView(ctx);
  let h="";
  if(lockLineTime!=null){ const lx=t2x(ctx,lockLineTime); if(lx!=null&&isFinite(lx))h+=`<div style="position:absolute;top:0;bottom:0;left:${Math.round(lx)}px;width:1px;background:#f23645"></div><div class="ordPill" style="top:4px;left:${Math.round(lx)+3}px;background:#f23645">${esc(fmtDT(lockLineTime))}</div>`; }
@@ -2945,7 +2954,7 @@ function renderOrders(ctx){ const w=ctx&&ctx.ordEl; if(!w)return;
  const pill=(y,txt,color,top)=>`<div class="ordPill" style="top:${Math.round(y)+(top||-10)}px;left:8px;background:${color}">${esc(txt)}</div>`;
  const axisLbl=(y,txt,color)=>`<div class="ordAxis" style="top:${Math.round(y)-9}px;width:${axW}px;background:${color}">${esc(txt)}</div>`;
  const handle=(kind,y)=>`<div class="ordHandle" data-okind="${kind}" style="left:${Math.max(8,cw-16)}px;top:${Math.round(y)-7}px"></div>`;
- const trades=replay.open?[...replay.closed,replay.open]:replay.closed;
+ const trades=(replay.open?[...replay.closed,replay.open]:replay.closed).filter(t=>(t.paneIdx||0)===ctx.idx);
  for(const t of trades){ // 約定Arrow（エントリー／決済）
   const xe=X(t.entryTime), ye=Y(t.entryPrice);
   if(xe!=null&&ye!=null){ const buy=t.side==="Long";
@@ -2954,11 +2963,11 @@ function renderOrders(ctx){ const w=ctx&&ctx.ordEl; if(!w)return;
    if(xx!=null&&yx!=null){ const buy=t.side!=="Long";
     h+=`<div class="ordArrow" style="left:${Math.round(xx)-6}px;top:${Math.round(yx)+(buy?7:-19)}px;color:${buy?"#2962ff":"#f23645"}">${buy?"▲":"▼"}</div>`; } }
  }
- const pd=replay.pending;
+ const pd=(replay.pending&&(replay.pending.paneIdx||0)===ctx.idx)?replay.pending:null;
  if(pd){ const y=Y(pd.price);
   if(y!=null){ const lbl=(pd.side==="Long"?"Buy ":"Sell ")+(pd.ordType==="limit"?"limit":pd.ordType==="stop"?"stop":"stop-limit");
    h+=line(y,"#2962ff")+pill(y,`${lbl} ${pd.qty}`,"#2962ff")+axisLbl(y,fmtPx(pd.price),"#2962ff")+handle("pending",y); } }
- const op=replay.open;
+ const op=(replay.open&&(replay.open.paneIdx||0)===ctx.idx)?replay.open:null;
  if(op){ const dir=op.side==="Long"?1:-1, m=op.mult!=null?op.mult:(effMult(ctx.symbol)||1);
   const yE=Y(op.entryPrice);
   const cur=ctx.view.length?ctx.view[ctx.view.length-1].close:op.entryPrice;
@@ -2991,29 +3000,29 @@ function startOrderDrag(ctx,e,kind){ e.preventDefault(); e.stopPropagation();
   renderOrders(ctx); };
  document.addEventListener("pointermove",move); document.addEventListener("pointerup",up);
 }
-function registerTradeFromDrawing(d){ if(!replay.active)return; const ctx=P[0]; if(replay.open)return toast("A position is already open. Close it first");
+function registerTradeFromDrawing(d,ctxHint){ if(!replay.active)return; const ctx=ctxHint||P[activePane]||P[0]; if(replay.open)return toast("A position is already open. Close it first");
  const bar=ctx.view[ctx.view.length-1]; if(!bar)return;
- replay.open={num:++replay.seq,side:d.type==="long"?"Long":"Short",entryTime:bar.time,entryPrice:d.entry,qty:d.style.qty||d.style.lotSize||1,tp:d.target,sl:d.stop,fav:0,adv:0,entryIdx:ctx.replayIdx,commission:replay.commission,ordType:"market",mult:effMult(ctx.symbol),oid:"order_"+uuid4()}; updateFavAdv(bar);
+ replay.open={num:++replay.seq,side:d.type==="long"?"Long":"Short",paneIdx:ctx.idx,symbol:ctx.symbol,entryTime:bar.time,entryPrice:d.entry,qty:d.style.qty||d.style.lotSize||1,tp:d.target,sl:d.stop,fav:0,adv:0,entryIdx:ctx.replayIdx,commission:replay.commission,ordType:"market",mult:effMult(ctx.symbol),oid:"order_"+uuid4()}; updateFavAdv(bar);
  toast(`${replay.open.side} entry @ ${d.entry} (TP ${d.target} / SL ${d.stop})`); updateReplayInfo(); renderTrades(); }
-function quickEntry(side){ if(!replay.active)return toast("Backtest entries are made during bar replay (start bar replay first)"); const ctx=P[0]; const bar=ctx.view[ctx.view.length-1]; if(!bar)return;
+function quickEntry(side,ctxHint){ if(!replay.active)return toast("Backtest entries are made during bar replay (start bar replay first)"); const ctx=ctxHint||P[activePane]||P[0]; const bar=ctx.view[ctx.view.length-1]; if(!bar)return;
  const ordType=($("#rpOrdType")||{}).value||"market";
- if(replay.open){ // Reverse: 現ポジションを決済して反対にエントリー
-   const prev=replay.open.side; closeTrade(bar.close,bar.time,"Reverse"); if(prev===side)return; }
+ if(replay.open){ // Reverse: 現ポジションを決済して反対にエントリー（決済価格はポジションのペインの足を使う）
+   const prev=replay.open.side; const tCtx=rpPaneOf(replay.open); const tBar=tCtx&&tCtx.view.length?tCtx.view[tCtx.view.length-1]:bar; closeTrade(tBar.close,tBar.time,"Reverse"); if(prev===side)return; }
  const pct=(parseFloat(($("#rpDist")||{}).value)||0.8)/100; const dist=bar.close*pct; const long=side==="Long";
  const isFx=symInfo(ctx.symbol).t.includes("FX"); const qty=isFx?1000:1;
  if(ordType!=="market"){ const px=parseFloat(($("#rpOrdPrice")||{}).value); if(!(px>0))return toast("Enter the limit order price");
    const lp=parseFloat(($("#rpOrdPrice2")||{}).value);
-   replay.pending={side,ordType,price:px,limitPrice:lp||px,qty,tp:long?px+dist:px-dist,sl:long?px-dist:px+dist,oid:"order_"+uuid4()};
+   replay.pending={side,ordType,price:px,limitPrice:lp||px,qty,tp:long?px+dist:px-dist,sl:long?px-dist:px+dist,paneIdx:ctx.idx,symbol:ctx.symbol,oid:"order_"+uuid4()};
    toast(`${side} ${ordType} limit order @ ${px} (TP/SL distance ${($("#rpDist")||{}).value||0.8}%)`); renderTrades(); return; }
- replay.open={num:++replay.seq,side,entryTime:bar.time,entryPrice:bar.close,qty,tp:long?bar.close+dist:bar.close-dist,sl:long?bar.close-dist:bar.close+dist,fav:0,adv:0,entryIdx:ctx.replayIdx,commission:replay.commission,ordType:"market",mult:effMult(ctx.symbol),oid:"order_"+uuid4()};
+ replay.open={num:++replay.seq,side,paneIdx:ctx.idx,symbol:ctx.symbol,entryTime:bar.time,entryPrice:bar.close,qty,tp:long?bar.close+dist:bar.close-dist,sl:long?bar.close-dist:bar.close+dist,fav:0,adv:0,entryIdx:ctx.replayIdx,commission:replay.commission,ordType:"market",mult:effMult(ctx.symbol),oid:"order_"+uuid4()};
  updateFavAdv(bar);
  toast(`${side} entry @ ${bar.close} (TP ${replay.open.tp.toFixed(2)} / SL ${replay.open.sl.toFixed(2)})`); updateReplayInfo(); renderTrades(); }
 function checkTradeHit(bar,idx){ const t=replay.open; if(!t)return; const long=t.side==="Long";
  updateFavAdv(bar); // TP/SL同時到達時は SL 優先（保守的ルール、仕様として明記）
  if(long){ if(bar.low<=t.sl)return closeTrade(t.sl,bar.time,"SL"); if(bar.high>=t.tp)return closeTrade(t.tp,bar.time,"TP"); }
  else{ if(bar.high>=t.sl)return closeTrade(t.sl,bar.time,"SL"); if(bar.low<=t.tp)return closeTrade(t.tp,bar.time,"TP"); } }
-function closeTrade(price,time,reason){ const t=replay.open; if(!t)return; const ctx=P[0];
- const dir=t.side==="Long"?1:-1; const m=(t.mult!=null?t.mult:effMult(ctx.symbol)); const pnl=(price-t.entryPrice)*dir*t.qty*(m||1) - (t.commission||0)*2;
+function closeTrade(price,time,reason){ const t=replay.open; if(!t)return; const ctx=rpPaneOf(t);
+ const dir=t.side==="Long"?1:-1; const m=(t.mult!=null?t.mult:effMult(t.symbol||ctx.symbol)); const pnl=(price-t.entryPrice)*dir*t.qty*(m||1) - (t.commission||0)*2;
  const idx=ctx.full.findIndex(c=>c.time>=time); const bars=Math.max(0,(idx<0?ctx.replayIdx:idx)-t.entryIdx);
  replay.cum+=pnl;
  const exitOid=reason==="TP"?"Bracket Take Profit-"+uuid4():reason==="SL"?(t.oid||("order_"+uuid4()))+"_bracket_sl_"+uuid4():"order_"+uuid4();
@@ -3023,8 +3032,8 @@ function closeTrade(price,time,reason){ const t=replay.open; if(!t)return; const
 function fmtNum2(v){ return (Math.round(v*100)/100).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function renderTrades(){ const w=$("#tradesTableWrap"); if(!w)return;
  const wins=replay.closed.filter(t=>t.pnl>0).length;
- { const cap=replay.capital>0?replay.capital:1000000; const ctx0=P[0]; const curB=ctx0&&ctx0.view.length?ctx0.view[ctx0.view.length-1]:null;
-  let upl=0; if(replay.open&&curB){ const dir=replay.open.side==="Long"?1:-1; const mm=replay.open.mult!=null?replay.open.mult:(effMult(ctx0.symbol)||1); upl=(curB.close-replay.open.entryPrice)*dir*replay.open.qty*mm; }
+ { const cap=replay.capital>0?replay.capital:1000000; const ctx0=replay.open?rpPaneOf(replay.open):rpCtx(); const curB=ctx0&&ctx0.view.length?ctx0.view[ctx0.view.length-1]:null;
+  let upl=0; if(replay.open&&curB){ const dir=replay.open.side==="Long"?1:-1; const mm=replay.open.mult!=null?replay.open.mult:(effMult(replay.open.symbol||ctx0.symbol)||1); upl=(curB.close-replay.open.entryPrice)*dir*replay.open.qty*mm; }
   const bal=cap+replay.cum, eq=bal+upl;
   const rt=$("#rtTitle"); if(rt)rt.textContent=`Replay Trading ${fmtNum2(bal)} ${replay.currency}`;
   const rs=$("#rtStats"); if(rs)rs.textContent=`Unrealized PnL: ${fmtNum2(upl)} · Realized PnL: ${fmtNum2(replay.cum)} · Equity: ${fmtNum2(eq)}`; }
@@ -3032,16 +3041,16 @@ function renderTrades(){ const w=$("#tradesTableWrap"); if(!w)return;
  $$("#aTabs button").forEach(b=>{b.classList.toggle("on",b.dataset.at===replay.analysisTab); b.onclick=()=>{replay.analysisTab=b.dataset.at; renderTrades();};});
  const tab=replay.analysisTab;
  const nothingToShow=`<p class="hint" style="padding:10px">Nothing to show yet. Your account activity will appear here.</p>`;
- if(tab==="positions"){ const ctx0=P[0]; const curB=ctx0&&ctx0.view.length?ctx0.view[ctx0.view.length-1]:null;
+ if(tab==="positions"){ const ctx0=rpPaneOf(replay.open); const curB=ctx0&&ctx0.view.length?ctx0.view[ctx0.view.length-1]:null;
   if(!replay.open)w.innerHTML=nothingToShow;
-  else { const t=replay.open; const dir=t.side==="Long"?1:-1; const mm=t.mult!=null?t.mult:(effMult(ctx0.symbol)||1); const upl2=curB?(curB.close-t.entryPrice)*dir*t.qty*mm:0;
-   w.innerHTML=`<table><tr><th>Symbol</th><th>Side</th><th>Qty</th><th>Entry price</th><th>Current price</th><th>Unrealized PnL ${replay.currency}</th></tr><tr><td>${esc(ctx0.symbol)}</td><td>${t.side}</td><td>${t.qty}</td><td>${t.entryPrice}</td><td>${curB?curB.close:""}</td><td class="${upl2>=0?"pos":"neg"}">${upl2.toFixed(2)}</td></tr></table>`; }
+  else { const t=replay.open; const dir=t.side==="Long"?1:-1; const mm=t.mult!=null?t.mult:(effMult(t.symbol||ctx0.symbol)||1); const upl2=curB?(curB.close-t.entryPrice)*dir*t.qty*mm:0;
+   w.innerHTML=`<table><tr><th>Symbol</th><th>Side</th><th>Qty</th><th>Entry price</th><th>Current price</th><th>Unrealized PnL ${replay.currency}</th></tr><tr><td>${esc(t.symbol||ctx0.symbol)}</td><td>${t.side}</td><td>${t.qty}</td><td>${t.entryPrice}</td><td>${curB?curB.close:""}</td><td class="${upl2>=0?"pos":"neg"}">${upl2.toFixed(2)}</td></tr></table>`; }
   $("#tradesPanel").classList.toggle("show",!!replay.active); return; }
  if(tab==="orders"){
   if(!replay.pending)w.innerHTML=nothingToShow;
   else { const p=replay.pending;
-   w.innerHTML=`<table><tr><th>Symbol</th><th>Side</th><th>Type</th><th>Price</th><th>Qty</th><th></th></tr><tr><td>${esc(P[0].symbol)}</td><td>${p.side==="Long"?"Buy":"Sell"}</td><td>${esc(orderTypeName(p.ordType))}</td><td>${p.price}</td><td>${p.qty}</td><td><button class="btn danger" id="ordCancelBtn">Cancel</button></td></tr></table>`;
-   const cb=$("#ordCancelBtn"); if(cb)cb.onclick=()=>{ replay.pending=null; toast("Order cancelled"); renderOrders(P[0]); renderTrades(); }; }
+   w.innerHTML=`<table><tr><th>Symbol</th><th>Side</th><th>Type</th><th>Price</th><th>Qty</th><th></th></tr><tr><td>${esc(p.symbol||(P[p.paneIdx||0]||{}).symbol||"")}</td><td>${p.side==="Long"?"Buy":"Sell"}</td><td>${esc(orderTypeName(p.ordType))}</td><td>${p.price}</td><td>${p.qty}</td><td><button class="btn danger" id="ordCancelBtn">Cancel</button></td></tr></table>`;
+   const cb=$("#ordCancelBtn"); if(cb)cb.onclick=()=>{ replay.pending=null; toast("Order cancelled"); renderOrders(P[p.paneIdx||0]||P[0]); renderTrades(); }; }
   $("#tradesPanel").classList.toggle("show",!!replay.active); return; }
  if(tab==="analytics"){
    const cl=replay.closed; const grossW=cl.filter(t=>t.pnl>0).reduce((a,t)=>a+t.pnl,0), grossL=cl.filter(t=>t.pnl<0).reduce((a,t)=>a+t.pnl,0);
@@ -3066,13 +3075,11 @@ function fmtCsvDate(ts){ const p=fmtParts(ts,App.timezone); const MON=["Jan","Fe
  return `"${MON[+p.month-1]} ${+p.day}, ${p.year}, ${p.hour}:${p.minute}"`; }
 /* Trade history CSV（本家 Replay Trading のエクスポートと完全一致: ASCII・BOMなし・LF・末尾改行なし・14列・Exit行→Entry行） */
 function exportCSV(){ if(!replay.active)return toast("CSV download is only available during replay"); if(!replay.closed.length)return toast("No closed trades");
- const sym=P[0].symbol; const m0=effMult(sym);
- if(m0==null)return toast("The contract multiplier is not set. Specify it in the data settings (only GC1! is decided as 100)");
  const cap=replay.capital>0?replay.capital:1000000;
- const symDisp=exchDisp(sym)+":"+(sym.split(":")[1]||"");
+ for(const t of replay.closed){ const tsym=t.symbol||P[0].symbol; if((t.mult!=null?t.mult:effMult(tsym))==null)return toast("The contract multiplier is not set. Specify it in the data settings (only GC1! is decided as 100)"); } // 銘柄はトレードごとに保持（右ペインのトレードもその銘柄で出す）
  const head="Symbol,Trade number,Type,Date and time,Order ID,Signal,Price,Size (qty),Size (value),Net PnL USD,Return %,Commission USD,Cumulative PnL USD,Cumulative PnL %";
  const lines=[head]; let cum=0;
- for(const t of replay.closed){ const m=t.mult!=null?t.mult:m0; const val=t.entryPrice*m*t.qty;
+ for(const t of replay.closed){ const tsym=t.symbol||P[0].symbol; const symDisp=exchDisp(tsym)+":"+(tsym.split(":")[1]||""); const m=t.mult!=null?t.mult:effMult(tsym); const val=t.entryPrice*m*t.qty;
   cum+=t.pnl; const ret=val?t.pnl/val*100:0; const cumPct=cum/cap*100;
   if(!t.oid)t.oid="order_"+uuid4();
   const exitOid=t.exitOid||(t.reason==="TP"?"Bracket Take Profit-"+uuid4():t.reason==="SL"?t.oid+"_bracket_sl_"+uuid4():"order_"+uuid4());
@@ -3097,7 +3104,7 @@ function openDownloadData(){
 function downloadTab(tab){
  if(tab==="history")return exportCSV();
  if(tab==="all"){ if(replay.closed.length)return exportCSV(); return toast("No closed trades"); }
- const sym=P[0].symbol; const lines=[];
+ const sym=(replay.open&&replay.open.symbol)||(replay.pending&&replay.pending.symbol)||(P[activePane]||P[0]).symbol; const lines=[];
  if(tab==="positions"){ lines.push("Symbol,Side,Qty,Entry price,TP,SL");
   if(replay.open){ const t=replay.open; lines.push([sym,t.side,t.qty,t.entryPrice,t.tp!=null?t.tp:"",t.sl!=null?t.sl:""].join(",")); } }
  else if(tab==="orders"){ lines.push("Symbol,Side,Type,Price,Qty");
@@ -3369,7 +3376,7 @@ function wire(){
  $("#rpPlay").onclick=togglePlay; $("#rpFwd").onclick=()=>stepReplay(1); $("#rpBack").onclick=()=>stepReplay(-1);
  $("#rpExit").onclick=stopReplay;
  $("#rpLong").onclick=()=>quickEntry("Long"); $("#rpShort").onclick=()=>quickEntry("Short");
- $("#rpClose").onclick=()=>{const ctx=P[0]; const b=ctx.view[ctx.view.length-1]; if(b)closeTrade(b.close,b.time,"Manual close");};
+ $("#rpClose").onclick=()=>{const ctx=rpPaneOf(replay.open); const b=ctx&&ctx.view.length?ctx.view[ctx.view.length-1]:null; if(b)closeTrade(b.close,b.time,"Manual close");};
  const _dl=$("#dlBtn"); if(_dl)_dl.onclick=openDownloadData;
  $("#tradesBtn").onclick=()=>{ if(!replay.active)return toast("Trade history (Replay Trading) is only available during replay"); $("#tradesPanel").classList.toggle("show"); renderTrades(); };
  $("#tradesHide").onclick=()=>{ if(replay.active)stopReplay(); else $("#tradesPanel").classList.remove("show"); }; // パネルをCloseとリプレイ（＝バックテスト）も終了する
@@ -3380,10 +3387,10 @@ function wire(){
   const idx=ctx.full.findIndex(c=>c.time>=ts); if(idx<0)return toast("No data at that date and time");
   const nb=+($("#gotoBars")||{}).value||40; const sec=IVL_SEC[ctx.interval]; const half=Math.floor(nb/2);
   ctx.chart.timeScale().setVisibleRange({from:ctx.full[idx].time-half*sec,to:ctx.full[idx].time+half*sec}); toast(fmtDT(ctx.full[idx].time)+"  (showing "+nb+" bars)"); };
- $("#gotoReplayBtn").onclick=()=>{const v=$("#gotoDate").value; if(!v)return toast("Enter a date and time first"); const ts=wallToUtc(v); const ctx=P[0];
-  const idx=ctx.full.findIndex(c=>c.time>=ts); if(idx<0)return toast("No data at that date and time"); startReplay(idx); toast("Go to: replay started at "+fmtDT(ctx.full[idx].time)+""); };
+ $("#gotoReplayBtn").onclick=()=>{const v=$("#gotoDate").value; if(!v)return toast("Enter a date and time first"); const ts=wallToUtc(v); const ctx=P[activePane]||P[0];
+  const idx=ctx.full.findIndex(c=>c.time>=ts); if(idx<0)return toast("No data at that date and time"); startReplay(idx,ctx); toast("Go to: replay started at "+fmtDT(ctx.full[idx].time)+""); };
  $("#rpJump").onclick=()=>{ if(replay.active){stopReplay(); toast("Jumped to the current bar (replay ended)");} };
- $("#rpReverse").onclick=()=>{ const ctx=P[0]; if(!replay.open)return toast("No open position"); const opp=replay.open.side==="Long"?"Short":"Long"; quickEntry(opp); };
+ $("#rpReverse").onclick=()=>{ const ctx=rpPaneOf(replay.open); if(!replay.open)return toast("No open position"); const opp=replay.open.side==="Long"?"Short":"Long"; quickEntry(opp,ctx); };
  setInterval(()=>{const n=Math.floor(Date.now()/1000); $("#clock").textContent=fmtDTs(n)+" "+tzOffsetLabel(App.timezone);
   const _bc=$("#bbClock"); if(_bc){const pp=fmtParts(n); _bc.textContent=`${pp.hour}:${pp.minute}:${pp.second} ${tzOffsetLabel(App.timezone)}`;} },1000); // 下部Bars右側のライブ時計（本家形式 "02:40:26 UTC+9"）
  setInterval(()=>{ for(const c of P){ if(c)updatePricePill(c); } },500); // Countdown to bar close: 残り時間を毎秒更新し、ピル位置にも追従させる
