@@ -258,7 +258,7 @@ svg.ic{width:17px;height:17px;flex:none}
 .paneLegend b{white-space:nowrap;font-weight:400} /* 本家実画面の凡例は通常字（同スケール比較でストロークが細い）。従来の600では本家より明らかに太く見えたため通常字に */
 .paneLegend span{font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .paneLegend .pos{color:var(--chart-text,#000)}.paneLegend .neg{color:var(--chart-text,#000)}
-.paneLegend .symIco{width:20px;height:20px;flex:none} /* 本家実画面の凡例アイコンは約19-20px径（実測）。従来16pxは小さかった */
+.paneLegend .symIco{width:24px;height:24px;flex:none} /* 凡例アイコン: SVG内の円は viewBox 24 に対し直径18単位（箱の75%）。本家実画面で金色円の直径を実測すると36px（ネイティブ2880幅）＝CSS 18px。箱20pxでは円が15pxになり3px小さかったため、箱24pxで円18pxに一致させる */
 .paneLegend .openBadge{display:inline-flex;align-items:center;gap:5px;background:rgba(103,187,169,.18);color:#67bba9;border-radius:11px;padding:0 9px;font-size:13px;line-height:22px;flex:none;white-space:nowrap}
 .paneLegend .openBadge i{width:7px;height:7px;border-radius:50%;background:#67bba9;display:inline-block;flex:none}
 .pricePill{overflow:hidden}
