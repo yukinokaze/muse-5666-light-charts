@@ -349,6 +349,13 @@ svg.ic{width:17px;height:17px;flex:none}
 /* floating toolbar */
 #floatBar{display:none;position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:20;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:3px 6px;gap:2px;align-items:center;box-shadow:0 6px 18px rgba(0,0,0,.45);max-width:94vw;flex-wrap:wrap}
 #floatBar.show{display:flex}
+#floatBar.moved{transform:none}
+#floatBar.dragging{box-shadow:0 10px 26px rgba(0,0,0,.6);user-select:none}
+/* 本家と同じ左端のドラッグハンドル（6つの点・2列×3行）。掴んでドラッグするとツールバー全体が移動し、離した位置に留まる */
+#floatBar .fbGrip{display:inline-flex;align-items:center;justify-content:center;flex:none;width:16px;min-height:34px;margin-left:-2px;padding:0 1px;color:var(--dim);cursor:grab;touch-action:none;border-radius:5px}
+#floatBar .fbGrip:hover{color:var(--txt)}
+#floatBar .fbGrip:active{cursor:grabbing}
+#floatBar .fbGrip svg{width:10px;height:16px;pointer-events:none}
 #floatBar button{min-height:34px;min-width:34px;padding:3px 6px}
 .sw{width:22px;height:22px;border-radius:5px;border:1px solid rgba(255,255,255,.35);display:inline-block;vertical-align:middle}
 /* フローティングツールBarsのポップMenu（Width・Line style・フォント・Template・More） */
@@ -2225,6 +2232,22 @@ function fbMenu(anchorBtn,items){ closeFbPop();
  pop.style.top=Math.min(r.bottom+4,Math.max(4,innerHeight-pop.offsetHeight-4))+"px";
  pop.querySelectorAll("[data-fpi]").forEach(b=>b.onclick=()=>{ const it=items[+b.dataset.fpi]; closeFbPop(); if(it&&it.act)it.act(); });
  setTimeout(()=>document.addEventListener("pointerdown",fbPopOutside),0); }
+/* フローティングツールバーのドラッグ移動: 本家と同じ左端の6点グリップを掴んで移動し、離した位置に留まる。
+   位置は専用キーで localStorage に保持し、再表示・再読み込み後も復元する（保存データ本体の形式には触れない） */
+const FB_GRIP_SVG='<svg viewBox="0 0 10 16" fill="currentColor" aria-hidden="true"><circle cx="2.5" cy="2.5" r="1.4"/><circle cx="7.5" cy="2.5" r="1.4"/><circle cx="2.5" cy="8" r="1.4"/><circle cx="7.5" cy="8" r="1.4"/><circle cx="2.5" cy="13.5" r="1.4"/><circle cx="7.5" cy="13.5" r="1.4"/></svg>';
+let fbPos=null; try{ const s=localStorage.getItem("tradingview-chart-floatbar"); if(s){ const p=JSON.parse(s); if(p&&isFinite(p.x)&&isFinite(p.y))fbPos={x:p.x,y:p.y}; } }catch(e){}
+function fbClamp(fb,x,y){ const par=fb.offsetParent; if(!par)return{x:x,y:y};
+ return { x:Math.max(0,Math.min(x,Math.max(0,par.clientWidth-fb.offsetWidth))), y:Math.max(0,Math.min(y,Math.max(0,par.clientHeight-fb.offsetHeight))) }; }
+function fbApplyPos(fb){ if(!fbPos)return; const c=fbClamp(fb,fbPos.x,fbPos.y); fbPos=c; fb.classList.add("moved"); fb.style.left=c.x+"px"; fb.style.top=c.y+"px"; }
+function fbGripDown(e){ const fb=$("#floatBar"); if(!fb)return; if(e.button!==undefined&&e.button!==0)return; e.preventDefault();
+ const par=fb.offsetParent; if(!par)return; const pr=par.getBoundingClientRect(), br=fb.getBoundingClientRect();
+ const sx=e.clientX, sy=e.clientY, ox=br.left-pr.left, oy=br.top-pr.top;
+ fb.classList.add("moved","dragging"); fb.style.left=ox+"px"; fb.style.top=oy+"px";
+ const move=ev=>{ const c=fbClamp(fb,ox+ev.clientX-sx,oy+ev.clientY-sy); fb.style.left=c.x+"px"; fb.style.top=c.y+"px"; fbPos=c; };
+ const up=()=>{ document.removeEventListener("pointermove",move); document.removeEventListener("pointerup",up); fb.classList.remove("dragging");
+  try{ localStorage.setItem("tradingview-chart-floatbar",JSON.stringify(fbPos)); }catch(err){} };
+ document.addEventListener("pointermove",move); document.addEventListener("pointerup",up); }
+window.addEventListener("resize",()=>{ const fb=$("#floatBar"); if(fb&&fbPos&&fb.classList.contains("show"))fbApplyPos(fb); });
 /* 本家と同じ項目・順序（ツール種別ごと）: Templates → 色 → Text色 → Width"2px"→ Style → Settings → Lock → Remove → More */
 function showFloatBar(ctx,d){ const fb=$("#floatBar"); const st=d.style;
  fbTargets=(ctx.selectedIds&&ctx.selectedIds.size>1&&ctx.selectedIds.has(d.id))?curDrawings().filter(x=>ctx.selectedIds.has(x.id)):[d];
@@ -2233,31 +2256,37 @@ function showFloatBar(ctx,d){ const fb=$("#floatBar"); const st=d.style;
  const sVal=d.type==="ote"?(st.fibLineStyle||"Line"):st.lineStyle;
  const styleGlyph=sVal==="Dashed"?"┄":sVal==="Dotted"?"···":"―";
  let h="";
+ h+=`<span class="fbGrip" title="Drag to move">${FB_GRIP_SVG}</span>`;
  if(fbTargets.length>1)h+=`<span class="fbCnt">${fbTargets.length} selected</span>`;
  h+=`<button data-fb="tmpl" title="Templates">${uiIc("tmpl")}</button>`;
+ /* 項目と順序は本家実測（仕様書 original 7-8、i87〜i146）に合わせる。Add Alert はアラート廃止の決定により全種別で出さない。
+    - ポジション（i134・i142）: Templates / Text color / Profit background color / Stop background color / Create limit order / Settings / Lock / Remove / More
+    - テキスト（i119）: Templates / Text color / Font size / Settings / Lock / Anchor drawing / Remove / More（Bold・Italic は本家のツールバーには無く設定ダイアログ側のみ）
+    - Fib/OTE（i133）: Templates / Line tool colors / Line tool width / Settings / Lock / Remove / More（Style・Text colors は無い） */
  if(isPos){
-  h+=`<button data-fb="target" title="Target color"><span class="sw" style="background:${st.targetColor}"></span></button><button data-fb="stop" title="Stop color"><span class="sw" style="background:${st.stopColor}"></span></button>`;
+  h+=`<button data-fb="textcolor" title="Text color"><span class="sw" style="background:${st.textColor}"></span><span class="fbA">A</span></button><button data-fb="target" title="Profit background color"><span class="sw" style="background:${st.targetColor}"></span></button><button data-fb="stop" title="Stop background color"><span class="sw" style="background:${st.stopColor}"></span></button>`;
+  h+=`<button data-fb="limit" class="fbWide" title="Create limit order">Limit</button>`;
  } else if(d.type==="text"){
   h+=`<button data-fb="textcolor" title="Text color"><span class="sw" style="background:${st.textColor}"></span><span class="fbA">A</span></button>
-  <button data-fb="font" class="fbWide" title="Font size">${st.fontSize}</button>
-  <button data-fb="bold" title="Bold" class="${st.bold?"on":""}"><b>B</b></button>
-  <button data-fb="italic" title="Italic" class="${st.italic?"on":""}"><i>I</i></button>`;
+  <button data-fb="font" class="fbWide" title="Font size">${st.fontSize}</button>`;
  } else {
   h+=`<button data-fb="color" title="Line tool colors"><span class="sw" style="background:${st.color}"></span></button>`;
-  if(d.type==="rect")h+=`<button data-fb="bg" title="Background color"><span class="sw" style="background:${st.bg}"></span></button>`;
+  if(d.type==="rect")h+=`<button data-fb="bg" title="Line tool backgrounds"><span class="sw" style="background:${st.bg}"></span></button>`;
   if(d.type!=="ote")h+=`<button data-fb="textcolor" title="Line tool text colors"><span class="sw" style="background:${st.textColor}"></span><span class="fbA">A</span></button>`;
-  h+=`<button data-fb="width" class="fbWide" title="Line tool width">${wVal}px</button><button data-fb="style" class="fbWide" title="Style">${styleGlyph}</button>`;
+  h+=`<button data-fb="width" class="fbWide" title="Line tool width">${wVal}px</button>`;
+  if(d.type!=="ote")h+=`<button data-fb="style" class="fbWide" title="Style">${styleGlyph}</button>`;
   /* 本家のフローティングツールBarsにフォントSizeは無い（フォントSizeはSettingsダイアログの Text タブで変更する）。
      従来あった"14"ボタンを外し、本家の項目・順序に合わせる（Text描画専用ツールBarsのフォントSizeは本家にもあるため残す） */
  }
  h+=`<button data-fb="settings" title="Settings">${uiIc("gear")}</button>`;
+ h+=`<button data-fb="lock" title="Lock">${uiIc(d.locked?"lock":"unlock")}</button>`;
  if(d.type==="text")h+=`<button data-fb="anchor" title="Anchor drawing">${uiIc("anchor")}</button>`;
- if(isPos)h+=`<button data-fb="limit" class="fbWide" title="Create limit order">Limit</button>`;
- h+=`<button data-fb="lock" title="Lock">${uiIc(d.locked?"lock":"unlock")}</button>
-  <button data-fb="del" class="danger" title="Remove">${uiIc("trash")}</button>
+ h+=`<button data-fb="del" class="danger" title="Remove">${uiIc("trash")}</button>
   <button data-fb="more" title="More">⋯</button>`;
  fb.innerHTML=h;
  fb.classList.add("show");
+ fbApplyPos(fb);
+ const grip=fb.querySelector(".fbGrip"); if(grip)grip.addEventListener("pointerdown",fbGripDown);
  fb.querySelectorAll("button[data-fb]").forEach(b=>b.onclick=()=>floatAction(ctx,d,b.dataset.fb,b)); }
 function saveLastStyle(d){ lastStyles[d.type]=JSON.parse(JSON.stringify(d.style)); }
 function hideFloatBar(){$("#floatBar").classList.remove("show");}
@@ -2469,8 +2498,7 @@ function openColorPop(ctx,d,target,anchorBtn){
   <div class="frow"><label style="width:70px">Hue</label><input type="range" id="cpHue" min="0" max="360" value="${hsv.h}" style="flex:1;background:linear-gradient(to right,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)"></div>
   <div class="frow"><label style="width:70px">Custom color</label><input type="color" id="cpNative" value="${cur}"><input type="text" id="cpHex" value="${cur}" style="flex:1"></div>
   <div class="frow"><label style="width:70px">Opacity</label><input type="range" id="cpOp" min="0" max="100" value="${st[opKey]}" style="flex:1"><input type="number" id="cpOpN" min="0" max="100" value="${st[opKey]}" style="width:70px;flex:none"> %</div>
-  ${(target==="color")?`<div class="frow"><label style="width:70px">Width</label><span class="seg" id="cpW">${[1,2,3,4].map(w=>`<button data-w="${w}" class="${effW===w?"on":""}">${w}px</button>`).join("")}</span></div>
-  <div class="frow"><label style="width:70px">Line style</label><span class="seg" id="cpLS">${["Line","Dashed","Dotted"].map(x=>`<button data-s="${x}" class="${effLS===x?"on":""}">${x}</button>`).join("")}</span></div>`:""}
+  ${""/* フローティング版パレットは本家実測（i147）どおり80色＋Opacityのみで、Thickness／Line style は出さない（太さ・線種はツールバーの Width／Style ボタンと設定ダイアログ側で変更する） */}
   <div style="display:flex;justify-content:flex-end;gap:8px"><button class="btn" id="cpCancel">Cancel</button><button class="btn primary" id="cpOk">OK</button></div>`;
  pop.classList.add("show");
  pop.onpointerdown=e=>e.stopPropagation(); pop.onclick=e=>e.stopPropagation(); // フローティング側ピッカーも内部クリック/ドラッグを外側クリック扱いにしない（背後のチャート側ポインタ処理へ伝播させない）
