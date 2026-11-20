@@ -85,8 +85,8 @@ svg.ic{width:17px;height:17px;flex:none}
 /* 銘柄タブストリップはユーザーの決定で廃止（2026-11-20）。銘柄切替はトップバーの銘柄ピル→銘柄検索のみ */
 /* main layout */
 #main{flex:1;display:flex;min-height:0}
-#leftbar{width:52px;background:var(--bg);border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;padding:2px 0;gap:0;overflow-y:auto;flex:none}
-#leftbar button{width:40px;height:40px;min-height:40px;padding:4px;color:#b8b8b8}
+#leftbar{width:52px;background:var(--bg);border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;padding:6px 0 2px;gap:0;overflow-y:auto;flex:none} /* 上パディング6px+ボタン38pxで第1アイコン中心のレール上端からのオフセットが本家実測25pxに一致（従来は中心22px）。ボタン高38pxは本家アイコンピッチ実測37.5〜38.5px（平均38）に合わせたもの（従来40pxピッチ） */
+#leftbar button{width:40px;height:38px;min-height:38px;padding:4px;color:#b8b8b8}
 #leftbar button:hover{color:#fff}
 #leftbar button svg.ic{width:28px;height:28px}
 #leftbar button.on{background:#303030;color:#fff} /* 選択中ツールの背景は本家実測 #303030（従来 #262626 は一段暗かった） */
@@ -94,7 +94,7 @@ svg.ic{width:17px;height:17px;flex:none}
 #leftbar button.whiteOn:hover{background:#f2f2f2;color:#000}
 #leftbar .sep{width:28px;height:1px;margin:4px 0}
 #center{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0}
-#chartsWrap{flex:1 1 auto;display:flex;min-height:280px;position:relative;gap:2px;padding:2px 1px 1px 6px;background:var(--bg)} /* 余白は本家実画面のピクセル実測: 左は左レール52px+境界1px+6pxでペイン左端58px・右はペイン右端1390pxで右端の黒帯49.5px・ペイン間2px。下の溝は約1.5px（ペイン直下に下部バーが接する）。ペイン上端は、銘柄タブ帯（34px）をユーザーの決定で廃止したため、ツールバー42px+上余白2px＝画面上端から44px（タブ帯があった従来は78px） */
+#chartsWrap{flex:1 1 auto;display:flex;min-height:280px;position:relative;gap:2px;padding:1px 1px 1px 5px;background:var(--bg)} /* 余白は本家実画面のピクセル実測: 左は左レール52px+余白5px+枠1pxでプロット背景の開始が本家58pxに一致・右はペイン右端1390pxで右端の黒帯49.5px・ペイン間2px。下の溝は約1.5px（ペイン直下に下部バーが接する）。ペイン上端は、銘柄タブ帯（34px）をユーザーの決定で廃止したため、ツールバー42px+上余白1px+枠1pxでプロット背景の開始が画面上端から44px */
 .paneWrap{flex:1;position:relative;min-width:0;display:flex;flex-direction:column;min-height:0;border-radius:3px;overflow:hidden;border:1px solid #8c8c8c} /* 角丸は本家実測で約2-3px。従来の8pxは本家より明らかに丸かった。枠線: 本家実画面ではペイン全周に #8c8c8c の約1px枠があり（上端・左端・下端で実測確認）、現行は無枠でグレーの塊が黒帯に溶けて見えたため追加 */
 .chartBox{flex:1;position:relative;min-height:0}
 .chartEl{position:absolute;inset:0}
@@ -112,7 +112,7 @@ svg.ic{width:17px;height:17px;flex:none}
 #rightbar h3 .hbtns{display:flex;gap:4px;align-items:center}
 #rightRail{width:48px;background:var(--bg);border-left:1px solid var(--line);display:flex;flex-direction:column;align-items:center;padding:8px 0;gap:6px;flex:none} /* 本家右レールのアイコンピッチは主グループ実測で約46px（ネイティブ中心間隔 90-100px÷2 が 45-50px、最多は45px）。ボタン40px+gap6px=46pxピッチに合わせる。従来は2個だけでレールの大半が空白の黒帯だったため、既存機能（テーマ/データ/売買記録/JSON入出力/ヘルプ/設定）を実ボタンとして並べる（全て既存ハンドラへ委譲する実機能のみ） */
 #rightRail button{width:40px;height:40px;padding:4px;color:#b8b8b8}
-#rightRail button svg.ic{width:26px;height:26px}
+#rightRail button svg.ic{width:29px;height:29px} /* 右レールのアイコングリフ幅は本家実測約23px vs 現行20px（26px指定）。29px指定でグリフ約22.3pxになり本家に一致する */
 #rightRail button.on{background:#2e2e2e;color:#fff;border-radius:8px}
 .wlSec{padding:2px 10px;color:var(--gold);font-size:11px;font-weight:700;display:flex;justify-content:space-between;align-items:center}
 .wlSec button{min-height:24px;padding:0 6px}
@@ -177,7 +177,7 @@ svg.ic{width:17px;height:17px;flex:none}
 .cmItem .sc{margin-left:auto;color:var(--dim);font-size:11px;padding-left:20px;white-space:nowrap}
 .cmSep{height:1px;background:var(--line);margin:4px 6px}
 /* bottom bars */
-#rangeBar{display:flex;align-items:center;gap:2px;padding:1px 6px;height:38px;flex:none;background:var(--bg);border-top:1px solid var(--line);flex-wrap:wrap} /* 下部バーの高さは本家実画面の実測38pxに合わせる（従来34px） */
+#rangeBar{display:flex;align-items:center;gap:2px;padding:1px 6px 1px 11px;height:38px;flex:none;background:var(--bg);border-top:1px solid var(--line);flex-wrap:wrap} /* 左パディング11px: 範囲ボタン「1D」の文字開始が本家実測72pxに一致（従来6pxでは67pxで5px左寄りだった） */ /* 下部バーの高さは本家実画面の実測38pxに合わせる（従来34px） */
 #rangeBar label{flex-wrap:wrap}
 #gotoBtn,#gotoReplayBtn{white-space:nowrap;flex:none}
 #rangeBar button{min-height:26px;padding:1px 7px;font-size:13px;color:#b8b8b8}
