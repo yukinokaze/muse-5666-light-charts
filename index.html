@@ -16,7 +16,7 @@
 }
 *{box-sizing:border-box}
 html,body{height:100%}
-body{margin:0;background:var(--bg);color:var(--txt);font-family:"Trebuchet MS","Segoe UI",Verdana,"Hiragino Kaku Gothic ProN","Yu Gothic UI","Noto Sans JP",sans-serif;font-size:13px;display:flex;flex-direction:column;overflow:hidden}
+body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Trebuchet MS",Roboto,Ubuntu,"Hiragino Kaku Gothic ProN","Yu Gothic UI","Noto Sans JP",sans-serif;font-size:13px;display:flex;flex-direction:column;overflow:hidden;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility} /* 書体は本家TradingView自身のスタック（同梱LWCバンドル内の既定値で確認: -apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, Ubuntu, sans-serif）に一致させる。従来は "Trebuchet MS" 先頭だったため、Macでは本家が使うSan FranciscoではなくTrebuchet MSで描画され、種類も太さの見え方も本家とずれていた。日本語グリフは欧文フォントに無いため後段の和文フォントへ文字単位でフォールバックする。antialiased はMacでのストロークの太り（本家とのウェイト差の見え方）を抑える */
 button{font:inherit;color:var(--txt);background:transparent;border:1px solid transparent;border-radius:4px;min-height:36px;padding:4px 10px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;justify-content:center}
 button:hover{background:var(--panel2)}
 button.on{background:var(--accent);color:#fff}
@@ -46,7 +46,7 @@ svg.ic{width:17px;height:17px;flex:none}
 #expBtn{background:transparent;border-color:transparent}
 #expBtn:hover{background:var(--panel2)}
 .saveDot{width:7px;height:7px;border-radius:50%;background:var(--gold);display:inline-block;flex:none}
-#symBtn{font-weight:600;font-size:13px;color:#b8b8b8;background:#303030;border-radius:16px;padding:2px 14px;min-height:30px} /* 銘柄ピル: 本家実画面ではBarsの高さの大半を占める大きめのピル（高さ約30px）。文字グリフ高は本家実測約10px vs 現行15px指定で約12px → 14pxに下げる。Text colorは本家実測 #b8b8b8 で太字にしない（従来 #fff・700 は白く太く浮いていた） */
+#symBtn{font-weight:400;font-size:13px;color:#b8b8b8;background:#303030;border-radius:16px;padding:2px 14px;min-height:30px} /* 銘柄ピル: 本家実画面ではBarsの高さの大半を占める大きめのピル（高さ約30px）。Text colorは本家実測 #b8b8b8 で太字にしない（従来 #fff・700 は白く太く浮いていた）。コメントどおり太字にしないため weight は 400（従来 600 のままで実測と食い違っていた） */
 #symBtn:hover{background:#3a3a3a}
 #topbar #symBtn{min-height:28px} /* 銘柄ピルだけは本家実測どおり高さ28px（ネイティブ78→134px）。#topbar button の34pxに引きずられないよう特異度を上げて固定 */
 #symBtn small{color:var(--dim);font-weight:400;font-size:11px}
@@ -216,7 +216,7 @@ svg.ic{width:17px;height:17px;flex:none}
 #replayBar button{min-height:30px}
 #replayBar.show{display:flex}
 #replayBar .st{color:#fff;font-weight:700}
-.rpWM{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:72px;font-weight:700;letter-spacing:4px;color:rgba(255,255,255,.13);pointer-events:none;z-index:4;user-select:none}
+.rpWM{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:64px;font-weight:400;letter-spacing:2px;color:rgba(255,255,255,.13);pointer-events:none;z-index:4;user-select:none} /* 透かしは本家どおり通常ウェイトの大きな文字。従来は 700 の太字で、リプレイ中に最も目立つ文字が本家より明らかに太く見えていた */
 .calHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
 .calHead b{color:#fff;font-size:15px}
 .calGrid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
@@ -981,7 +981,7 @@ let _syncBusy=false; // 範囲/時間同期の相互再入ガード
 let _syncRangeKey=null; // 同期で最後に伝播した時刻範囲（エコー抑制用: 同期適用で生じた他ペインの範囲変更イベントを再伝播しない）
 const P=[]; // pane contexts
 function chartOpts(){const t=App.theme;return{
- layout:{background:{type:"solid",color:t.background},textColor:t.text,fontSize:12,fontFamily:"'Trebuchet MS','Segoe UI',Verdana,'Hiragino Kaku Gothic ProN','Yu Gothic UI','Noto Sans JP',sans-serif",attributionLogo:false}, // 軸フォント: 本家実画面（2026-11-20 16:07, 2880×1800 DPR2）のグリフ高を再実測すると Price軸の数字高 約8.5 CSS px。LWC の layout.fontSize は Price/Time 共通のため、ここは Price軸基準の 12px とし、時間軸は下の Canvas パッチで 11px に落として「時間軸は価格軸より小さい」本家の階層を再現する（従来は両軸とも 15px で同サイズ・大きすぎた）。狭いペインでは makePane 側で 11px に戻す
+ layout:{background:{type:"solid",color:t.background},textColor:t.text,fontSize:12,fontFamily:"-apple-system,BlinkMacSystemFont,'Trebuchet MS',Roboto,Ubuntu,'Hiragino Kaku Gothic ProN','Yu Gothic UI','Noto Sans JP',sans-serif",attributionLogo:false}, // 軸フォント: 本家実画面（2026-11-20 16:07, 2880×1800 DPR2）のグリフ高を再実測すると Price軸の数字高 約8.5 CSS px。LWC の layout.fontSize は Price/Time 共通のため、ここは Price軸基準の 12px とし、時間軸は下の Canvas パッチで 11px に落として「時間軸は価格軸より小さい」本家の階層を再現する（従来は両軸とも 15px で同サイズ・大きすぎた）。狭いペインでは makePane 側で 11px に戻す
  grid:{vertLines:{color:t.grid,visible:App.grid!==false,style:0},horzLines:{color:t.grid,visible:App.grid!==false,style:0}},
  crosshair:{mode:0,vertLine:{color:t.crosshair,labelBackgroundColor:"#353434",style:2,visible:window.__cursorVariant==null||window.__cursorVariant==="cross"},horzLine:{color:t.crosshair,labelBackgroundColor:"#353434",style:2,visible:window.__cursorVariant==null||window.__cursorVariant==="cross"}}, // CrosshairMode は LWC 4.2.0 の定義で Normal=0 / Magnet=1 / Hidden=2（バンドル内 enum でConfirm）。mode:0 = Normal: 横線はマウスYのPriceを示す（Magnet はホBars中のBarsの終値へ吸着する。本家はマウスY）。以前 mode:1 と書いたため Magnet そのものになっていた。線は破線（style:2 = Dashed）。Dot/Arrow バリアントでは十字線を出さない
  handleScale:{axisDoubleClickReset:true,axisPressedMouseMove:{time:false,price:true}}, // 時間軸ドラッグはスケール変更（ズーム）が正しいが、ネイティブの倍率は急激すぎる（400pxで期間2〜4倍）ため無効化し、makePane 側の自前ハンドラで穏やかな倍率のズームに置き換える。Price軸ドラッグのスケールと軸ダブルクリックリセットは従来どおり
@@ -1186,7 +1186,7 @@ function makePane(idx){
    _syncRangeKey={from:tr.from,to:tr.to}; _syncBusy=true;
    for(const o of P){ if(o&&o!==ctx){ try{ o.chart.timeScale().setVisibleRange(tr); }catch(e){} } }
    _syncBusy=false; };
- chart.timeScale().subscribeVisibleLogicalRangeChange(r=>{ if(!r)return; if(App.sync.range){ let tr=null; try{ tr=chart.timeScale().getVisibleRange(); }catch(e){} propagateSync(tr); } clampRightEdge(ctx,r); renderDrawings(ctx); updatePricePill(ctx); if(typeof renderOrders==="function")renderOrders(ctx); maybeLoadOlder(ctx,r); });
+ chart.timeScale().subscribeVisibleLogicalRangeChange(r=>{ if(!r)return; if(ctx.histEndEl&&r.from>2)ctx.histEndEl.style.display="none"; /* 「No more historical data」は最古バーにいる間だけの表示。本家同様、離れたら消す（従来は一度出すと銘柄変更まで残り続け、リプレイ中も左上に張り付いていた） */ if(App.sync.range){ let tr=null; try{ tr=chart.timeScale().getVisibleRange(); }catch(e){} propagateSync(tr); } clampRightEdge(ctx,r); renderDrawings(ctx); updatePricePill(ctx); if(typeof renderOrders==="function")renderOrders(ctx); maybeLoadOlder(ctx,r); });
  chart.timeScale().subscribeVisibleTimeRangeChange(r=>{ if(!r)return; if(App.sync.time)propagateSync(r); updatePricePill(ctx); });
  new ResizeObserver(()=>{const b=el.getBoundingClientRect(); if(b.width>0&&b.height>0){chart.applyOptions({width:b.width,height:b.height}); renderDrawings(ctx); updatePricePill(ctx); if(typeof renderOrders==="function")renderOrders(ctx);} }).observe(el);
  el.parentElement.addEventListener("pointerdown",()=>{activePane=idx; refreshHeads();});
@@ -3054,7 +3054,7 @@ function applyReplayTime(time,keepView){ replay.time=time; for(const c of P){ if
  let vr=null; if(keepView){ try{ vr=c.chart.timeScale().getVisibleRange(); }catch(e){} }
  setPaneData(c);
  if(vr){ try{ c.chart.timeScale().setVisibleRange(vr); }catch(e){} } } }
-function startReplay(idx,srcCtx){ const ctx=srcCtx||rpCtx(); if(!ctx||!ctx.full.length)return toast("Data is loading"); idx=Math.max(0,Math.min(ctx.full.length-1,idx)); resetBacktestSession(); P.forEach(c=>{if(c)hideGotoTip(c);}); replay.active=true; replay.paneIdx=ctx.idx; replay.barRealStart=Date.now(); applyReplayTime(ctx.full[idx].time);
+function startReplay(idx,srcCtx){ const ctx=srcCtx||rpCtx(); if(!ctx||!ctx.full.length)return toast("Data is loading"); idx=Math.max(0,Math.min(ctx.full.length-1,idx)); resetBacktestSession(); P.forEach(c=>{if(c){hideGotoTip(c); if(c.histEndEl)c.histEndEl.style.display="none"; if(c.histSpin)c.histSpin.classList.remove("show");}}); replay.active=true; replay.paneIdx=ctx.idx; replay.barRealStart=Date.now(); applyReplayTime(ctx.full[idx].time);
  $("#replayBar").classList.add("show"); $("#replayBtn").classList.add("on"); const _tp=$("#tradesPanel"); _tp.classList.add("show"); _tp.classList.add("collapsed"); _tp.classList.remove("max"); refreshBtCapInfo(); updateReplayInfo(); renderTrades(); markDirty(); toast("Replay started. Future bars are hidden until the replay reaches them. The backtest is a new session"); }
 function stopReplay(){ // End replayでバックテストも終了する（ユーザーの決定）。未決済ポジションは最後に表示されたBarsの終値で決済、未約定注文は取消。パネルは閉じ、CSVも出せなくなる
  const tCtx=rpPaneOf(replay.open); const lastB=tCtx&&tCtx.view.length?tCtx.view[tCtx.view.length-1]:null;
@@ -3064,7 +3064,7 @@ function stopReplay(){ // End replayでバックテストも終了する（ユ�
  closeTicket();
  $("#replayBar").classList.remove("show"); $("#replayBtn").classList.remove("on"); $("#tradesPanel").classList.remove("show"); markDirty(); }
 function updateReplayInfo(){ const ctx=rpCtx(); if(!ctx)return; const b=ctx.view[ctx.view.length-1];
- $("#rpInfo").textContent=b?`${fmtDTs(b.time)} / ${ctx.view.length} of ${ctx.full.length} bars total)`:"";
+ $("#rpInfo").textContent=b?`${fmtDTs(b.time)} / ${ctx.view.length} of ${ctx.full.length} bars total`:""; // 従来は末尾に対応の無い ")" が残り、リプレイバーに "bars total)" と表示されていた
  updateSpeedBtn(); for(const c of P){ if(c)renderOrders(c); }
  refreshTicketPx(); }
 function stepReplay(dir){ if(!replay.active)return; const ctx=rpCtx(); if(!ctx||!ctx.full.length)return; replay.barRealStart=Date.now();
