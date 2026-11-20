@@ -80,7 +80,8 @@ svg.ic{width:17px;height:17px;flex:none}
 #zoomHint.show{display:block}
 /* Cursors バリアント（Cross=十字 / Dot=ドット / Arrow=通常）のカーソル形状 */
 #chartsWrap.curCross .chartBox{cursor:crosshair}
-#chartsWrap.curDot .chartBox{cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18'%3E%3Ccircle cx='9' cy='9' r='3.4' fill='%23ffffff' stroke='%23000000' stroke-width='1.4'/%3E%3C/svg%3E") 9 9,auto}
+#chartsWrap.curDot.toolCursor .chartBox{cursor:none} /* Dot バリアント＋カーソルツール選択中は OS カーソルを消し、ページ内ドット（.cursorDot）がマウスを追う。CSS の url カーソルは環境により描画されず矢印のままになることがあったため使わない。描画ツール選択中は通常のポインターに戻す（toolCursor は setTool が付け外しする） */
+.cursorDot{position:absolute;width:9px;height:9px;border-radius:50%;background:#fff;border:1.5px solid #000;transform:translate(-50%,-50%);pointer-events:none;display:none;z-index:9}
 /* 銘柄タブストリップはユーザーの決定で廃止（2026-11-20）。銘柄切替はトップバーの銘柄ピル→銘柄検索のみ */
 /* main layout */
 #main{flex:1;display:flex;min-height:0}
@@ -169,6 +170,8 @@ svg.ic{width:17px;height:17px;flex:none}
 #ctxMenu.show{display:block}
 .cmItem{display:flex;width:100%;align-items:center;gap:6px;justify-content:flex-start;min-height:32px;padding:4px 10px;border-radius:5px;text-align:left;font-size:13px}
 .cmItem:hover{background:var(--panel2);color:#fff}
+.cmItem.dis{opacity:.45;cursor:default}
+.cmItem.dis:hover{background:transparent;color:var(--txt)}
 .cmItem .ck{width:16px;flex:none;display:inline-flex;justify-content:center}
 .cmItem .ck svg{width:14px;height:14px}
 .cmItem .sc{margin-left:auto;color:var(--dim);font-size:11px;padding-left:20px;white-space:nowrap}
@@ -625,7 +628,9 @@ function validateSaveJSON(j){
  if(j.templates!=null){ if(typeof j.templates!=="object"||Array.isArray(j.templates)) return {ok:false,msg:"templates の形式が不正です"};
    for(const k of Object.keys(j.templates)){ const v=j.templates[k]; if(!v||typeof v!=="object"||Array.isArray(v)) return {ok:false,msg:"templates の形式が不正です"};
     for(const n of Object.keys(v)){ if(!v[n]||typeof v[n]!=="object"||Array.isArray(v[n])) return {ok:false,msg:"templates の中身が不正です"}; } } }
- if(j.theme!=null){ for(const k in j.theme){ if(!/^#[0-9a-fA-F]{6}$/.test(j.theme[k])) return {ok:false,msg:"theme."+k+" の色が不正です"}; } }
+ if(j.theme!=null&&(typeof j.theme!=="object"||Array.isArray(j.theme))) return {ok:false,msg:"theme の形式が不正です"};
+ /* テーマの個別項目はここでは弾かない: 色キーは #rrggbb、hollowUp は真偽値（中抜き足）であり色ではない。
+    項目単位のサニタイズは applyJSON 側で行い、不正な項目だけ既定値へ落とす（1項目の不正で描画・設定全体の読み込みを止めない） */
  if(j.multi!=null&&![1,2,3].includes(j.multi)) return {ok:false,msg:"multi が範囲外です"};
  if(j.multipliers!=null){ for(const k in j.multipliers){ const v=j.multipliers[k]; if(!(isFinite(v)&&v>0&&v<=1e9)) return {ok:false,msg:"multipliers の値が範囲外です"}; } }
  /* 旧データの alerts フィールドは無視する（アラート機能は削除済み。含まれていても読み込みを壊さない） */
@@ -651,9 +656,12 @@ const StorageAdapter={
    const c=JSON.parse(JSON.stringify(j)); // 検証 → クローン → 適用
    App.layoutName=typeof c.layoutName==="string"?c.layoutName:"Unnamed"; App.autosave=c.autosave!==false; App.symbol=c.symbol||App.symbol;
    App.interval=c.interval||App.interval; App.timezone=c.timezone||"Asia/Tokyo"; App.themeName=c.themeName||App.themeName;
-   if(c.theme)App.theme={...DEFAULT_THEME,...c.theme};
-   /* 旧既定テーマ（陽線 白塗り #ffffff / 陰線・ヒゲ・クロスヘア 純黒 #000000）のまま保存されたデータだけ、本家の実測値へ移行する。色を自分で変えたユーザーのテーマには触らない */
-   { const t=App.theme; if(t.background==="#808080"&&t.grid==="#878787"&&t.up==="#ffffff"&&t.down==="#000000"&&t.wick==="#000000"&&t.text==="#000000"&&t.crosshair==="#000000"&&t.hollowUp==null){ t.up="#353434"; t.down="#353434"; t.wick="#353434"; t.crosshair="#353434"; t.hollowUp=true; } }
+   if(c.theme&&typeof c.theme==="object"&&!Array.isArray(c.theme)){ const raw=c.theme, t={...DEFAULT_THEME}, HEX=/^#[0-9a-fA-F]{6}$/;
+     for(const k of ["background","grid","up","down","wick","text","crosshair"]) if(typeof raw[k]==="string"&&HEX.test(raw[k]))t[k]=raw[k]; // 色キーは #rrggbb のものだけ採用。不正な項目は既定値のまま（読み込み自体は止めない）
+     if(typeof raw.hollowUp==="boolean")t.hollowUp=raw.hollowUp; // hollowUp は色ではなく真偽値（中抜き足）。色として扱わない
+     /* 旧既定テーマ（陽線 白塗り #ffffff / 陰線・ヒゲ・クロスヘア 純黒 #000000、hollowUp 追加前）のまま保存されたデータだけ、本家の実測値へ移行する。色を自分で変えたユーザーのテーマには触らない */
+     if(raw.background==="#808080"&&raw.grid==="#878787"&&raw.up==="#ffffff"&&raw.down==="#000000"&&raw.wick==="#000000"&&raw.text==="#000000"&&raw.crosshair==="#000000"&&typeof raw.hollowUp!=="boolean"){ t.up="#353434"; t.down="#353434"; t.wick="#353434"; t.crosshair="#353434"; t.hollowUp=true; }
+     App.theme=t; }
    App.dataBase=c.dataBase||App.dataBase;
    App.tabs=Array.isArray(c.tabs)?c.tabs:App.tabs; drawingsBySymbol=(c.drawings&&typeof c.drawings==="object")?c.drawings:{};
    /* 部分的な style の描画は defaultStyle とマージして欠落フィールドを補完する（renderDrawings が例外で止まらないように） */
@@ -753,7 +761,7 @@ const P=[]; // pane contexts
 function chartOpts(){const t=App.theme;return{
  layout:{background:{type:"solid",color:t.background},textColor:t.text,fontSize:15,fontFamily:"'Trebuchet MS',Roboto,Ubuntu,-apple-system,BlinkMacSystemFont,'Hiragino Kaku Gothic ProN','Yu Gothic UI','Noto Sans JP',sans-serif",attributionLogo:false}, // 軸フォント: 本家実画面（2026-11-20_2.40.27）の価格軸ラベル数字高を再実測すると 23px@DPR2 = 11.5 CSS px（9ラベル連続で一致）。従来の 13px 設定ではクローン側の数字高が 10px しかなく約13%小さいため 15px に上げる（数字高≒11.5px）。狭いペインでは makePane 側で 13px に戻す
  grid:{vertLines:{color:t.grid,visible:App.grid!==false,style:0},horzLines:{color:t.grid,visible:App.grid!==false,style:0}},
- crosshair:{vertLine:{color:t.crosshair,labelBackgroundColor:"#353434",style:2},horzLine:{color:t.crosshair,labelBackgroundColor:"#353434",style:2}}, // 本家のクロスヘア線は破線（style:2 = Dashed）
+ crosshair:{mode:1,vertLine:{color:t.crosshair,labelBackgroundColor:"#353434",style:2,visible:window.__cursorVariant==null||window.__cursorVariant==="cross"},horzLine:{color:t.crosshair,labelBackgroundColor:"#353434",style:2,visible:window.__cursorVariant==null||window.__cursorVariant==="cross"}}, // mode:1 = Normal: 横線はマウスYの価格を示す（LWC既定の Magnet はホバー中のバーの終値へ吸着する。本家はマウスY）。線は破線（style:2 = Dashed）。Dot/Arrow バリアントでは十字線を出さない
  handleScale:{axisDoubleClickReset:true,axisPressedMouseMove:{time:true,price:true}}, // 価格軸ダブルクリックでスケールリセット（本家と同じ）
  rightPriceScale:{borderColor:t.grid,entireTextOnly:true}, timeScale:{borderColor:t.grid,timeVisible:App.interval!=="1D",secondsVisible:false,barSpacing:6,minBarSpacing:0.5, // 初期表示の足密度は本家の実測に合わせる（ユーザーの実画面: 約665px幅のペインに約107本 ≒ 6px/本。FFT＋時間軸ラベル間隔で実測）
   tickMarkFormatter:tickFmt}, localization:{locale:"ja-JP",timeFormatter:timeFmt} };}
@@ -800,6 +808,11 @@ function makePane(idx){
  const histSpin=document.createElement("div"); histSpin.className="histSpin"; histSpin.innerHTML='<span class="sp"></span>過去データ読み込み中…'; el.parentElement.appendChild(histSpin); ctx.histSpin=histSpin;
  const histEnd=document.createElement("div"); histEnd.className="histEnd"; histEnd.textContent="これより過去のデータはありません"; el.parentElement.appendChild(histEnd); ctx.histEndEl=histEnd;
  const wm=document.createElement("div"); wm.className="rpWM"; wm.textContent="Replay"; el.parentElement.appendChild(wm); ctx.wm=wm;
+ /* Dot カーソル: ページ内ドットがマウスを追い、十字線は出さない（applyCursorVariant で線を消す）。カーソルツール選択中のみ表示 */
+ const dotEl=document.createElement("div"); dotEl.className="cursorDot"; el.parentElement.appendChild(dotEl); ctx.dotEl=dotEl;
+ el.parentElement.addEventListener("pointermove",e=>{ if(cursorVariant!=="dot"||tool!=="cursor"){ dotEl.style.display="none"; return; }
+  const r=el.parentElement.getBoundingClientRect(); dotEl.style.left=(e.clientX-r.left)+"px"; dotEl.style.top=(e.clientY-r.top)+"px"; dotEl.style.display="block"; });
+ el.parentElement.addEventListener("pointerleave",()=>{ dotEl.style.display="none"; });
  const legendEl=document.createElement("div"); legendEl.className="paneLegend"; el.parentElement.appendChild(legendEl); ctx.legendEl=legendEl;
  const ordEl=document.createElement("div"); ordEl.className="ordLayer"; el.parentElement.appendChild(ordEl); ctx.ordEl=ordEl;
  /* 価格軸のダブルクリック／ダブルタップで価格スケールをリセットし、表示中のローソク足へ自動フィット（Autoオン）に戻す（本家と同じ）。
@@ -1510,11 +1523,12 @@ function hideCtxMenu(){ const m=$("#ctxMenu"); if(m)m.classList.remove("show"); 
 document.addEventListener("pointerdown",e=>{ const m=$("#ctxMenu"); if(m&&m.classList.contains("show")&&!m.contains(e.target))hideCtxMenu(); });
 addEventListener("resize",()=>hideCtxMenu());
 function showMenu(x,y,items){ const m=$("#ctxMenu"); if(!m)return;
- m.innerHTML=items.map((it,i)=>it.sep?`<div class="cmSep"></div>`:`<button class="cmItem" data-mi="${i}">${it.checkable?`<span class="ck">${it.checked?uiIc("check"):""}</span>`:""}<span>${esc(it.label)}</span>${it.shortcut?`<span class="sc">${esc(it.shortcut)}</span>`:""}</button>`).join("");
+ m.innerHTML=items.map((it,i)=>it.sep?`<div class="cmSep"></div>`:`<button class="cmItem${it.disabled?" dis":""}" data-mi="${i}">${it.checkable?`<span class="ck">${it.checked?uiIc("check"):""}</span>`:""}<span>${esc(it.label)}</span>${it.shortcut?`<span class="sc">${esc(it.shortcut)}</span>`:""}</button>`).join("");
  m.classList.add("show"); m.style.left="0px"; m.style.top="0px";
  const w=m.offsetWidth,h=m.offsetHeight;
  m.style.left=Math.max(4,Math.min(x,innerWidth-w-4))+"px"; m.style.top=Math.max(4,Math.min(y,innerHeight-h-4))+"px";
- m.querySelectorAll("[data-mi]").forEach(b=>b.onclick=()=>{ const it=items[+b.dataset.mi]; hideCtxMenu(); if(it&&it.act)it.act(); }); }
+ m.querySelectorAll("[data-mi]").forEach(b=>b.onclick=()=>{ const it=items[+b.dataset.mi]; if(it&&it.disabled)return; // 無効項目はクリックしても閉じない・何もしない（本家のグレーアウト項目と同じ）
+ hideCtxMenu(); if(it&&it.act)it.act(); }); }
 function toggleHideAll(){ const list=curDrawings(); if(!list.length)return; const toHide=!list.every(d=>d.visible===false);
  snapshotDrawings(); list.forEach(d=>d.visible=!toHide); afterDrawChange(P[activePane]); }
 function toggleLockAll(){ const list=curDrawings(); if(!list.length)return; const toLock=!list.every(d=>d.locked);
@@ -1588,7 +1602,7 @@ function chartMenu(ctx,x,y,price,time){ const list=curDrawings(); const hasD=lis
  const items=[{label:"Reset chart view",act:()=>fitAllPanes(ctx)}];
  if(price!=null&&isFinite(price)){ items.push({sep:1},
   {label:`Copy price ${fmtPx(price)}`,act:()=>{ priceClipboard=price; try{ if(navigator.clipboard)navigator.clipboard.writeText(String(price)); }catch(e){} toast(`Copied price ${fmtPx(price)}`); }}); }
- if(drawClipboard)items.push({label:"Paste",act:()=>pasteDrawingAt(ctx,drawClipboard,time,price)});
+ items.push({label:"Paste",disabled:!drawClipboard,act:()=>pasteDrawingAt(ctx,drawClipboard,time,price)}); // 本家の空き領域メニューには常に Paste がある（描画を Copy した後に有効化される。未コピー時は無効表示）
  items.push({sep:1},
   {label:"Lock vertical cursor line by time",checkable:true,checked:lockLineTime!=null,act:()=>{ lockLineTime=lockLineTime!=null?null:(time!=null?time:null); renderOrders(ctx); }},
   {label:"Table view",checkable:true,checked:tableViewOn,act:()=>toggleTableView(ctx)},
@@ -2671,8 +2685,13 @@ let groupTool={cursors:"cross",trend:"line",fib:"ote",forecast:"long",shapes:"re
 /* 【(3) Cursors グループ】本家は Cursors ボタンがフライアウト（Cross / Dot / Arrow）で、既定は Cross。
    バリアントはカーソルの見た目だけを変え、操作（選択・ドラッグ等）は通常カーソルと同一 */
 let cursorVariant="cross";
-function applyCursorVariant(){ const w=$("#chartsWrap"); if(!w)return;
+function applyCursorVariant(){ window.__cursorVariant=cursorVariant; const w=$("#chartsWrap"); if(w){
  w.classList.toggle("curCross",cursorVariant==="cross"); w.classList.toggle("curDot",cursorVariant==="dot"); }
+ /* Dot / Arrow では十字線を出さない（本家どおり）。Cross のみ破線の十字線＋軸ラベルを表示。既存ペイン・サブチャートへ即時反映し、新規ペインは chartOpts 側の window.__cursorVariant で同じ状態になる */
+ const vis=cursorVariant==="cross", t=App.theme, ch={crosshair:{mode:1,vertLine:{visible:vis,color:t.crosshair,labelBackgroundColor:"#353434",style:2},horzLine:{visible:vis,color:t.crosshair,labelBackgroundColor:"#353434",style:2}}};
+ P.forEach(c=>{ if(c&&c.chart)try{c.chart.applyOptions(ch);}catch(e){} });
+ try{ Object.values(subCharts).forEach(c=>{ if(c&&c.chart)try{c.chart.applyOptions(ch);}catch(e){} }); }catch(e){}
+ $$(".cursorDot").forEach(d=>d.style.display="none"); } // バリアント切替直後はドットを消す（Dot のときは次の pointermove で再表示される）
 function refreshLeftStates(){ const mb=$("#magBtn"); if(mb)mb.classList.toggle("whiteOn",magnetMode!=="off"); // マグネットON時は本家どおり白い角丸四角＋黒アイコンになる（ユーザーの本家キャプチャで実測）
  const kb=$("#keepBtn"); if(kb)kb.classList.toggle("whiteOn",keepDrawing);
  const lb=$("#lockAllBtn"); if(lb&&P[activePane]){ const list=curDrawings(); lb.innerHTML=svgIc(list.length&&list.every(d=>d.locked)?LEFT_ICONS.lock:LEFT_ICONS.unlock); }
@@ -2700,7 +2719,7 @@ function buildLeftBar(){ const w=$("#leftbar"); let h="";
  <button id="helpBtn" title="ショートカット一覧（ヘルプ）">${svgIc(LEFT_ICONS.help)}</button>`;
  w.innerHTML=h;
  w.querySelectorAll("[data-grp]").forEach(b=>{ const g=TOOL_GROUPS.find(x=>x.id===b.dataset.grp);
-  b.onclick=()=>{ if(g.id==="cursors"){ cursorVariant=groupTool[g.id]; setTool("cursor"); applyCursorVariant(); } else setTool(groupTool[g.id]); };
+  b.onclick=()=>{ if(g.id==="cursors"){ openGroupMenu(g,b); } else setTool(groupTool[g.id]); }; // 本家は Cursors を押すとフライアウト（Cross/Dot/Arrow）が開くため、単純クリックでもメニューを開く（従来は右下シェブロンのクリックでしか開かなかった）
   const cv=b.querySelector(".gchev"); if(cv)cv.onclick=e=>{ e.stopPropagation(); openGroupMenu(g,b); }; });
  w.querySelectorAll("[data-tool]").forEach(b=>b.onclick=()=>setTool(b.dataset.tool));
  $("#magBtn").onclick=e=>{ const r=e.currentTarget.getBoundingClientRect();
@@ -2742,6 +2761,8 @@ function openShortcuts(){ openModal("ショートカット一覧",`<div class="h
   右クリックメニューは場所ごとに変わります（チャート／描画／インジケーター／価格軸／時間軸）。<br>
   英字キー入力で銘柄検索が開きます。</div>`,`<button class="btn primary" onclick="closeModal()">閉じる</button>`); }
 function setTool(t){ tool=t; if(t!=="cursor")eraserOn=false; const eb=$("#eraBtn"); if(eb&&t!=="cursor")eb.classList.remove("on");
+ const _cw2=$("#chartsWrap"); if(_cw2)_cw2.classList.toggle("toolCursor",t==="cursor"); // Dot バリアントの cursor:none とページ内ドットはカーソルツール選択中だけ有効
+ if(t!=="cursor")$$(".cursorDot").forEach(d=>d.style.display="none");
  refreshLeftStates();
  P.forEach(c=>{if(c)c.svg.style.pointerEvents=(t==="cursor"&&!eraserOn)?"none":"auto";}); }
 function afterUndoRedo(){ P.forEach(c=>{if(c){c.selectedId=null; c.selectedIds=new Set(); renderDrawings(c);}}); hideFloatBar(); markDirty(); renderObjTree(); }
