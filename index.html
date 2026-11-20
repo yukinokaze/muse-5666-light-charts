@@ -318,6 +318,34 @@ svg.ic{width:17px;height:17px;flex:none}
 .dtabs{display:flex;gap:2px;border-bottom:1px solid var(--line);padding:0 16px}
 .dtabs button{border-radius:6px 6px 0 0;min-height:38px}
 .dtabs button.on{background:var(--panel2);color:#fff;box-shadow:inset 0 -2px 0 var(--accent)}
+/* 描画Settingsダイアログ（本家ダークテーマ実測に合わせる。ユーザー提供スクリーンショット 800×868・ダイアログ幅770px≒385CSSpx から換算）:
+   幅 約380px（Fib は約450px）、角丸 約16px、タイトル 20px/600、タブ 16px（選択中は白文字＋白い下線、タブバー下にグレーのトラック）、
+   ラベル・入力・ボタン 14px、コントロール高さ 約34px、フッター左下に Template、Cancel=暗地・白枠・白文字 / Ok=白地・黒文字（角丸 約8px） */
+.dlg.dsDlg{width:384px;border-radius:16px;font-size:14px}
+.dlg.dsDlg.fibDlg{width:452px}
+.dsDlg header{padding:16px 20px 10px;border-bottom:none}
+.dsDlg header b{font-size:20px;font-weight:600}
+.dsDlg .body{padding:6px 20px 14px}
+.dsDlg .dtabs{margin:0 -20px 12px;padding:0 20px;gap:16px;border-bottom:3px solid #2b2b2b}
+.dsDlg .dtabs button{background:transparent;border:none;border-radius:0;min-height:40px;padding:4px 2px;font-size:16px;color:var(--dim)}
+.dsDlg .dtabs button:hover{background:transparent;color:var(--txt)}
+.dsDlg .dtabs button.on{background:transparent;color:#fff;box-shadow:inset 0 -3px 0 #fff}
+.dsDlg .frow{margin:7px 0;gap:8px}
+.dsDlg .frow label{width:106px;color:var(--txt);font-size:14px}
+.dsDlg .frow input[type=text],.dsDlg .frow input[type=number],.dsDlg .frow select{min-width:0;min-height:34px;border-radius:8px}
+.dsDlg .frow textarea{min-height:96px;border-radius:8px;resize:vertical}
+.dsDlg .frow input[type=range]{min-height:34px}
+.dsDlg footer{justify-content:flex-start;padding:12px 20px 16px;border-top:none}
+.dsDlg footer .btn{border-radius:8px;min-height:34px;font-size:14px;padding:4px 18px}
+.dsDlg footer .btn.dsTmplBtn{background:transparent;border:1px solid var(--line);color:var(--txt)}
+.dsDlg footer .btn.dsCancel{background:transparent;border:1px solid #d1d4dc;color:#fff}
+.dsDlg footer .btn.primary{background:#fff;color:#000;border-color:#fff}
+.dsDlg .dsSec{color:var(--dim);font-size:12px;font-weight:600;letter-spacing:.05em;margin:14px 0 2px}
+.dsDlg .seg.sm button{min-height:30px;padding:1px 7px;font-size:13px}
+.dsDlg .tglBtn{min-width:36px;min-height:34px;border:1px solid var(--line);border-radius:8px;background:transparent;color:var(--txt);font-size:16px;padding:2px 8px}
+.dsDlg .tglBtn.on{background:var(--panel2);border-color:#d1d4dc;color:#fff}
+.dsDlg .fibRow input[type=number]{width:78px}
+.dsDlg .visRow input[type=number]{width:64px;flex:none}
 .frow{display:flex;align-items:center;gap:10px;margin:9px 0;flex-wrap:wrap}
 .frow label{width:130px;color:var(--dim);flex:none}
 .frow input[type=text],.frow input[type=number],.frow select{flex:1;min-width:90px}
@@ -1356,9 +1384,14 @@ function defaultStyle(type){
      公式スクリーンショットで確認: 中心線は価格中点を通る水平線のみ（縦の中心線は無い）、破線・紫が例示され、枠とは独立した色/太さ/線種を持つ。
      新規の既定はオフ（本家の新規長方形は中心線なしで描かれる。項目名・既定の最終確認は比較タスク 3f7e8e9a の報告で照合すること） */
   base.midOn=false;base.midColor="#ab47bc";base.midOpacity=100;base.midWidth=1;base.midLineStyle="Dashed";}
- if(type==="ote"){base.fibFontSize=12; base.fibPrices=true; base.fibLevelsLbl=true; base.fibLabels=true; base.fibLineWidth=2; base.fibLineStyle="Line"; base.logScale=false;} // フィボの既定の線のWidthは本家と同じ 2px（従来 1px は細すぎた）
- if(type==="long"||type==="short"){base.showInfo=true; base.compactStats=false; base.alwaysShowStats=false; base.priceLabels=true; base.middlePoint=false;}
- if(type==="text"){base.bgOpacity=25;base.textColor="#2962ff";}
+ if(type==="ote"){base.fibFontSize=12; base.fibPrices=true; base.fibLevelsLbl=true; base.fibLabels=true; base.fibLineWidth=2; base.fibLineStyle="Line"; base.logScale=false;
+  base.fibTrend=true; base.trendColor="#787b86"; base.trendStyle="Dashed"; base.fibExtend="none"; base.fibBgOpacity=28; base.fibValuesFmt="Values"; base.fibLabelsPos="Left"; base.fibTextH="Center"; base.fibTextV="Middle";} // フィボの既定の線のWidthは本家と同じ 2px（従来 1px は細すぎた）
+ if(type==="long"||type==="short"){base.showInfo=true; base.compactStats=false; base.alwaysShowStats=false; base.priceLabels=true; base.middlePoint=false;
+  base.lineColor="#787b86"; base.fontSize=12; base.textColor="#ffffff"; base.accUnit="Default"; base.riskUnit="%";}
+ if(type==="line"||type==="arrow"){base.middlePoint=false; base.priceLabels=false; base.statsMode="Hidden"; base.statsPos="Right"; base.alwaysShowStats=false; base.alignH="Center";}
+ if(type==="arrow"){base.endR="Arrow";} // 本家の Arrow は右端に矢印頭があるのが既定（設定表示と描画を一致させる。Trendline は左右とも Normal のまま）
+ if(type==="rect"){base.textColor="#ab47bc"; base.alignH="Center";} // 本家の Rectangle は文字色の既定も枠と同じ紫
+ if(type==="text"){base.bgOpacity=25;base.textColor="#2962ff";base.bgOn=false;base.borderOn=false;base.borderColor="#2962ff";base.textWrap=false;}
  if(lastStyles[type])return {...base,...JSON.parse(JSON.stringify(lastStyles[type]))};
  return base;
 }
@@ -1387,7 +1420,9 @@ function rgba(hex,op){ if(typeof hex!=="string"||!/^#[0-9a-fA-F]{6}$/.test(hex))
 const NS="http://www.w3.org/2000/svg";
 function el(tag,attrs,parent){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(parent)parent.appendChild(e);return e;}
 function drawVisibleHere(d,ctx){ if(d.visible===false)return false; if(d.intervals&&d.intervals[ctx.interval]===false)return false;
- if(d.visCats){ const cat=ctx.interval==="1D"?"Days":["1m","5m","15m"].includes(ctx.interval)?"Minutes":["1h","4h"].includes(ctx.interval)?"Hours":"Minutes"; if(d.visCats[cat]===false)return false; }
+ if(d.visCats){ const cat=ctx.interval==="1D"?"Days":["1m","5m","15m"].includes(ctx.interval)?"Minutes":["1h","4h"].includes(ctx.interval)?"Hours":"Minutes"; if(d.visCats[cat]===false)return false;
+  const _vv={"1m":["Minutes",1],"5m":["Minutes",5],"15m":["Minutes",15],"1h":["Hours",1],"4h":["Hours",4],"1D":["Days",1]}[ctx.interval]; // Visibility の範囲（本家の範囲スライダー）: 現在の時間足の値がカテゴリ範囲外なら隠す
+  if(_vv&&d.visRanges&&d.visRanges[_vv[0]]){ const rg=d.visRanges[_vv[0]]; if(_vv[1]<rg[0]||_vv[1]>rg[1])return false; } }
  if(d.syncScope==="off")return ctx.idx===(d.homePane||0); // Sync off: 作成ペインのみ
  if(d.syncScope==="global")return true; // グローバル: 全ペイン・全レイアウト
  // layout（既定）: 同じレイアウト内でのみ表示する。layoutId の無い旧データは現在のレイアウト所属として扱う（互換）
@@ -1439,12 +1474,19 @@ function drawOne(ctx,svg,d,sel){
    el("line",{x1:ax,y1:ay,x2:bx,y2:by,stroke:"rgba(0,0,0,0)","stroke-width":14},g);
    el("line",{x1:ax,y1:ay,x2:bx,y2:by,stroke:col,"stroke-width":st.width,"stroke-dasharray":dash,"stroke-linecap":"round"},g);
    if(st.endL==="Arrow")marker(x2,y2,x1,y1);
-   if(st.endR==="Arrow"||d.type==="arrow")marker(x1,y1,x2,y2);
-   label(st.align==="Center"?(x1+x2)/2:(x1+x2)/2,(st.align==="Center"?(y1+y2)/2-8:y1-10),st.text);
+   if(st.endR==="Arrow")marker(x1,y1,x2,y2); // 矢印頭は設定（endR）に従う。従来は Arrow タイプというだけで常時描いていたため、設定 Right=Normal と描画が一致しなかった
+   const lblX=st.alignH==="Left"?x1+4:st.alignH==="Right"?x2-4:(x1+x2)/2, lblA=st.alignH==="Left"?"start":st.alignH==="Right"?"end":"middle";
+   label(lblX,(st.align==="Center"?(y1+y2)/2-8:y1-10),st.text,lblA);
+   if(st.middlePoint)el("circle",{cx:(x1+x2)/2,cy:(y1+y2)/2,r:3.5,fill:"#fff",stroke:"#2962ff","stroke-width":1.5},g);
+   if(st.statsMode&&st.statsMode!=="Hidden"&&(st.alwaysShowStats||sel)){ const dp2=d.p2.price-d.p1.price, pct2=d.p1.price?dp2/d.p1.price*100:0, nbars=Math.round(Math.abs(d.p2.time-d.p1.time)/(IVL_SEC[ctx.interval]||900));
+     const sx=st.statsPos==="Left"?Math.min(x1,x2):Math.max(x1,x2), st2=el("text",{x:sx,y:Math.min(y1,y2)-8,"font-size":11,fill:st.textColor||"#d1d4dc","text-anchor":st.statsPos==="Left"?"start":"end"},g);
+     st2.textContent=`${dp2>=0?"+":""}${dp2.toFixed(2)} (${pct2>=0?"+":""}${pct2.toFixed(2)}%) · ${nbars} bars`; }
    handles([[x1,y1],[x2,y2]]);
  } else if(d.type==="rect"){
-   const x1=t2x(ctx,d.p1.time),y1=p2y(ctx,d.p1.price),x2=t2x(ctx,d.p2.time),y2=p2y(ctx,d.p2.price); if([x1,y1,x2,y2].some(v=>v==null))return;
-   el("rect",{x:Math.min(x1,x2),y:Math.min(y1,y2),width:Math.abs(x2-x1),height:Math.abs(y2-y1),fill:"rgba(0,0,0,0)"},g);
+   let x1=t2x(ctx,d.p1.time),y1=p2y(ctx,d.p1.price),x2=t2x(ctx,d.p2.time),y2=p2y(ctx,d.p2.price); if([x1,y1,x2,y2].some(v=>v==null))return;
+   const oX1=x1,oX2=x2; // ヒット判定・ラベル・ハンドルは元の角座標のまま。Extend は塗り・枠・中心線の描画範囲だけをペイン端まで広げる
+   if(st.extendL){ if(x1<x2)x1=0; else x2=0; } if(st.extendR){ const W2=paneW(ctx)||ctx.el.clientWidth; if(x1<x2)x2=W2; else x1=W2; }
+   el("rect",{x:Math.min(oX1,oX2),y:Math.min(y1,y2),width:Math.abs(oX2-oX1),height:Math.abs(y2-y1),fill:"rgba(0,0,0,0)"},g);
    if(st.bgOn!==false)el("rect",{x:Math.min(x1,x2),y:Math.min(y1,y2),width:Math.abs(x2-x1),height:Math.abs(y2-y1),fill:rgba(st.bg||st.color,st.bgOpacity)},g);
    el("rect",{x:Math.min(x1,x2),y:Math.min(y1,y2),width:Math.abs(x2-x1),height:Math.abs(y2-y1),fill:"none",stroke:col,"stroke-width":st.width,"stroke-dasharray":dash},g);
    /* Middle line（CE）: 価格中点 (p1+p2)/2 を通る水平線を長方形の幅いっぱいに引く（本家は水平のみ・縦線なし）。
@@ -1452,23 +1494,30 @@ function drawOne(ctx,svg,d,sel){
       旧保存データ（midOn 未定義）は falsy で無効＝壊れない。描画 SVG はペイン寸法にクリップ済みなので価格軸へは出ない */
    if(st.midOn){ const yM=p2y(ctx,(d.p1.price+d.p2.price)/2);
      if(yM!=null)el("line",{x1:Math.min(x1,x2),y1:yM,x2:Math.max(x1,x2),y2:yM,stroke:rgba(st.midColor||st.color,st.midOpacity!=null?st.midOpacity:100),"stroke-width":st.midWidth||1,"stroke-dasharray":st.midLineStyle==="Dashed"?"7 5":st.midLineStyle==="Dotted"?"2 4":""},g); }
-   label((x1+x2)/2,(y1+y2)/2+5,st.text); handles([[x1,y1],[x2,y2]]);
+   label((oX1+oX2)/2,(y1+y2)/2+5,st.text); handles([[oX1,y1],[oX2,y2]]);
  } else if(d.type==="text"){
    const x=t2x(ctx,d.p1.time),y=p2y(ctx,d.p1.price); if(x==null||y==null)return;
    const txt=st.text||"Text"; const w=txt.length*st.fontSize*0.62+16;
    if(st.bgOn)el("rect",{x:x-4,y:y-st.fontSize-6,width:w,height:st.fontSize+14,fill:rgba(st.bg,st.bgOpacity),rx:4},g);
+   if(st.borderOn)el("rect",{x:x-4,y:y-st.fontSize-6,width:w,height:st.fontSize+14,fill:"none",stroke:st.borderColor||"#2962ff","stroke-width":1,rx:4},g);
    const t=el("text",{x:x+4,y:y+4,"font-size":st.fontSize,fill:st.textColor,"font-weight":st.bold?"700":"400","font-style":st.italic?"italic":"normal"},g); t.textContent=txt;
    if(sel)el("rect",{x:x-4,y:y-st.fontSize-6,width:w,height:st.fontSize+14,fill:"none",stroke:"#2962ff","stroke-dasharray":"4 3"},g);
  } else if(d.type==="ote"){
    const x1=t2x(ctx,d.p1.time),x2=t2x(ctx,d.p2.time); if(x1==null||x2==null)return;
    const hi=Math.max(d.p1.price,d.p2.price),lo=Math.min(d.p1.price,d.p2.price),rng=hi-lo;
    const yTop=p2y(ctx,hi-rng*0.618),yBot=p2y(ctx,hi-rng*0.786);
-   if(st.fibBg!==false&&yTop!=null&&yBot!=null)el("rect",{x:Math.min(x1,x2),y:Math.min(yTop,yBot),width:Math.abs(x2-x1),height:Math.abs(yBot-yTop),fill:"rgba(240,185,11,.28)",stroke:"rgba(240,185,11,.8)","stroke-width":1},g);
+   if(st.fibBg!==false&&yTop!=null&&yBot!=null)el("rect",{x:Math.min(x1,x2),y:Math.min(yTop,yBot),width:Math.abs(x2-x1),height:Math.abs(yBot-yTop),fill:rgba("#f0b90b",st.fibBgOpacity!=null?st.fibBgOpacity:28),stroke:"rgba(240,185,11,.8)","stroke-width":1},g);
    {const _ya=p2y(ctx,d.p1.price),_yb=p2y(ctx,d.p2.price); if(_ya!=null&&_yb!=null)el("rect",{x:Math.min(x1,x2),y:Math.min(_ya,_yb),width:Math.abs(x2-x1),height:Math.abs(_yb-_ya),fill:"rgba(0,0,0,0)"},g);}
+   if(st.fibTrend!==false){ const _ya=p2y(ctx,d.p1.price),_yb=p2y(ctx,d.p2.price); // Trend line（p1→p2 の対角線。本家は破線）
+     if(_ya!=null&&_yb!=null)el("line",{x1,y1:_ya,x2,y2:_yb,stroke:rgba(st.trendColor||"#787b86",90),"stroke-width":1,"stroke-dasharray":st.trendStyle==="Dotted"?"2 4":st.trendStyle==="Line"?"":"7 5"},g); }
+   const fx1=st.fibExtend==="left"||st.fibExtend==="both"?0:Math.min(x1,x2), fx2=st.fibExtend==="right"||st.fibExtend==="both"?(paneW(ctx)||ctx.el.clientWidth):Math.max(x1,x2);
    const fp1=st.fibReverse?d.p2:d.p1, fp2=st.fibReverse?d.p1:d.p2;
    for(const fl of st.fibLevels){ if(!fl.on)continue; const price=fp1.price+(fp2.price-fp1.price)*fl.level; const y=p2y(ctx,price); if(y==null)continue;
-     el("line",{x1:Math.min(x1,x2),y1:y,x2:Math.max(x1,x2),y2:y,stroke:rgba(fl.color,90),"stroke-width":st.fibLineWidth||1,"stroke-dasharray":st.fibLineStyle==="Dashed"?"7 5":st.fibLineStyle==="Dotted"?"2 4":""},g);
-     if(st.fibLabels!==false&&(st.fibLevelsLbl!==false||st.fibPrices!==false)){const t=el("text",{x:Math.max(x1,x2)+5,y:y+4,"font-size":st.fibFontSize||12,fill:fl.color},g); t.textContent=((st.fibLevelsLbl!==false?fl.level+" ":"")+(st.fibPrices!==false?"("+price.toFixed(2)+")":"")).trim();} }
+     el("line",{x1:fx1,y1:y,x2:fx2,y2:y,stroke:rgba(fl.color,90),"stroke-width":st.fibLineWidth||1,"stroke-dasharray":st.fibLineStyle==="Dashed"?"7 5":st.fibLineStyle==="Dotted"?"2 4":""},g);
+     if(st.fibLabels!==false&&(st.fibLevelsLbl!==false||st.fibPrices!==false)){ const lpos=st.fibLabelsPos||"Left";
+       const lx=lpos==="Middle"?(Math.min(x1,x2)+Math.max(x1,x2))/2:Math.min(x1,x2)+5, la=lpos==="Middle"?"middle":"start";
+       const lvTxt=st.fibValuesFmt==="Percents"?(Math.round(fl.level*1000)/10)+"%":fl.level;
+       const t=el("text",{x:lx,y:y+4,"font-size":st.fibFontSize||12,fill:fl.color,"text-anchor":la},g); t.textContent=((st.fibLevelsLbl!==false?lvTxt+" ":"")+(st.fibPrices!==false?"("+price.toFixed(2)+")":"")).trim();} }
    const t=el("text",{x:Math.min(x1,x2)+4,y:(yTop!=null?yTop:20)-5,"font-size":12,fill:"#f0b90b","font-weight":700},g); t.textContent="OTE 0.618–0.786";
    handles([[x1,p2y(ctx,d.p1.price)],[x2,p2y(ctx,d.p2.price)]]);
  } else if(d.type==="long"||d.type==="short"){
@@ -1477,18 +1526,19 @@ function drawOne(ctx,svg,d,sel){
    const xa=Math.min(x1,x2),w=Math.max(30,Math.abs(x2-x1));
    el("rect",{x:xa,y:Math.min(yE,yT),width:w,height:Math.abs(yT-yE),fill:rgba(st.targetColor,st.targetOpacity)},g);
    el("rect",{x:xa,y:Math.min(yE,yS),width:w,height:Math.abs(yS-yE),fill:rgba(st.stopColor,st.stopOpacity)},g);
-   el("line",{x1:xa,y1:yE,x2:xa+w,y2:yE,stroke:"#d1d4dc","stroke-width":1.4,"stroke-dasharray":"5 3"},g);
+   el("line",{x1:xa,y1:yE,x2:xa+w,y2:yE,stroke:st.lineColor||"#d1d4dc","stroke-width":st.width||1.4,"stroke-dasharray":st.lineStyle==="Dashed"?"5 3":st.lineStyle==="Dotted"?"2 4":""},g);
    const rr=Math.abs(d.target-d.entry)/Math.max(1e-9,Math.abs(d.entry-d.stop));
    const mult=effMult(ctx.symbol); const distP=Math.abs(d.entry-d.stop);
    const riskAmt=(st.accountSize||0)*(st.risk||0)/100;
    const calcQty=mult&&distP>0?riskAmt/(distP*mult):(st.qty||st.lotSize||1);
    const lastB=ctx.view[ctx.view.length-1]; const openPnl=(lastB&&mult)?(lastB.close-d.entry)*(d.type==="long"?1:-1)*calcQty*mult:null;
    const openPct=(lastB)?(lastB.close-d.entry)*(d.type==="long"?1:-1)/Math.max(1e-9,d.entry)*100:0;
-   const mk=(y,txt,c)=>{const t=el("text",{x:xa+w/2,y:y+4,"font-size":12,fill:c,"text-anchor":"middle","font-weight":600},g);t.textContent=txt;};
-   mk((yE+yT)/2,`Target ${d.target.toFixed(2)}`, "#fff"); mk((yE+yS)/2,`Stop ${d.stop.toFixed(2)}`,"#fff");
-   mk(yE-8,`${d.type==="long"?"Long":"Short"} Entry ${d.entry.toFixed(2)} · R/R ${rr.toFixed(2)} · Qty ${(+calcQty).toFixed(2)} · Risk ${riskAmt.toFixed(2)}${openPnl!=null?` · Open PnL ${openPnl>=0?"+":""}${openPnl.toFixed(2)} (${openPct>=0?"+":""}${openPct.toFixed(2)}%)`:" · Multiplier not set, so PnL is the price difference only"}`,"#fff");
+   const tc=st.textColor||"#fff", tfs=st.fontSize||12;
+   const mk=(y,txt,c)=>{const t=el("text",{x:xa+w/2,y:y+4,"font-size":tfs,fill:c,"text-anchor":"middle","font-weight":600},g);t.textContent=txt;};
+   mk((yE+yT)/2,`Target ${d.target.toFixed(2)}`, tc); mk((yE+yS)/2,`Stop ${d.stop.toFixed(2)}`,tc);
+   mk(yE-8,st.compactStats?`${d.type==="long"?"Long":"Short"} · R/R ${rr.toFixed(2)} · Qty ${(+calcQty).toFixed(2)}`:`${d.type==="long"?"Long":"Short"} Entry ${d.entry.toFixed(2)} · R/R ${rr.toFixed(2)} · Qty ${(+calcQty).toFixed(2)} · Risk ${riskAmt.toFixed(2)}${openPnl!=null?` · Open PnL ${openPnl>=0?"+":""}${openPnl.toFixed(2)} (${openPct>=0?"+":""}${openPct.toFixed(2)}%)`:" · Multiplier not set, so PnL is the price difference only"}`,tc);
    if(st.middlePoint){el("circle",{cx:xa+w/2,cy:yE,r:3.5,fill:"#fff",stroke:"#2962ff"},g);}
-   if(st.showInfo&&st.priceLabels){ mk(yT-6,`TP ${Math.abs(d.target-d.entry).toFixed(2)} ticks`,"#fff"); mk(yS+14,`SL ${Math.abs(d.entry-d.stop).toFixed(2)} ticks`,"#fff"); }
+   if(st.showInfo&&st.priceLabels){ mk(yT-6,`TP ${Math.abs(d.target-d.entry).toFixed(2)} ticks`,tc); mk(yS+14,`SL ${Math.abs(d.entry-d.stop).toFixed(2)} ticks`,tc); }
    if(sel){[[xa,yT],[xa,yE],[xa,yS]].forEach(([x,y])=>el("circle",{cx:x,cy:y,r:4.5,fill:"#fff",stroke:"#2962ff","stroke-width":1.5},g));}
  }
 }
@@ -1631,7 +1681,14 @@ function bindDrawing(ctx){
          startHandleDrag(ctx,selPos,hp.kind,e); return; } }
      let hitD2=null; const list2=allDrawingsFor(ctx.symbol);
      for(let i=list2.length-1;i>=0;i--){ const dd=list2[i]; if(!drawVisibleHere(dd,ctx))continue; if(drawingPointHit(ctx,dd,p.x,p.y)){ hitD2=dd; break; } }
-     if(hitD2&&noteDrawClick(hitD2,p.x,p.y)){ if(ctx.pending){ctx.pending=null;ctx.clickPlace=false;} cancelDrawDrag(); selectDrawing(ctx,hitD2.id); openDrawSettings(ctx,hitD2); return; } }
+     if(hitD2){ /* 【実欠陥の修正】ツール有効中に既存描画をクリックすると、従来はそのまま新規作成（pending）に落ち、
+        特に Long/Short ではクリック位置を Entry とする pending の TP/SL がマウス追従で書き換わり続け、
+        既存ポジションの Target/Stop が Entry 価格にリセットされたように見えた（比較タスクで観測された
+        ショートの TP/SL 0.00 ticks 化と、その後の値の変動の正体）。既存描画へのクリックは選択のみとし、
+        ダブルクリックなら pending を破棄してSettingsを開く。新規作成は空白へのクリックでのみ始める */
+       const isDbl=noteDrawClick(hitD2,p.x,p.y); selectDrawing(ctx,hitD2.id);
+       if(isDbl){ if(ctx.pending){ctx.pending=null;ctx.clickPlace=false;} cancelDrawDrag(); openDrawSettings(ctx,hitD2); }
+       return; } }
    if(tool==="cursor"){ ctx.measure=null;
      if(hit&&hit.dataset.did){ const d=curDrawings().find(x=>x.id===hit.dataset.did);
        if(d){ ctx.selectedId=d.id; ctx.selectedIds=new Set([d.id]); showFloatBar(ctx,d); renderDrawings(ctx); renderObjTree();
@@ -2315,116 +2372,183 @@ function openTemplateMenu(ctx,d){
  $("#tpDefaults").onclick=()=>{snapshotDrawings(); delete lastStyles[d.type]; d.style=defaultStyle(d.type); afterDrawChange(ctx); showFloatBar(ctx,d); closeModal();};
 }
 let templates={};
-/* ============ 描画Settingsダイアログ ============ */
+/* ============ 描画Settingsダイアログ（本家の項目・デザインに合わせた構成） ============ */
 let drawSettingsTab="Style"; // Settingsダイアログで最後に開いたタブ（本家と同じく記憶し、次回も同じタブで開く。フローティングツールBarsの Settings から開く場合も共通）
 function openDrawSettings(ctx,d){
- const st=JSON.parse(JSON.stringify(d.style)); // 複製を編集し、OK時に snapshot→Applyする（Cancelで変更しない）
- const isFib=d.type==="ote", isPos=d.type==="long"||d.type==="short";
+ const st=JSON.parse(JSON.stringify(d.style)); // 複製を編集し、OK時に snapshot→Applyする（Cancelで変更しない。開くだけでは描画の値は一切変わらない）
+ const isFib=d.type==="ote", isPos=d.type==="long"||d.type==="short", isText=d.type==="text";
  const barIdx=t=>{const i=ctx.full.findIndex(c=>c.time>=t);return i<0?ctx.full.length:i;};
- const tabs= d.type==="text" ? [["Text","Text"],["Visibility","Visibility"]]
+ const tabs= isText ? [["Text","Text"],["Visibility","Visibility"]]
    : isFib ? [["Style","Style"],["Coordinates","Coordinates"],["Visibility","Visibility"]]
-   : isPos ? [["Inputs","Inputs"],["Style","Style"],["Text","Text"],["Coordinates","Coordinates"],["Visibility","Visibility"]]
+   : isPos ? [["Inputs","Inputs"],["Style","Style"],["Visibility","Visibility"]]
    : [["Style","Style"],["Text","Text"],["Coordinates","Coordinates"],["Visibility","Visibility"]];
  const DS_TITLES={line:"Trendline",arrow:"Arrow",rect:"Rectangle",ote:"Fib retracement",text:"Text",long:"Long Position",short:"Short Position"};
  const initTab=tabs.some(([k])=>k===drawSettingsTab)?drawSettingsTab:tabs[0][0];
+ /* 価格は本家と同じく小数1桁で表示する。ただし表示用の丸めで実データを壊さないため、入力欄が
+    「表示値のまま（未編集）」なら OK 時は元の倍精度値を書き戻す（readPrice） */
+ const r1=v=>{const n=Math.round((+v)*10)/10; return isFinite(n)?n:v;};
+ const fullAttr=v=>` data-full="${+v}"`;
+ const segLS=(id,cur)=>`<span class="seg sm" id="${id}">${[["Line","―"],["Dashed","┄"],["Dotted","···"]].map(([s,g])=>`<button data-s="${s}" class="${cur===s?"on":""}" title="${s}">${g}</button>`).join("")}</span>`;
+ const segW=(id,cur)=>`<span class="seg sm" id="${id}">${[1,2,3,4].map(w=>`<button data-w="${w}" class="${cur===w?"on":""}">${w}px</button>`).join("")}</span>`;
+ const extendSel=(id,cur)=>`<select id="${id}">${[["none","Don't extend"],["left","Extend left"],["right","Extend right"],["both","Extend both"]].map(([v,l])=>`<option value="${v}" ${cur===v?"selected":""}>${l}</option>`).join("")}</select>`;
+ const extendCur=st.extendL&&st.extendR?"both":st.extendL?"left":st.extendR?"right":"none";
+ const chk=(id,on,label)=>`<label class="chk"><input type="checkbox" id="${id}" ${on?"checked":""}> ${label}</label>`;
+ const VIS_CATS=[["Ticks",null],["Seconds",59],["Minutes",59],["Hours",24],["Days",366],["Weeks",52],["Months",12],["Ranges",null]];
+ const textPaneHTML= isText ? `
+   <div class="frow"><label>Text</label><input type="color" id="dsTC" value="${st.textColor}">
+   <select id="dsFS" style="flex:none;width:84px">${[8,9,10,11,12,14,16,18,20,24,28,32,40,48].map(z=>`<option ${st.fontSize===z?"selected":""}>${z}</option>`).join("")}</select>
+   <button type="button" class="tglBtn ${st.bold?"on":""}" id="dsBoldBtn" title="Bold"><b>B</b></button><button type="button" class="tglBtn ${st.italic?"on":""}" id="dsItalBtn" title="Italic"><i>I</i></button></div>
+   <div class="frow"><label></label><textarea id="dsText" placeholder="Add text">${esc(st.text||"")}</textarea></div>
+   <div class="frow"><label>Background</label>${chk("dsTxBgOn",!!st.bgOn,"Background")}<input type="color" id="dsTxBg" value="${st.bg}"><label style="width:auto">Opacity</label><input type="number" id="dsTxBgOp" min="0" max="100" value="${st.bgOpacity}" style="width:70px;flex:none">%</div>
+   <div class="frow"><label>Border</label>${chk("dsTxBdOn",!!st.borderOn,"Border")}<input type="color" id="dsTxBd" value="${st.borderColor||"#2962ff"}"></div>
+   <div class="frow"><label></label>${chk("dsTxWrap",!!st.textWrap,"Text wrap")}</div>`
+  : `
+   <div class="frow"><label>Text</label><input type="color" id="dsTC" value="${st.textColor}">
+   <select id="dsFS" style="flex:none;width:84px">${[8,9,10,11,12,14,16,18,20,24,28,32,40,48].map(z=>`<option ${st.fontSize===z?"selected":""}>${z}</option>`).join("")}</select>
+   <button type="button" class="tglBtn ${st.bold?"on":""}" id="dsBoldBtn" title="Bold"><b>B</b></button><button type="button" class="tglBtn ${st.italic?"on":""}" id="dsItalBtn" title="Italic"><i>I</i></button></div>
+   <div class="frow"><label></label><textarea id="dsText" placeholder="Add text">${esc(st.text||"")}</textarea></div>
+   <div class="frow"><label>Text alignment</label><select id="dsAlignV">${(d.type==="rect"?["Inside","Center"]:["Top","Center"]).map(s=>`<option ${st.align===s?"selected":""}>${s}</option>`).join("")}</select><select id="dsAlignH">${["Left","Center","Right"].map(s=>`<option ${(st.alignH||"Center")===s?"selected":""}>${s}</option>`).join("")}</select></div>`;
  const m=openModal(DS_TITLES[d.type]||"Drawing settings",`
-  <div class="frow"><label>Template</label><button class="btn" id="dsTmpl">Template ${uiIc("chev")} (Save as… / Apply defaults)</button>
-  <label style="width:auto">Sync scope</label><select id="dsSync"><option value="off">Off</option><option value="layout">Sync in layout</option><option value="global">Global sync</option></select></div>
-  <div class="dtabs" style="padding:0;margin:0 -16px 6px">${tabs.map(([k])=>`<button data-tab="${k}" class="${k===initTab?"on":""}">${k}</button>`).join("")}</div>
+  <div class="dtabs">${tabs.map(([k])=>`<button data-tab="${k}" class="${k===initTab?"on":""}">${k}</button>`).join("")}</div>
   ${isPos?`<div data-pane="Inputs">
-   <div class="frow"><label>Account size</label><input type="number" id="dsAcc" value="${st.accountSize}"><label style="width:auto">Lot size</label><input type="number" id="dsLot" value="${st.lotSize}" step="0.01"></div>
-   <div class="frow"><label>Risk %</label><input type="number" id="dsRisk" value="${st.risk}" step="0.01"><label style="width:auto">Leverage</label><input type="number" id="dsLev" value="${st.leverage}"></div>
-   <div class="frow"><label>Qty</label><input type="number" id="dsQty" value="${st.qty}" step="0.01"><label style="width:auto">QTY precision</label><select id="dsQp">${["Default","0","1","2","3"].map(o=>`<option ${String(st.qtyPrecision||"Default")===o?"selected":""}>${o}</option>`).join("")}</select></div>
-   <div class="frow"><label>Entry price</label><input type="number" id="dsEntry" value="${d.entry}" step="any"></div>
-   <div class="frow"><label>Profit level</label><select id="dsTgUnit"><option value="Price" ${st.targetUnit!=="Ticks"?"selected":""}>Price</option><option value="Ticks" ${st.targetUnit==="Ticks"?"selected":""}>Ticks</option></select><input type="number" id="dsTarget" value="${d.target}" step="any"></div>
-   <div class="frow"><label>Stop level</label><select id="dsStUnit"><option value="Price" ${st.stopUnit!=="Ticks"?"selected":""}>Price</option><option value="Ticks" ${st.stopUnit==="Ticks"?"selected":""}>Ticks</option></select><input type="number" id="dsStop" value="${d.stop}" step="any"></div>
-   <p class="hint">With Ticks, the value is treated as a tick count from the Entry (1 tick = the minimum price increment). The Qty field is a reference value; when the contract multiplier is known, the value calculated from Risk % takes precedence for display and calculation.</p>
-   <p class="hint">Qty = Account × Risk% ÷ ((Entry − Stop distance) × contract multiplier); based on the price difference when no multiplier is set</p>
+   <div class="frow"><label>Account size</label><input type="number" id="dsAcc" value="${st.accountSize}"><select id="dsAccUnit" style="flex:none"><option ${st.accUnit==="Default"?"selected":""}>Default</option></select></div>
+   <div class="frow"><label>Lot size</label><input type="number" id="dsLot" value="${st.lotSize}" step="0.01"></div>
+   <div class="frow"><label>Risk</label><input type="number" id="dsRisk" value="${st.risk}" step="0.01"><select id="dsRiskUnit" style="flex:none"><option ${st.riskUnit==="%"?"selected":""}>%</option></select></div>
+   <div class="frow"><label>Leverage</label><input type="number" id="dsLev" value="${st.leverage}"></div>
+   <div class="frow"><label>QTY precision</label><select id="dsQp">${["Default","0","1","2","3"].map(o=>`<option ${String(st.qtyPrecision||"Default")===o?"selected":""}>${o}</option>`).join("")}</select></div>
+   <div class="frow"><label>Entry price</label><input type="number" id="dsEntry" step="any" value="${r1(d.entry)}"${fullAttr(d.entry)}></div>
+   <div class="dsSec">PROFIT LEVEL</div>
+   <div class="frow"><label>Ticks</label><input type="number" id="dsTgTicks" step="any"><label style="width:auto">Price</label><input type="number" id="dsTarget" step="any" value="${r1(d.target)}"${fullAttr(d.target)}></div>
+   <div class="dsSec">STOP LEVEL</div>
+   <div class="frow"><label>Ticks</label><input type="number" id="dsStTicks" step="any"><label style="width:auto">Price</label><input type="number" id="dsStop" step="any" value="${r1(d.stop)}"${fullAttr(d.stop)}></div>
   </div>`:""}
-  <div data-pane="Style"${isPos?' style="display:none"':""}>
-   <div class="frow"${isFib?' style="display:none"':""}><label>Line color</label><input type="color" id="dsColor" value="${st.color}"><input type="text" id="dsColorHex" value="${st.color}"><label style="width:auto">Opacity</label><input type="number" id="dsOp" min="0" max="100" value="${st.opacity}" style="width:76px;flex:none">%</div>
-   <div class="frow"${isFib?' style="display:none"':""}><label>Width</label><span class="seg" id="dsW">${[1,2,3,4].map(w=>`<button data-w="${w}" class="${st.width===w?"on":""}">${w}px</button>`).join("")}</span>
-   <label style="width:auto">Line style</label><span class="seg" id="dsLS">${["Line","Dashed","Dotted"].map(s=>`<button data-s="${s}" class="${st.lineStyle===s?"on":""}">${s}</button>`).join("")}</span></div>
-   ${(d.type==="line"||d.type==="arrow")?`<div class="frow"><label>Endpoint style</label>Left <span class="seg" id="dsEL">${["Normal","Arrow"].map(s=>`<button data-s="${s}" class="${st.endL===s?"on":""}">${s}</button>`).join("")}</span> Right <span class="seg" id="dsER">${["Normal","Arrow"].map(s=>`<button data-s="${s}" class="${st.endR===s?"on":""}">${s}</button>`).join("")}</span></div>
-   <div class="frow"><label>Extend</label><label class="chk"><input type="checkbox" id="dsExL" ${st.extendL?"checked":""}> Extend left line</label><label class="chk"><input type="checkbox" id="dsExR" ${st.extendR?"checked":""}> Extend right line</label></div>`:""}
-   ${d.type==="rect"?`<div class="frow"><label>Background</label><label class="chk"><input type="checkbox" id="dsBgOn" ${st.bgOn!==false?"checked":""}> Background</label><input type="color" id="dsBg" value="${st.bg}"><label style="width:auto">Opacity</label><input type="number" id="dsBgOp" min="0" max="100" value="${st.bgOpacity}" style="width:76px;flex:none">%</div>
-   <div class="frow"><label>Middle line</label><label class="chk"><input type="checkbox" id="dsMidOn" ${st.midOn?"checked":""}> Middle line</label><input type="color" id="dsMidColor" value="${st.midColor||st.color}"><label style="width:auto">Opacity</label><input type="number" id="dsMidOp" min="0" max="100" value="${st.midOpacity!=null?st.midOpacity:100}" style="width:76px;flex:none">%</div>
-   <div class="frow"><label></label><label style="width:auto">Width</label><span class="seg" id="dsMidW">${[1,2,3,4].map(w=>`<button data-w="${w}" class="${(st.midWidth||1)===w?"on":""}">${w}px</button>`).join("")}</span><label style="width:auto">Line style</label><span class="seg" id="dsMidLS">${["Line","Dashed","Dotted"].map(s=>`<button data-s="${s}" class="${(st.midLineStyle||"Dashed")===s?"on":""}">${s}</button>`).join("")}</span><span class="hint">CE — center (50%) line of the price range</span></div>`:""}
-   ${isPos?`<div class="frow"><label>INFO / Stats</label><label class="chk"><input type="checkbox" id="dsShowInfo" ${st.showInfo!==false?"checked":""}> INFO</label><label class="chk"><input type="checkbox" id="dsCompact" ${st.compactStats?"checked":""}> Compact stats mode</label><label class="chk"><input type="checkbox" id="dsAlwaysStats" ${st.alwaysShowStats?"checked":""}> Always show stats</label></div>
-   <div class="frow"><label>Show</label><label class="chk"><input type="checkbox" id="dsPriceLabels" ${st.priceLabels!==false?"checked":""}> Price labels</label><label class="chk"><input type="checkbox" id="dsMid" ${st.middlePoint?"checked":""}> Middle point</label></div>
-   <div class="frow"><label>Target color</label><input type="color" id="dsTgC" value="${st.targetColor}"><label style="width:auto">Opacity</label><input type="number" id="dsTgOp" min="0" max="100" value="${st.targetOpacity}" style="width:70px;flex:none">%</div>
-   <div class="frow"><label>Stop color</label><input type="color" id="dsStC" value="${st.stopColor}"><label style="width:auto">Opacity</label><input type="number" id="dsStOp" min="0" max="100" value="${st.stopOpacity}" style="width:70px;flex:none">%</div>`:""}
-   ${isFib?`<div class="frow"><label>OTE zone</label><span class="hint">0.618–0.786 is shown in gold</span><label class="chk"><input type="checkbox" id="dsFibBg" ${st.fibBg?"checked":""}> Background</label><label class="chk"><input type="checkbox" id="dsFibRev" ${st.fibReverse?"checked":""}> Reverse</label></div>
-   <div class="frow"><label>Fib display</label><label class="chk"><input type="checkbox" id="dsFibPrices" ${st.fibPrices!==false?"checked":""}> Prices</label><label class="chk"><input type="checkbox" id="dsFibLv" ${st.fibLevelsLbl!==false?"checked":""}> Levels</label><label class="chk"><input type="checkbox" id="dsFibLabels" ${st.fibLabels!==false?"checked":""}> Labels</label><label style="width:auto">Font size</label><input type="number" id="dsFibFS" value="${st.fibFontSize||12}" style="width:64px;flex:none"></div>
-   <div class="frow"><label>Levels line</label><span class="seg" id="dsFibW">${[1,2,3,4].map(w=>`<button data-w="${w}" class="${(st.fibLineWidth||1)===w?"on":""}">${w}px</button>`).join("")}</span><span class="seg" id="dsFibLS">${["Line","Dashed","Dotted"].map(x=>`<button data-s="${x}" class="${(st.fibLineStyle||"Line")===x?"on":""}">${x}</button>`).join("")}</span></div>
-   <div class="frow"><label>Use one color</label><input type="color" id="dsFibOne" value="${(st.fibLevels.find(f=>f.on)||st.fibLevels[0]||{}).color||"#2962ff"}"><button class="btn" type="button" id="dsFibOneBtn">Apply to all levels</button><span class="hint">Set all 24 level colors to this color (Use one color)</span></div>
-   <div class="frow"><label>log scale</label><label class="chk"><input type="checkbox" disabled> log scale (not available on this chart)</label></div>
-   <div id="dsFib">${st.fibLevels.map((fl,i)=>`<div class="fibRow"><label class="chk"><input type="checkbox" data-fi="${i}" ${fl.on?"checked":""}></label><input type="number" step="0.001" data-fv="${i}" value="${fl.level}"><input type="color" data-fc="${i}" value="${fl.color}"><button class="btn" data-fuse="${i}">Use this color for all levels</button></div>`).join("")}</div>`:""}
-  </div>
-  <div data-pane="Text" style="display:none">
-   <div class="frow"><label>Text</label><input type="text" id="dsText" value="${(st.text||"").replace(/"/g,"&quot;")}" placeholder="Add text"></div>
-   <div class="frow"><label>Text color</label><input type="color" id="dsTC" value="${st.textColor}"><label style="width:auto">Size</label><input type="number" id="dsFS" value="${st.fontSize}" min="8" max="48" style="width:76px;flex:none">
-   <label class="chk"><input type="checkbox" id="dsBold" ${st.bold?"checked":""}> <b>B Bold</b></label><label class="chk"><input type="checkbox" id="dsItal" ${st.italic?"checked":""}> <i>I Italic</i></label></div>
-   <div class="frow"><label>Alignment</label><span class="seg" id="dsAlign">${(d.type==="rect"?["Inside","Center"]:["Top","Center"]).map(s=>`<button data-s="${s}" class="${st.align===s?"on":""}">${s}</button>`).join("")}</span></div>
-   ${d.type==="text"?`<div class="frow"><label>Background / Border</label><label class="chk"><input type="checkbox" id="dsTxBgOn" ${st.bgOn?"checked":""}> Background</label><input type="color" id="dsTxBg" value="${st.bg}"><label style="width:auto">Opacity</label><input type="number" id="dsTxBgOp" min="0" max="100" value="${st.bgOpacity}" style="width:76px;flex:none">%(default 25%)</div>`:""}
-  </div>
-  <div data-pane="Coordinates" style="display:none">
-   <div class="frow"><label>#1 price / bar</label><input type="number" id="dsP1" step="any" value="${d.p1.price}"><input type="number" id="dsB1" value="${barIdx(d.p1.time)}"></div>
-   ${d.p2?`<div class="frow"><label>#2 price / bar</label><input type="number" id="dsP2" step="any" value="${d.p2.price}"><input type="number" id="dsB2" value="${barIdx(d.p2.time)}"></div>`:""}
-   <p class="hint">Bar is the count from the start of the loaded data. Changing a value moves the drawing endpoint.</p>
-  </div>
+  ${isText?"":`<div data-pane="Style">
+   ${d.type==="line"||d.type==="arrow"?`<div class="frow"><label>Line</label><input type="color" id="dsColor" value="${st.color}">${segLS("dsLS",st.lineStyle)}${segW("dsW",st.width)}
+   <span class="seg sm" id="dsEL">${[["Normal","―"],["Arrow","←"]].map(([s,g])=>`<button data-s="${s}" class="${st.endL===s?"on":""}" title="Left end: ${s}">${g}</button>`).join("")}</span><span class="seg sm" id="dsER">${[["Normal","―"],["Arrow","→"]].map(([s,g])=>`<button data-s="${s}" class="${st.endR===s?"on":""}" title="Right end: ${s}">${g}</button>`).join("")}</span></div>
+   <div class="frow"><label>Extend</label>${extendSel("dsExtend",extendCur)}</div>
+   <div class="frow"><label></label>${chk("dsMidPt",!!st.middlePoint,"Middle point")}${chk("dsPriceLbl",!!st.priceLabels,"Price labels")}</div>
+   <div class="dsSec">INFO</div>
+   <div class="frow"><label>Stats</label><select id="dsStats"><option ${st.statsMode!=="Show"?"selected":""}>Hidden</option><option ${st.statsMode==="Show"?"selected":""}>Show</option></select></div>
+   <div class="frow"><label>Stats position</label><select id="dsStatsPos"><option ${st.statsPos!=="Left"?"selected":""}>Right</option><option ${st.statsPos==="Left"?"selected":""}>Left</option></select></div>
+   <div class="frow"><label></label>${chk("dsAlwaysStats",!!st.alwaysShowStats,"Always show stats")}</div>`:""}
+   ${d.type==="rect"?`<div class="frow"><label>Extend</label>${extendSel("dsExtend",extendCur)}</div>
+   <div class="frow"><label>Border</label><input type="color" id="dsColor" value="${st.color}">${segLS("dsLS",st.lineStyle)}${segW("dsW",st.width)}</div>
+   <div class="frow"><label>Middle line</label>${chk("dsMidOn",!!st.midOn,"Middle line")}<input type="color" id="dsMidColor" value="${st.midColor||st.color}">${segW("dsMidW",st.midWidth||1)}${segLS("dsMidLS",st.midLineStyle||"Dashed")}</div>
+   <div class="frow"><label>Background</label>${chk("dsBgOn",st.bgOn!==false,"Background")}<input type="color" id="dsBg" value="${st.bg}"></div>`:""}
+   ${isPos?`<div class="frow"><label>Lines</label><input type="color" id="dsLineColor" value="${st.lineColor||"#787b86"}">${segLS("dsLS",st.lineStyle)}${segW("dsW",st.width)}</div>
+   <div class="frow"><label>Stop color</label><input type="color" id="dsStC" value="${st.stopColor}"></div>
+   <div class="frow"><label>Target color</label><input type="color" id="dsTgC" value="${st.targetColor}"></div>
+   <div class="frow"><label>Text</label><input type="color" id="dsPosTC" value="${st.textColor||"#ffffff"}"><label style="width:auto">Font size</label><input type="number" id="dsPosFS" value="${st.fontSize||12}" style="width:70px;flex:none"></div>
+   <div class="frow"><label></label>${chk("dsPriceLabels",st.priceLabels!==false,"Price labels")}</div>
+   <div class="dsSec">INFO</div>
+   <div class="frow"><label>Stats</label><select id="dsStatsMode"><option value="all" ${st.showInfo!==false&&!st.compactStats?"selected":""}>All stats</option><option value="compact" ${st.compactStats?"selected":""}>Compact</option><option value="hidden" ${st.showInfo===false?"selected":""}>Hidden</option></select></div>
+   <div class="frow"><label></label>${chk("dsCompact",!!st.compactStats,"Compact stats mode")}${chk("dsAlwaysStats",!!st.alwaysShowStats,"Always show stats")}</div>`:""}
+   ${isFib?`<div class="frow"><label>Trend line</label>${chk("dsFibTrend",st.fibTrend!==false,"")}<input type="color" id="dsTrendColor" value="${st.trendColor||"#787b86"}">${segLS("dsTrendLS",st.trendStyle||"Dashed")}</div>
+   <div class="frow"><label>Levels line</label>${segLS("dsFibLS",st.fibLineStyle||"Line")}${segW("dsFibW",st.fibLineWidth||2)}</div>
+   <div class="frow"><label>Extend</label>${extendSel("dsFibExtend",st.fibExtend||"none")}</div>
+   <div id="dsFib">${st.fibLevels.map((fl,i)=>`<div class="fibRow"><label class="chk"><input type="checkbox" data-fi="${i}" ${fl.on?"checked":""}></label><input type="number" step="0.001" data-fv="${i}" value="${parseFloat((+fl.level).toFixed(4))}"><input type="color" data-fc="${i}" value="${fl.color}"></div>`).join("")}</div>
+   <div class="frow"><label>Use one color</label><input type="color" id="dsFibOne" value="${(st.fibLevels.find(f=>f.on)||st.fibLevels[0]||{}).color||"#2962ff"}"><span class="hint">Picking a color sets all level colors</span></div>
+   <div class="frow"><label>Background</label>${chk("dsFibBg",!!st.fibBg,"Background")}<input type="range" id="dsFibBgOp" min="0" max="100" value="${st.fibBgOpacity!=null?st.fibBgOpacity:28}" style="flex:1"><span id="dsFibBgOpV">${st.fibBgOpacity!=null?st.fibBgOpacity:28}%</span></div>
+   <div class="frow"><label></label>${chk("dsFibRev",!!st.fibReverse,"Reverse")}</div>
+   <div class="frow"><label></label>${chk("dsFibPrices",st.fibPrices!==false,"Prices")}</div>
+   <div class="frow"><label>Levels</label>${chk("dsFibLv",st.fibLevelsLbl!==false,"Levels")}<select id="dsFibValues"><option ${st.fibValuesFmt!=="Percents"?"selected":""}>Values</option><option ${st.fibValuesFmt==="Percents"?"selected":""}>Percents</option></select></div>
+   <div class="frow"><label>Labels</label><select id="dsFibLabelsPos"><option ${st.fibLabelsPos!=="Middle"?"selected":""}>Left</option><option ${st.fibLabelsPos==="Middle"?"selected":""}>Middle</option></select></div>
+   <div class="frow"><label>Text</label>${chk("dsFibLabels",st.fibLabels!==false,"Text")}<select id="dsFibTextH">${["Center","Left","Right"].map(s=>`<option ${(st.fibTextH||"Center")===s?"selected":""}>${s}</option>`).join("")}</select><select id="dsFibTextV">${["Middle","Top","Bottom"].map(s=>`<option ${(st.fibTextV||"Middle")===s?"selected":""}>${s}</option>`).join("")}</select></div>
+   <div class="frow"><label>Font size</label><input type="number" id="dsFibFS" value="${st.fibFontSize||12}" style="width:76px;flex:none"></div>
+   <div class="frow"><label></label><label class="chk"><input type="checkbox" disabled> Fib levels based on log scale</label></div>
+   <p class="hint">OTE zone 0.618–0.786 is shown in gold</p>`:""}
+  </div>`}
+  ${isPos||isFib?"":`<div data-pane="Text"${isText?"":' style="display:none"'}>${textPaneHTML}</div>`}
+  ${isText?"":isPos?"":`<div data-pane="Coordinates" style="display:none">
+   <div class="frow"><label>#1 price / bar</label><input type="number" id="dsP1" step="any" value="${r1(d.p1.price)}"${fullAttr(d.p1.price)}><input type="number" id="dsB1" value="${barIdx(d.p1.time)}"></div>
+   ${d.p2?`<div class="frow"><label>#2 price / bar</label><input type="number" id="dsP2" step="any" value="${r1(d.p2.price)}"${fullAttr(d.p2.price)}><input type="number" id="dsB2" value="${barIdx(d.p2.time)}"></div>`:""}
+  </div>`}
   <div data-pane="Visibility" style="display:none">
-   <p class="hint">Visibility ranges (same as the original: Ticks / Seconds / Minutes / Hours / Days / Weeks / Months / Ranges). Minutes covers 1m/5m/15m, Hours covers 1h/4h, Days covers 1D.</p>
-   ${["Ticks","Seconds","Minutes","Hours","Days","Weeks","Months","Ranges"].map(c=>`<label class="chk" style="margin-right:10px"><input type="checkbox" data-viscat="${c}" ${!d.visCats||d.visCats[c]!==false?"checked":""}> ${c}</label>`).join("")}
-   <div class="frow"><label class="chk"><input type="checkbox" id="dsLocked" ${d.locked?"checked":""}> Lock (cannot be removed or moved)</label></div>
+   ${VIS_CATS.map(([c,mx])=>{ const rg=(d.visRanges&&d.visRanges[c])||[1,mx||1]; return `<div class="frow visRow"><label class="chk" style="width:106px"><input type="checkbox" data-viscat="${c}" ${!d.visCats||d.visCats[c]!==false?"checked":""}> ${c}</label>${mx?`<input type="number" data-vismin="${c}" min="1" max="${mx}" value="${rg[0]}"><span>–</span><input type="number" data-vismax="${c}" min="1" max="${mx}" value="${rg[1]}">`:""}</div>`;}).join("")}
   </div>`,
-  `<button class="btn" id="dsCancel">Cancel</button><button class="btn primary" id="dsOk">OK</button>`);
- $("#dsSync").value=d.syncScope||"layout";
+  `<button class="btn dsTmplBtn" id="dsTmpl">Template ${uiIc("chev")}</button><span style="flex:1"></span><button class="btn dsCancel" id="dsCancel">Cancel</button><button class="btn primary" id="dsOk">OK</button>`);
+ const dlgEl=m.querySelector(".dlg"); if(dlgEl){ dlgEl.classList.add("dsDlg"); if(isFib)dlgEl.classList.add("fibDlg"); }
  const activateTab=k=>{ m.querySelectorAll("[data-tab]").forEach(x=>x.classList.toggle("on",x.dataset.tab===k)); m.querySelectorAll("[data-pane]").forEach(p=>p.style.display=p.dataset.pane===k?"":"none"); };
  m.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{ drawSettingsTab=b.dataset.tab; activateTab(b.dataset.tab); });
  activateTab(initTab);
  const segWire=(id,fn)=>{const s=$(id); if(s)s.querySelectorAll("button").forEach(b=>b.onclick=()=>{fn(b.dataset);s.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));});};
- segWire("#dsW",ds=>st.width=+ds.w); segWire("#dsLS",ds=>st.lineStyle=ds.s); segWire("#dsEL",ds=>st.endL=ds.s); segWire("#dsER",ds=>st.endR=ds.s); segWire("#dsAlign",ds=>st.align=ds.s);
+ segWire("#dsW",ds=>st.width=+ds.w); segWire("#dsLS",ds=>st.lineStyle=ds.s); segWire("#dsEL",ds=>st.endL=ds.s); segWire("#dsER",ds=>st.endR=ds.s);
  segWire("#dsMidW",ds=>st.midWidth=+ds.w); segWire("#dsMidLS",ds=>st.midLineStyle=ds.s);
- segWire("#dsFibW",ds=>st.fibLineWidth=+ds.w); segWire("#dsFibLS",ds=>st.fibLineStyle=ds.s);
- /* Line color: カラーピッカーと16進数Textを相互Sync（従来は dsColorHex が読み書きされず、16進数で色を変えてもOKに反映されなかった） */
- const _dcI=$("#dsColor"), _dcH=$("#dsColorHex");
- if(_dcI&&_dcH){ _dcI.addEventListener("input",()=>{_dcH.value=_dcI.value;});
-  _dcH.addEventListener("change",()=>{ const v=_dcH.value.trim(); if(/^#?[0-9a-fA-F]{6}$/.test(v)){ _dcI.value="#"+v.replace("#","").toLowerCase(); _dcH.value=_dcI.value; } }); }
+ segWire("#dsFibW",ds=>st.fibLineWidth=+ds.w); segWire("#dsFibLS",ds=>st.fibLineStyle=ds.s); segWire("#dsTrendLS",ds=>st.trendStyle=ds.s);
+ const tglWire=(id,fn)=>{const b=$(id); if(b)b.onclick=()=>{ const on=!b.classList.contains("on"); b.classList.toggle("on",on); fn(on); };};
+ tglWire("#dsBoldBtn",on=>st.bold=on); tglWire("#dsItalBtn",on=>st.italic=on);
+ /* 色スウォッチの有効／無効（本家はオフの項目の色ボタンが無効化される） */
+ const setCpEnabled=(inp,on)=>{ if(!inp)return; inp.disabled=!on; const sw=inp.previousElementSibling; if(sw&&sw.classList.contains("cpSwatch")){ sw.disabled=!on; sw.style.opacity=on?"":".35"; } };
+ const midOnEl=$("#dsMidOn"); if(midOnEl){ const syncMid=()=>setCpEnabled($("#dsMidColor"),midOnEl.checked); midOnEl.addEventListener("change",syncMid); syncMid(); }
+ const txBgEl=$("#dsTxBgOn"); if(txBgEl){ const syncTx=()=>{ setCpEnabled($("#dsTxBg"),txBgEl.checked); const op=$("#dsTxBgOp"); if(op)op.disabled=!txBgEl.checked; }; txBgEl.addEventListener("change",syncTx); syncTx(); }
+ const txBdEl=$("#dsTxBdOn"); if(txBdEl){ const syncBd=()=>setCpEnabled($("#dsTxBd"),txBdEl.checked); txBdEl.addEventListener("change",syncBd); syncBd(); }
+ /* Position の Target/Stop スウォッチは本家と同じ市松模様（透明度が見える表示）にする */
+ const alphaSw=(inp,op)=>{ if(!inp)return; const sw=inp.previousElementSibling; if(!sw||!sw.classList.contains("cpSwatch"))return;
+  const paint=()=>{ sw.style.background=`linear-gradient(${rgba(inp.value,op)},${rgba(inp.value,op)}),conic-gradient(#3c424e 25%,#2a2e39 0 50%,#3c424e 0 75%,#2a2e39 0)`; sw.style.backgroundSize="auto,10px 10px"; };
+  inp.addEventListener("input",paint); paint(); };
+ alphaSw($("#dsTgC"),st.targetOpacity!=null?st.targetOpacity:20); alphaSw($("#dsStC"),st.stopOpacity!=null?st.stopOpacity:20);
+ /* Fib: Use one color は選んだ色を全レベルの色入力へ即時反映する（OK で st へ取り込む） */
+ const oneEl=$("#dsFibOne"); if(oneEl)oneEl.addEventListener("input",()=>{ m.querySelectorAll("[data-fc]").forEach(x=>x.value=oneEl.value); refreshCpSwatches(m); });
+ const bgOpEl=$("#dsFibBgOp"); if(bgOpEl)bgOpEl.addEventListener("input",()=>{ const v=$("#dsFibBgOpV"); if(v)v.textContent=bgOpEl.value+"%"; });
+ /* Position Inputs: Ticks と Price は相互に連動させる（Entry は Entry price 欄の現在値が基準）。
+    OK では Price 欄を正とし、未編集なら元の値をそのまま使う（readPrice）ので、開いて OK するだけでは値は変わらない */
+ if(isPos){ const tick=Math.pow(10,-(symInfo(ctx.symbol).dec||2)); const long=d.type==="long";
+  const tgT=$("#dsTgTicks"),tgP=$("#dsTarget"),stT=$("#dsStTicks"),stP=$("#dsStop"),enP=$("#dsEntry");
+  const entryNow=()=>{ const v=parseFloat(enP.value); return isFinite(v)?v:d.entry; };
+  const toTicks=(price,isTg)=>Math.round(Math.abs(price-entryNow())/tick);
+  const fromTicks=(t,isTg)=>{ const dir=isTg?(long?1:-1):(long?-1:1); return r1(entryNow()+dir*t*tick); };
+  const syncT=()=>{ tgT.value=toTicks(parseFloat(tgP.value)||d.target,true); stT.value=toTicks(parseFloat(stP.value)||d.stop,false); };
+  syncT();
+  tgT.addEventListener("input",()=>{ tgP.value=fromTicks(+tgT.value||0,true); });
+  stT.addEventListener("input",()=>{ stP.value=fromTicks(+stT.value||0,false); });
+  tgP.addEventListener("input",syncT); stP.addEventListener("input",syncT); enP.addEventListener("input",syncT); }
  $("#dsTmpl").onclick=()=>openTemplateMenu(ctx,d);
  $("#dsCancel").onclick=closeModal;
- $("#dsOk").onclick=()=>{ snapshotDrawings(); d.style=st; // スナップショット後に複製をApply
-  const _dc=$("#dsColor"); if(_dc){st.color=_dc.value; st.opacity=+$("#dsOp").value;}
-  const bgOn=$("#dsBgOn"); if(bgOn){st.bgOn=bgOn.checked; st.bg=$("#dsBg").value; st.bgOpacity=+$("#dsBgOp").value;}
-  const midOnEl=$("#dsMidOn"); if(midOnEl){st.midOn=midOnEl.checked; st.midColor=$("#dsMidColor").value; st.midOpacity=+$("#dsMidOp").value;}
-  const exL=$("#dsExL"); if(exL){st.extendL=exL.checked; st.extendR=$("#dsExR").checked;}
-  if(isPos){st.accountSize=+$("#dsAcc").value; st.lotSize=+$("#dsLot").value; st.risk=+$("#dsRisk").value; st.leverage=+$("#dsLev").value; st.qty=+$("#dsQty").value;
+ const readPrice=(id,orig)=>{ const el=$(id); if(!el)return orig; const v=parseFloat(el.value); if(!isFinite(v))return orig;
+  if(el.dataset.full!=null&&Math.abs(v-r1(orig))<1e-9)return orig; return v; }; // 表示値のまま＝未編集とみなし元の精度を保持する
+ $("#dsOk").onclick=()=>{ snapshotDrawings();
+  const cEl=$("#dsColor"); if(cEl)st.color=cEl.value;
+  const lcEl=$("#dsLineColor"); if(lcEl)st.lineColor=lcEl.value;
+  const exEl=$("#dsExtend"); if(exEl){ st.extendL=exEl.value==="left"||exEl.value==="both"; st.extendR=exEl.value==="right"||exEl.value==="both"; }
+  const midPt=$("#dsMidPt"); if(midPt)st.middlePoint=midPt.checked;
+  const prLbl=$("#dsPriceLbl"); if(prLbl)st.priceLabels=prLbl.checked;
+  const sts=$("#dsStats"); if(sts)st.statsMode=sts.value;
+  const stsP=$("#dsStatsPos"); if(stsP)st.statsPos=stsP.value;
+  const alw=$("#dsAlwaysStats"); if(alw)st.alwaysShowStats=alw.checked;
+  const bgOn=$("#dsBgOn"); if(bgOn){st.bgOn=bgOn.checked; st.bg=$("#dsBg").value;}
+  const midOnEl2=$("#dsMidOn"); if(midOnEl2){st.midOn=midOnEl2.checked; st.midColor=$("#dsMidColor").value;}
+  if(isPos){st.accountSize=+$("#dsAcc").value; st.lotSize=+$("#dsLot").value; st.risk=+$("#dsRisk").value; st.leverage=+$("#dsLev").value;
    const _qp=$("#dsQp"); if(_qp)st.qtyPrecision=_qp.value;
-   d.entry=+$("#dsEntry").value;
-   const _tick=Math.pow(10,-(symInfo(ctx.symbol).dec||2)); const _long=d.type==="long";
-   const _tgu=$("#dsTgUnit"), _stu=$("#dsStUnit"); st.targetUnit=_tgu?_tgu.value:"Price"; st.stopUnit=_stu?_stu.value:"Price";
-   d.target=st.targetUnit==="Ticks" ? d.entry + (+$("#dsTarget").value)*_tick*(_long?1:-1) : +$("#dsTarget").value;
-   d.stop=st.stopUnit==="Ticks" ? d.entry - (+$("#dsStop").value)*_tick*(_long?1:-1) : +$("#dsStop").value;
+   const _au=$("#dsAccUnit"); if(_au)st.accUnit=_au.value; const _ru=$("#dsRiskUnit"); if(_ru)st.riskUnit=_ru.value;
+   d.entry=readPrice("#dsEntry",d.entry);
+   d.target=readPrice("#dsTarget",d.target);
+   d.stop=readPrice("#dsStop",d.stop);
    d.p1.price=d.entry;
-   st.targetColor=$("#dsTgC").value; st.targetOpacity=+$("#dsTgOp").value; st.stopColor=$("#dsStC").value; st.stopOpacity=+$("#dsStOp").value;}
-  if(isFib){st.fibBg=$("#dsFibBg").checked; st.fibReverse=$("#dsFibRev").checked;
+   st.targetColor=$("#dsTgC").value; st.stopColor=$("#dsStC").value;
+   st.textColor=$("#dsPosTC").value; st.fontSize=+$("#dsPosFS").value||12;
+   st.priceLabels=$("#dsPriceLabels").checked;
+   const sm=$("#dsStatsMode"); st.showInfo=sm.value!=="hidden"; st.compactStats=$("#dsCompact").checked||sm.value==="compact"; }
+  if(isFib){st.fibTrend=$("#dsFibTrend").checked; st.trendColor=$("#dsTrendColor").value; st.fibExtend=$("#dsFibExtend").value;
+   st.fibBg=$("#dsFibBg").checked; st.fibBgOpacity=+$("#dsFibBgOp").value; st.fibReverse=$("#dsFibRev").checked;
+   st.fibPrices=$("#dsFibPrices").checked; st.fibLevelsLbl=$("#dsFibLv").checked; st.fibLabels=$("#dsFibLabels").checked;
+   st.fibValuesFmt=$("#dsFibValues").value; st.fibLabelsPos=$("#dsFibLabelsPos").value; st.fibTextH=$("#dsFibTextH").value; st.fibTextV=$("#dsFibTextV").value;
+   st.fibFontSize=+$("#dsFibFS").value||12;
    m.querySelectorAll("[data-fi]").forEach(c=>{st.fibLevels[+c.dataset.fi].on=c.checked;});
    m.querySelectorAll("[data-fv]").forEach(c=>{st.fibLevels[+c.dataset.fv].level=+c.value;});
    m.querySelectorAll("[data-fc]").forEach(c=>{st.fibLevels[+c.dataset.fc].color=c.value;});}
-  const _t=$("#dsText"); if(_t){st.text=_t.value; st.textColor=$("#dsTC").value; st.fontSize=+$("#dsFS").value; st.bold=$("#dsBold").checked; st.italic=$("#dsItal").checked;}
-  const _fp=$("#dsFibPrices"); if(_fp){st.fibPrices=_fp.checked; st.fibLevelsLbl=$("#dsFibLv").checked; st.fibLabels=$("#dsFibLabels").checked; st.fibFontSize=+$("#dsFibFS").value;}
-  const _si=$("#dsShowInfo"); if(_si){st.showInfo=_si.checked; st.compactStats=$("#dsCompact").checked; st.alwaysShowStats=$("#dsAlwaysStats").checked; st.priceLabels=$("#dsPriceLabels").checked; st.middlePoint=$("#dsMid").checked;}
+  const _t=$("#dsText"); if(_t){st.text=_t.value; st.textColor=$("#dsTC").value; st.fontSize=+$("#dsFS").value||14;}
+  const av=$("#dsAlignV"); if(av)st.align=av.value; const ah=$("#dsAlignH"); if(ah)st.alignH=ah.value;
   const txBg=$("#dsTxBgOn"); if(txBg){st.bgOn=txBg.checked; st.bg=$("#dsTxBg").value; st.bgOpacity=+$("#dsTxBgOp").value;}
+  const txBd=$("#dsTxBdOn"); if(txBd){st.borderOn=txBd.checked; st.borderColor=$("#dsTxBd").value;}
+  const txWr=$("#dsTxWrap"); if(txWr)st.textWrap=txWr.checked;
   const _b1=$("#dsB1"); if(_b1){ const timeAt=i=>ctx.full[Math.max(0,Math.min(ctx.full.length-1,i))].time;
-  d.p1={time:timeAt(+_b1.value),price:+$("#dsP1").value};
-  if(d.p2&&$("#dsP2"))d.p2={time:timeAt(+$("#dsB2").value),price:+$("#dsP2").value}; }
-  d.intervals={}; m.querySelectorAll("[data-vis]").forEach(c=>d.intervals[c.dataset.vis]=c.checked);
+   d.p1={time:timeAt(+_b1.value),price:readPrice("#dsP1",d.p1.price)};
+   if(d.p2&&$("#dsP2"))d.p2={time:timeAt(+$("#dsB2").value),price:readPrice("#dsP2",d.p2.price)}; }
   d.visCats={}; m.querySelectorAll("[data-viscat]").forEach(c=>d.visCats[c.dataset.viscat]=c.checked);
-  d.locked=$("#dsLocked").checked; d.syncScope=$("#dsSync").value;
+  d.visRanges={}; m.querySelectorAll("[data-vismin]").forEach(c=>{ const cat=c.dataset.vismin; const mx=m.querySelector(`[data-vismax="${cat}"]`); d.visRanges[cat]=[+c.value||1, mx?+mx.value||+c.value||1:+c.value||1]; });
+  d.style=st;
   lastStyles[d.type]=JSON.parse(JSON.stringify(st));
   afterDrawChange(ctx); showFloatBar(ctx,d); closeModal(); };
- if(isFib)m.querySelectorAll("[data-fuse]").forEach(b=>b.onclick=()=>{const inp=m.querySelector(`[data-fc="${b.dataset.fuse}"]`); const c=inp?inp.value:st.fibLevels[+b.dataset.fuse].color; st.fibLevels.forEach(fl=>fl.color=c); m.querySelectorAll("[data-fc]").forEach(x=>x.value=c); refreshCpSwatches(m); toast("Use one color: all levels set to "+c+"");}); // 行の色入力はOKまで st に未反映のため、入力欄の現在値を読む（従来は変更前の古い色が全レベルへ伝播した）
- const _oneB=$("#dsFibOneBtn"); if(_oneB)_oneB.onclick=()=>{const c=$("#dsFibOne").value; st.fibLevels.forEach(fl=>fl.color=c); m.querySelectorAll("[data-fc]").forEach(x=>x.value=c); refreshCpSwatches(m); toast("Use one color: all levels set to "+c+"");};
 }
 </script>
 <script>
